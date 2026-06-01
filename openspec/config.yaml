@@ -1,0 +1,44 @@
+schema: spec-driven
+
+context: |
+  Tech stack: Next.js 16.2.6 + React 19.2.4 + TypeScript 5 + TailwindCSS 4
+  Architecture: Next.js App Router (faena_frontend/), Obsidian vault for product docs
+  Testing: No test runner, no test framework, no coverage tooling detected
+  Style: ESLint 9 (eslint-config-next), TypeScript strict mode, pnpm package manager
+
+rules:
+  proposal:
+    - Include rollback plan for risky changes
+  specs:
+    - Use Given/When/Then for scenarios
+    - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY)
+  design:
+    - Include sequence diagrams for complex flows
+    - Document architecture decisions with rationale
+  tasks:
+    - Group by phase, use hierarchical numbering
+    - Keep tasks completable in one session
+  apply:
+    - Follow existing code patterns
+    tdd: false
+    test_command: ""
+  verify:
+    test_command: ""
+    build_command: "cd faena_frontend && pnpm build"
+    coverage_threshold: 0
+  archive:
+    - Warn before merging destructive deltas
+
+testing:
+  strict_tdd: false
+  runner: none
+  framework: none
+  layers:
+    unit: { available: false, tool: "—" }
+    integration: { available: false, tool: "—" }
+    e2e: { available: false, tool: "—" }
+  coverage: { available: false, command: "—" }
+  quality:
+    linter: { available: true, command: "cd faena_frontend && pnpm lint" }
+    type_checker: { available: true, command: "cd faena_frontend && npx tsc --noEmit" }
+    formatter: { available: false, command: "—" }
