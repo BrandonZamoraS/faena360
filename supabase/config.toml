@@ -1,0 +1,137 @@
+# A string used to distinguish different Supabase projects on the same host.
+project_id = "faena360"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "storage", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+# Port to use for the local database URL.
+port = 54322
+# Port used by db diff command to initialize the shadow database.
+shadow_port = 54320
+# The database major version to use. This has to be the same as your remote database. Run `SHOW server_version;` on the remote database to check.
+major_version = 15
+
+[db.pooler]
+enabled = false
+# Port to use for the local connection pooler.
+port = 54329
+# Specifies when a server connection can be reused by other clients.
+# Configure one of the supported pooler modes: `transaction` or `session`.
+pool_mode = "transaction"
+# How many server connections to allow per user/database pair.
+default_pool_size = 20
+# Maximum number of client connections allowed.
+max_client_conn = 100
+
+[realtime]
+enabled = true
+# Bind realtime via either IPv4 or IPv6. (default: IPv6)
+# ip_version = "IPv6"
+
+[studio]
+enabled = true
+# Port to use for Supabase Studio.
+port = 54323
+# External URL of the API server that frontend connects to.
+api_url = "http://localhost:54321"
+
+# Email testing server. Emails sent with the local dev setup are not actually sent - rather, they
+# are monitored, and you can view the emails that would have been sent from the web interface.
+[inbucket]
+enabled = true
+# Port to use for the email testing server web interface.
+port = 54324
+# Uncomment to expose additional ports for testing user applications that run outside Docker.
+# smtp_port = 54325
+# pop3_port = 54326
+
+[storage]
+enabled = true
+# The maximum file size allowed (e.g. "5MB", "500KB").
+file_size_limit = "50MiB"
+# The maximum number of allowed buckets for each user (including the default bucket).
+buckets_max = 20
+
+[auth]
+enabled = true
+# The base URL of your website. Used as an allow-list for redirects and for constructing URLs used
+# in emails.
+site_url = "http://localhost:3000"
+# A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
+additional_redirect_urls = ["https://localhost:3000"]
+# How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604800 (1 week).
+jwt_expiry = 3600
+# If disabled, the refresh token will never expire. Enable it by setting the number of seconds it
+# should take to expire.
+# refresh_token_expiry = ""
+# Allow/disallow new user signups to your project.
+enable_signup = true
+# If enabled, raw email addresses will be stored in the email field. Otherwise, they will be
+# anonymized.
+enable_email = true
+# If enabled, phone numbers will be stored in the phone field. Otherwise, they will be anonymized.
+enable_phone = true
+# The minimum length of the password used when signing up new users.
+# minimum_password_length = 8
+
+[auth.email]
+# Allow/disallow new user signups via email to your project.
+enable_signup = true
+# If enabled, a user will be required to confirm any email change before any new value is applied
+to their user object. Is recommended to set this to true for production, but can be disabled for
+local dev
+double_confirm_changes = false
+# If enabled, users need to confirm their email address before signing in.
+enable_confirmations = false
+
+[auth.sms]
+# Allow/disallow new user signups via SMS to your project.
+enable_signup = true
+# If enabled, users need to confirm their phone number before signing in.
+enable_confirmations = false
+
+# Configure one of the supported pooler modes: `transaction` or `session`.
+# Refer to the official Supabase documentation for more information.
+# [auth.mfa]
+# enabled = true
+# enforce = "none"
+# challenge_max_age = ""
+# [auth.mfa.totp]
+# enroll_enabled = true
+# verify_enabled = true
+# [auth.mfa.phone]
+# enroll_enabled = true
+# verify_enabled = true
+# template = "Your code is {{ .Code }}"
+# max_frequency = "10s"
+
+# Use an external OAuth provider. The full list of providers are: `apple`, `azure`, `bitbucket`,
+# `discord`, `facebook`, `github`, `gitlab`, `google`, `keycloak`, `linkedin`, `notion`, `spotify`,
+# `slack`, `twitch`, `twitter`, `workos`.
+# [auth.external.apple]
+# enabled = false
+# client_id = ""
+# secret = ""
+# redirect_uri = ""
+# url = ""
+
+[edge_runtime]
+enabled = true
+# Configure one of the supported pooler modes: `transaction` or `session`.
+# port = 54326
+# inspector_port = 54327
+
+[analytics]
+enabled = true
+port = 54328
+# Setup BigQuery project to enable log streaming.
+# gcp_project = ""
+# gcp_project_number = ""
+# gcp_jwt_path = ""
+# Configure one of the supported pooler modes: `transaction` or `session`.
+backend = "postgres"
