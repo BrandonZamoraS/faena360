@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+pnpm-lock.yaml
+
+# Build outputs
+.next/
+dist/
+build/
+out/
+
+# Obsidian vault content
+obsidian-vault/
+
+# OpenSpec artifacts
+openspec/
+
+# Agent skills and config
+skills/
+~/
+
+# Project agent config
+AGENTS.md
+.atl/
+.vscode/
+
+# Coverage
+coverage/
