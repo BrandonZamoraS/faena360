@@ -105,8 +105,8 @@ None.
 
 #### WARNING
 
-1. **Worktree is not clean after Supabase verification.**
-   `git status --short --branch` showed untracked `supabase/.branches/` and `supabase/.temp/` after running local Supabase commands.
+1. **Supabase local artifacts are generated during verification.**
+   Local Supabase commands can generate `supabase/.branches/` and `supabase/.temp/`; these were removed before PR preparation and are not part of the tracked diff.
 
 2. **Supabase local start is not fully reliable on the first attempt in this environment.**
    First `supabase start` failed with a Docker container-name conflict on `/supabase_vector_faena360`; a `supabase stop` plus one retry succeeded.
@@ -116,7 +116,7 @@ None.
 
 #### SUGGESTION
 
-1. Ignore or clean Supabase-generated local directories (`supabase/.branches/`, `supabase/.temp/`) before human review to keep `git status` predictable.
+1. If local Supabase verification is run again, remove generated local directories (`supabase/.branches/`, `supabase/.temp/`) before review to keep `git status` predictable.
 
 2. Investigate why `supabase_vector_faena360` can survive or conflict across local restarts on Windows/Docker so first-run verification is deterministic.
 
@@ -124,5 +124,5 @@ None.
 
 ### PR Readiness
 
-**Behaviorally ready, but not fully review-clean.**
-Reason: current HEAD `44ce0b2` passed lint, typecheck, build, and fresh local Supabase DB/storage verification. Remaining review friction is environmental: untracked Supabase local directories and a first-attempt Docker conflict during `supabase start`.
+**Ready for PR with size-budget approval.**
+Reason: the implementation passed lint, typecheck, build, and fresh local Supabase DB/storage verification. Local Supabase artifacts generated during verification were cleaned before PR preparation. The remaining review consideration is size: implementation is small, but SDD artifacts make the total diff exceed the 400-line budget.
