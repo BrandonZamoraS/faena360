@@ -55,7 +55,8 @@ enabled = true
 # The maximum file size allowed (e.g. "5MB", "500KB").
 file_size_limit = "50MiB"
 # The maximum number of allowed buckets for each user (including the default bucket).
-buckets_max = 20
+# Not supported by the current Supabase CLI config schema.
+# buckets_max = 20
 
 [auth]
 enabled = true
@@ -72,10 +73,11 @@ jwt_expiry = 3600
 # Allow/disallow new user signups to your project.
 enable_signup = true
 # If enabled, raw email addresses will be stored in the email field. Otherwise, they will be
-# anonymized.
-enable_email = true
+# anonymized. Not supported by the current Supabase CLI config schema.
+# enable_email = true
 # If enabled, phone numbers will be stored in the phone field. Otherwise, they will be anonymized.
-enable_phone = true
+# Not supported by the current Supabase CLI config schema.
+# enable_phone = true
 # The minimum length of the password used when signing up new users.
 # minimum_password_length = 8
 
@@ -83,8 +85,8 @@ enable_phone = true
 # Allow/disallow new user signups via email to your project.
 enable_signup = true
 # If enabled, a user will be required to confirm any email change before any new value is applied
-to their user object. Is recommended to set this to true for production, but can be disabled for
-local dev
+# to their user object. Is recommended to set this to true for production, but can be disabled for
+# local dev
 double_confirm_changes = false
 # If enabled, users need to confirm their email address before signing in.
 enable_confirmations = false
