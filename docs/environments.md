@@ -51,3 +51,41 @@ And these as **repository secrets**:
 - `VERCEL_PROJECT_ID`
 
 `SUPABASE_SERVICE_ROLE_KEY` is intentionally out of scope for this change. Add it only when server-side Supabase operations are implemented.
+
+## Health Endpoint
+
+`GET /api/health` is a public, unauthenticated endpoint for runtime and monitoring checks.
+
+**HTTP behavior:**
+
+- `200` — app and database are reachable (`status: "healthy"`).
+- `503` — Supabase/Postgres connectivity failed or timed out (`status: "unhealthy"`).
+
+**Response shape:**
+
+```json
+{
+  "status": "healthy",
+  "timestamp": "2025-01-15T12:00:00.000Z",
+  "checks": { "app": "ok", "database": "ok" },
+  "build": {
+    "version": "0.1.0",
+    "commit_sha": "abc123",
+    "deploy_id": "dpl_xyz"
+  }
+}
+```
+
+**Build identity fallback:**
+
+| Field        | Source                                                         |
+| ------------ | -------------------------------------------------------------- |
+| `version`    | `apps/web/package.json`                                        |
+| `commit_sha` | `NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA` or `VERCEL_GIT_COMMIT_SHA` |
+| `deploy_id`  | `NEXT_PUBLIC_VERCEL_DEPLOY_ID` or `VERCEL_DEPLOYMENT_ID`       |
+
+`commit_sha` and `deploy_id` are omitted when unavailable (e.g., local development).
+
+**Database check:** Uses native `fetch` to Supabase REST (`/rest/v1/tenants?select=id&limit=1`) with the existing `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`. No service-role key or `@supabase/supabase-js` dependency is required. RLS returns no tenant data because no user JWT is used — the check only proves Supabase API and Postgres path are reachable.
+
+**Security:** The response never exposes Supabase URLs, API keys, error messages, tenant data, IPs, or SQL details.
