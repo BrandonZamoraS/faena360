@@ -17,16 +17,25 @@ The following variables MUST be configured for every environment. Build and depl
 
 ## File Locations
 
-- `apps/web/.env.development` — Development values
-- `apps/web/.env.stage` — Staging values
-- `apps/web/.env.production` — Production values
+- `apps/web/.env.example` — Template with placeholder variable names (tracked, safe to commit)
+- `apps/web/.env.local` — Local development values (ignored by git, never commit real values)
+- Vercel Dashboard — Stage and production values (set as environment variables)
+
+## Local Setup
+
+```bash
+# Copy the example file and fill in your real Supabase credentials
+cp apps/web/.env.example apps/web/.env.local
+```
+
+`.env.local` is ignored by git. Never commit real credentials to any tracked file.
 
 ## Secrets
 
 Never commit secrets. Store them in:
 
-- GitHub Repository Secrets (`Settings > Secrets and variables > Actions`)
 - Vercel Environment Variables (if using Vercel Git integration)
+- GitHub Repository Secrets (`Settings > Secrets and variables > Actions`) — only for CI/CD workflows
 
 ## GitHub Actions Variables
 
@@ -40,4 +49,5 @@ And these as **repository secrets**:
 - `VERCEL_TOKEN`
 - `VERCEL_ORG_ID`
 - `VERCEL_PROJECT_ID`
-  `SUPABASE_SERVICE_ROLE_KEY` is intentionally out of scope for this change. Add it only when server-side Supabase operations are implemented.
+
+`SUPABASE_SERVICE_ROLE_KEY` is intentionally out of scope for this change. Add it only when server-side Supabase operations are implemented.
