@@ -17,9 +17,6 @@ out/
 # Environment
 .env*
 !.env.example
-!.env.development
-!.env.stage
-!.env.production
 
 # IDE
 .idea/
