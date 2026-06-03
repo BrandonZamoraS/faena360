@@ -68,17 +68,21 @@ And these as **repository secrets**:
   "status": "healthy",
   "timestamp": "2025-01-15T12:00:00.000Z",
   "checks": { "app": "ok", "database": "ok" },
-  "build": { "version": "0.1.0", "commit_sha": "abc123", "deploy_id": "dpl_xyz" }
+  "build": {
+    "version": "0.1.0",
+    "commit_sha": "abc123",
+    "deploy_id": "dpl_xyz"
+  }
 }
 ```
 
 **Build identity fallback:**
 
-| Field | Source |
-|-------|--------|
-| `version` | `apps/web/package.json` |
+| Field        | Source                                                         |
+| ------------ | -------------------------------------------------------------- |
+| `version`    | `apps/web/package.json`                                        |
 | `commit_sha` | `NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA` or `VERCEL_GIT_COMMIT_SHA` |
-| `deploy_id` | `NEXT_PUBLIC_VERCEL_DEPLOY_ID` or `VERCEL_DEPLOYMENT_ID` |
+| `deploy_id`  | `NEXT_PUBLIC_VERCEL_DEPLOY_ID` or `VERCEL_DEPLOYMENT_ID`       |
 
 `commit_sha` and `deploy_id` are omitted when unavailable (e.g., local development).
 
