@@ -57,8 +57,10 @@ create policy "Users can update their own tenant"
 -- --------------------------------------------------------
 -- tenant-files bucket (no public access)
 -- --------------------------------------------------------
+-- Create bucket idempotently in case it already exists.
 insert into storage.buckets (id, name, public)
-values ('tenant-files', 'tenant-files', false);
+values ('tenant-files', 'tenant-files', false)
+on conflict (id) do nothing;
 
 -- --------------------------------------------------------
 -- Storage RLS policies for tenant-aware access
