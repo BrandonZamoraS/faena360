@@ -1,6 +1,12 @@
 import type { NextConfig } from "next";
 
 function validateEnv() {
+  // Skip validation in development mode to allow fast local iteration.
+  // Developers should create .env.local with real values when testing Supabase features.
+  if (process.env.NODE_ENV === "development") {
+    return;
+  }
+
   const required = [
     "NEXT_PUBLIC_SUPABASE_URL",
     "NEXT_PUBLIC_SUPABASE_ANON_KEY",
