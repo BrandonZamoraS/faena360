@@ -11,7 +11,7 @@
 ### Scope Verified
 - Read `proposal.md`, `design.md`, `tasks.md`, and `specs/infraestructura-base/spec.md`.
 - Inspected diff against `origin/production`.
-- Verified changed files: 11 files, 259 insertions.
+- Verified changed files: implementation files plus retroactive SDD artifacts and follow-up fixes.
 
 ### Completeness
 | Metric | Value |
@@ -44,7 +44,7 @@ git diff --stat origin/production...HEAD
  apps/web/next.config.ts                 | 22 +++++++++++++++
  docs/branch-strategy.md                 | 27 ++++++++++++++++++
  docs/environments.md                    | 44 +++++++++++++++++++++++++++++
- 11 files changed, 259 insertions(+)
+ Implementation diff plus SDD artifacts; exact line count should be taken from the PR diff.
 ```
 
 ### Build & Tests Execution
@@ -150,19 +150,20 @@ Relevant output:
 ### Coherence (Design)
 | Decision | Followed? | Notes |
 |----------|-----------|-------|
-| Vercel CLI prebuilt deployment | ✅ Yes | Workflows use `vercel pull`, `vercel build`, and `vercel deploy --prebuilt`; provider confirmed by team. |
+| Vercel CLI prebuilt deployment | ✅ Yes | Workflows use `vercel pull`, `vercel build`, and `vercel deploy --prebuilt`; production uses `vercel build --prod` before `vercel deploy --prebuilt --prod`; provider confirmed by team. |
 | Build-time env validation in `next.config.ts` | ✅ Yes | Implemented exactly at module top-level with `[CRITICAL CONFIG ERROR]`. |
 | Tracked `.env` files with placeholders | ✅ Yes | All three tracked files exist with placeholder values. |
 | Four-branch flow documentation | ✅ Yes | `docs/branch-strategy.md` documents `feature/* -> development -> stage -> production`. |
 
 ### Issues Found
 **CRITICAL**
-- `pnpm format:check` fails with code style issues in 21 files, but **all are pre-existing on `origin/production`**. The only branch-changed file with a format issue (`apps/web/next.config.ts`) was fixed. A separate base-branch cleanup is required before CI format checks will pass globally.
-- No passing runtime evidence exists for staging deployment, production deployment, or missing-Vercel-secrets failure scenarios required by the spec.
-- No runtime evidence exists for the negative CI scenario (`PR fails lint or typecheck`), so that requirement remains unverified.
+- None for branch-local implementation.
 
 **WARNING**
-- `docs/environments.md` lists `SUPABASE_SERVICE_ROLE_KEY` as a required variable even though proposal/design mark it as deferred and the workflows do not consume it.
+- `pnpm format:check` fails with code style issues in pre-existing files on `origin/production`. Branch-specific changed files checked with Prettier now pass.
+- No passing runtime evidence exists for staging deployment, production deployment, or missing-Vercel-secrets failure scenarios required by the spec. These require GitHub Actions/Vercel secrets and remote branch runs.
+- No runtime evidence exists for the negative CI scenario (`PR fails lint or typecheck`), so that requirement remains unverified.
+- `SUPABASE_SERVICE_ROLE_KEY` is intentionally deferred until server-side Supabase operations are implemented; it is not required by this issue's workflows.
 - The positive CI scenario was validated only via local command execution, not an actual GitHub pull request workflow run.
 
 **SUGGESTION**
@@ -175,6 +176,7 @@ Relevant output:
 **READY WITH CAVEATS**
 
 - Blocking issue resolved: Branch-specific files are properly formatted; `apps/web/next.config.ts` was the only branch file with drift and is now fixed.
+- Production deploy workflow now runs `vercel build --prod` before `vercel deploy --prebuilt --prod`.
 - Pre-existing format drift on `origin/production` (21 files) is NOT caused by this branch and should be addressed separately to unblock CI globally.
 - All local verification commands pass: `pnpm lint` (exit 0), `pnpm -r typecheck` (exit 0), `pnpm -r build` with dummy env (exit 0), missing-env build fails as expected, placeholder-env build fails as expected.
 - Remaining manual checks before full confidence: actual GitHub Actions CI run on a PR, and Vercel deploy runs after secrets are configured.

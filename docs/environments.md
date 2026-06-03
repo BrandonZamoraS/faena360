@@ -10,11 +10,10 @@
 
 The following variables MUST be configured for every environment. Build and deploy will fail explicitly if any are missing.
 
-| Variable                        | Scope  | Description                                  |
-| ------------------------------- | ------ | -------------------------------------------- |
-| `NEXT_PUBLIC_SUPABASE_URL`      | Public | Supabase project URL                         |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public | Supabase anonymous/public API key            |
-| `SUPABASE_SERVICE_ROLE_KEY`     | Secret | Supabase service role key (server-side only) |
+| Variable                        | Scope  | Description                       |
+| ------------------------------- | ------ | --------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`      | Public | Supabase project URL              |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public | Supabase anonymous/public API key |
 
 ## File Locations
 
@@ -41,4 +40,4 @@ And these as **repository secrets**:
 - `VERCEL_TOKEN`
 - `VERCEL_ORG_ID`
 - `VERCEL_PROJECT_ID`
-- `SUPABASE_SERVICE_ROLE_KEY` (when server-side Supabase operations are added)
+  `SUPABASE_SERVICE_ROLE_KEY` is intentionally out of scope for this change. Add it only when server-side Supabase operations are implemented.

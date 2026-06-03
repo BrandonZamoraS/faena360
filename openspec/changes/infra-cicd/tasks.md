@@ -6,8 +6,8 @@
 
 | Field | Value |
 |-------|-------|
-| Estimated changed lines | 259 |
-| 400-line budget risk | Low |
+| Estimated changed lines | 259 implementation lines; total PR exceeds 400 with SDD artifacts |
+| 400-line budget risk | Medium with SDD artifacts; implementation scope remains small |
 | Chained PRs recommended | No |
 | Suggested split | Single PR |
 | Delivery strategy | ask-always |
@@ -22,7 +22,7 @@ Chain strategy: size-exception
 
 | Unit | Goal | Likely PR | Notes |
 |------|------|-----------|-------|
-| 1 | Environment config + CI/CD pipeline + docs | PR 1 (single) | 259 lines, under budget; single PR to `development` base |
+| 1 | Environment config + CI/CD pipeline + docs | PR 1 (single) | Implementation under budget; SDD artifacts increase total review size |
 
 ## Phase 1: Environment Configuration
 

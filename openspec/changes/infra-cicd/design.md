@@ -111,6 +111,6 @@ No database migration required. Rollback is via `git revert` of the three infra 
 ## Open Questions
 
 - [x] **Deploy provider confirmation**: Vercel is confirmed by the team as the deployment provider.
-- [ ] **SUPABASE_SERVICE_ROLE_KEY**: Listed in documentation but not yet wired into any workflow. When should server-side Supabase operations start using this?
+- [x] **SUPABASE_SERVICE_ROLE_KEY**: Intentionally deferred until server-side Supabase operations are implemented.
 - [ ] **Health endpoint**: The `infraestructura-base` spec requires `GET /api/health`, but this change does not implement it. Should it be a separate change?
 - [ ] **Branch protection rules**: Should `development`, `stage`, and `production` have GitHub branch protection rules requiring CI pass before merge?

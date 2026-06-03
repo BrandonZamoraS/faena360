@@ -65,7 +65,7 @@ None — this change implements parts of the existing `infraestructura-base` cap
 |------|------------|------------|
 | Vercel as deploy provider is assumed but not confirmed by product | Medium | **RESOLVED** — Team confirmed Vercel as the deployment provider. Workflows remain valid. |
 | Placeholder detection in `next.config.ts` blocks intentional local testing with dummy values | Low | Use real local Supabase project or override with `SKIP_ENV_VALIDATION` if added |
-| `SUPABASE_SERVICE_ROLE_KEY` documented but not yet wired into any workflow | Low | Document as deferred; add when server-side features require it |
+| Server-side Supabase secrets omitted from this phase | Low | `SUPABASE_SERVICE_ROLE_KEY` is intentionally deferred until server-side Supabase operations are implemented |
 | No staging/production Supabase project exists yet — env files contain only placeholders | Medium | Acceptable for MVP; real values injected via GitHub Actions vars before first real deploy |
 
 ## Rollback Plan
