@@ -23,6 +23,28 @@ create table user_profiles (
   updated_at timestamptz not null default now()
 );
 
+create function normalize_user_profiles_contact_values()
+returns trigger
+language plpgsql
+as $$
+begin
+  if new.email is not null then
+    new.email = trim(new.email);
+  end if;
+
+  if new.phone is not null then
+    new.phone = trim(new.phone);
+  end if;
+
+  return new;
+end;
+$$;
+
+create trigger user_profiles_normalize_contact_values
+  before insert or update on user_profiles
+  for each row
+  execute function normalize_user_profiles_contact_values();
+
 create trigger user_profiles_updated_at
   before update on user_profiles
   for each row
@@ -58,6 +80,21 @@ create table roles (
   updated_at timestamptz not null default now(),
   unique (tenant_id, name)
 );
+
+create function normalize_roles_name()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.name = trim(new.name);
+  return new;
+end;
+$$;
+
+create trigger roles_normalize_name
+  before insert or update on roles
+  for each row
+  execute function normalize_roles_name();
 
 create trigger roles_updated_at
   before update on roles

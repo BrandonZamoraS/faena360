@@ -623,6 +623,72 @@ begin
 end $$;
 rollback to savepoint test20;
 
+-- --------------------------------------------------------
+-- Test 21: Email uniqueness uses trimmed canonical value
+-- Covers: duplicate present emails with surrounding whitespace are rejected
+-- --------------------------------------------------------
+\echo 'Test 21: Duplicate email with surrounding whitespace rejected'
+savepoint test21;
+insert into auth.users (id, email, email_confirmed_at)
+values ('b0000000-0000-0000-0000-000000000021', 'user21@test.com', now());
+do $$
+begin
+  begin
+    insert into user_profiles (tenant_id, auth_user_id, email)
+    values (
+      'a0000000-0000-0000-0000-000000000001',
+      'b0000000-0000-0000-0000-000000000021',
+      ' profile1@test.com  '
+    );
+    raise exception 'FAIL: duplicate trimmed email was accepted';
+  exception when unique_violation then
+    raise notice 'PASS: duplicate trimmed email rejected';
+  end;
+end $$;
+rollback to savepoint test21;
+
+-- --------------------------------------------------------
+-- Test 22: Phone uniqueness uses trimmed canonical value
+-- Covers: duplicate present phones with surrounding whitespace are rejected
+-- --------------------------------------------------------
+\echo 'Test 22: Duplicate phone with surrounding whitespace rejected'
+savepoint test22;
+insert into auth.users (id, email, email_confirmed_at)
+values ('b0000000-0000-0000-0000-000000000022', 'user22@test.com', now());
+do $$
+begin
+  begin
+    insert into user_profiles (tenant_id, auth_user_id, phone)
+    values (
+      'a0000000-0000-0000-0000-000000000001',
+      'b0000000-0000-0000-0000-000000000022',
+      ' +1111111111  '
+    );
+    raise exception 'FAIL: duplicate trimmed phone was accepted';
+  exception when unique_violation then
+    raise notice 'PASS: duplicate trimmed phone rejected';
+  end;
+end $$;
+rollback to savepoint test22;
+
+-- --------------------------------------------------------
+-- Test 23: Tenant role uniqueness uses trimmed canonical name
+-- Covers: duplicate role names with surrounding whitespace are rejected per tenant
+-- --------------------------------------------------------
+\echo 'Test 23: Duplicate role name with surrounding whitespace rejected'
+savepoint test23;
+do $$
+begin
+  begin
+    insert into roles (tenant_id, name)
+    values ('a0000000-0000-0000-0000-000000000001', ' admin  ');
+    raise exception 'FAIL: duplicate trimmed role name was accepted';
+  exception when unique_violation then
+    raise notice 'PASS: duplicate trimmed role name rejected';
+  end;
+end $$;
+rollback to savepoint test23;
+
 \echo '=== All authorization constraint tests complete ==='
 
 rollback;
