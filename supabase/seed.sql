@@ -1,0 +1,3 @@
+-- Seed data is intentionally empty in phase 1.0.
+-- Tenants and initial users are created manually by the developer/support team
+-- until the onboarding flow is built in a later phase.
