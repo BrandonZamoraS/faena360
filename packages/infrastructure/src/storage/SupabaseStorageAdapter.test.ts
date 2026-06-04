@@ -83,10 +83,32 @@ describe("SupabaseStorageAdapter", () => {
     expect(meta.createdAt).toBeInstanceOf(Date);
   });
 
+  it("upload: preserves Blob MIME type", async () => {
+    const blob = new Blob(["hello"], { type: "text/csv" });
+
+    storage.upload.mockResolvedValueOnce({
+      data: {
+        id: "uuid-2",
+        path: "t1/inv/42/uuid-2.csv",
+        fullPath: "test-bucket/t1/inv/42/uuid-2.csv",
+      },
+      error: null,
+    });
+
+    const meta = await adapter.upload({
+      tenantId: "t1",
+      module: "inv",
+      entityId: "42",
+      file: blob,
+    });
+
+    expect(meta.mimeType).toBe("text/csv");
+  });
+
   it("upload: maps Supabase error to StorageError", async () => {
     storage.upload.mockResolvedValueOnce({
       data: null,
-      error: { statusCode: 403, message: "Forbidden" },
+      error: { statusCode: "403", message: "Forbidden" },
     });
 
     await expect(
@@ -113,7 +135,7 @@ describe("SupabaseStorageAdapter", () => {
   it("download: maps 404 to NOT_FOUND", async () => {
     storage.download.mockResolvedValueOnce({
       data: null,
-      error: { statusCode: 404, message: "Not Found" },
+      error: { statusCode: "404", message: "Not Found" },
     });
 
     try {
@@ -128,16 +150,25 @@ describe("SupabaseStorageAdapter", () => {
   // ---- delete ---------------------------------------------------------------
 
   it("delete: calls remove with exact path", async () => {
-    storage.remove.mockResolvedValueOnce({ data: null, error: null });
+    storage.remove.mockResolvedValueOnce({
+      data: [{ name: "t1/docs/report.pdf" }],
+      error: null,
+    });
 
     await adapter.delete("t1/docs/report.pdf");
     expect(storage.remove).toHaveBeenCalledWith(["t1/docs/report.pdf"]);
   });
 
+  it("delete: throws when no file was deleted (empty data)", async () => {
+    storage.remove.mockResolvedValueOnce({ data: [], error: null });
+
+    await expect(adapter.delete("missing.pdf")).rejects.toThrow(StorageError);
+  });
+
   it("delete: maps error to StorageError", async () => {
     storage.remove.mockResolvedValueOnce({
       data: null,
-      error: { statusCode: 404, message: "Not Found" },
+      error: { statusCode: "404", message: "Not Found" },
     });
 
     await expect(adapter.delete("gone.pdf")).rejects.toThrow(StorageError);
@@ -187,6 +218,47 @@ describe("SupabaseStorageAdapter", () => {
     });
   });
 
+  it("list: filters out synthetic folder sentinels", async () => {
+    storage.list.mockResolvedValueOnce({
+      data: [
+        {
+          id: "f1",
+          name: "a.pdf",
+          created_at: "2026-01-01T00:00:00Z",
+          metadata: { size: 1024, mimetype: "application/pdf" },
+        },
+        {
+          id: null,
+          name: "subfolder",
+          created_at: null,
+          metadata: null,
+        },
+      ],
+      error: null,
+    });
+
+    const result = await adapter.list("t1/docs");
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0].name).toBe("a.pdf");
+  });
+
+  it("list: avoids leading slash when prefix is empty", async () => {
+    storage.list.mockResolvedValueOnce({
+      data: [
+        {
+          id: "f1",
+          name: "a.pdf",
+          created_at: "2026-01-01T00:00:00Z",
+          metadata: { size: 1024, mimetype: "application/pdf" },
+        },
+      ],
+      error: null,
+    });
+
+    const result = await adapter.list("");
+    expect(result.items[0].path).toBe("a.pdf");
+  });
+
   it("list: returns empty items on empty result", async () => {
     storage.list.mockResolvedValueOnce({ data: [], error: null });
 
@@ -198,7 +270,7 @@ describe("SupabaseStorageAdapter", () => {
   it("list: maps error to StorageError", async () => {
     storage.list.mockResolvedValueOnce({
       data: null,
-      error: { statusCode: 403, message: "Forbidden" },
+      error: { statusCode: "403", message: "Forbidden" },
     });
 
     await expect(adapter.list("t1/docs")).rejects.toThrow(StorageError);

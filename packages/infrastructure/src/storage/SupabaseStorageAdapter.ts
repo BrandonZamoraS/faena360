@@ -51,8 +51,7 @@ export class SupabaseStorageAdapter implements FileStoragePort {
     const name =
       params.fileName ?? (fileBody instanceof File ? fileBody.name : "file");
     const size = fileBody instanceof File ? fileBody.size : fileBody.size;
-    const mimeType =
-      fileBody instanceof File ? fileBody.type : "application/octet-stream";
+    const mimeType = fileBody.type || "application/octet-stream";
     const id = data?.id ?? path;
     const createdAt = new Date();
 
@@ -74,11 +73,14 @@ export class SupabaseStorageAdapter implements FileStoragePort {
 
   /** @inheritdoc */
   async delete(path: string): Promise<void> {
-    const { error } = await this.client.storage
+    const { data, error } = await this.client.storage
       .from(this.bucket)
       .remove([path]);
 
     if (error) throw mapError(error, "delete");
+    if (!data || data.length === 0) {
+      throw mapError(new Error("No file was deleted"), "delete");
+    }
   }
 
   /** @inheritdoc */
@@ -95,16 +97,18 @@ export class SupabaseStorageAdapter implements FileStoragePort {
 
     if (error) throw mapError(error, "list");
 
-    const items: FileMetadata[] = (data ?? []).map((obj) => ({
-      id: obj.id ?? `${prefix}/${obj.name}`,
-      name: obj.name,
-      size: (obj.metadata as { size?: number } | undefined)?.size ?? 0,
-      mimeType:
-        (obj.metadata as { mimetype?: string } | undefined)?.mimetype ??
-        "application/octet-stream",
-      path: `${prefix}/${obj.name}`,
-      createdAt: obj.created_at ? new Date(obj.created_at) : new Date(),
-    }));
+    const items: FileMetadata[] = (data ?? [])
+      .filter((obj) => obj.id !== null) // skip synthetic folder sentinels
+      .map((obj) => ({
+        id: obj.id ?? `${prefix ? prefix + "/" : ""}${obj.name}`,
+        name: obj.name,
+        size: (obj.metadata as { size?: number } | undefined)?.size ?? 0,
+        mimeType:
+          (obj.metadata as { mimetype?: string } | undefined)?.mimetype ??
+          "application/octet-stream",
+        path: `${prefix ? prefix + "/" : ""}${obj.name}`,
+        createdAt: obj.created_at ? new Date(obj.created_at) : new Date(),
+      }));
 
     const nextCursor =
       items.length === limit ? String(offset + limit) : undefined;

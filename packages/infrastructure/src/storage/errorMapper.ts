@@ -29,7 +29,9 @@ export function mapError(
 
   // If it has a Supabase-style statusCode, classify by HTTP status.
   if (error && typeof error === "object" && "statusCode" in error) {
-    const statusCode = (error as { statusCode: number }).statusCode;
+    const rawStatus = (error as { statusCode: string | number }).statusCode;
+    const statusCode =
+      typeof rawStatus === "string" ? parseInt(rawStatus, 10) : rawStatus;
 
     if (statusCode === 401 || statusCode === 403) {
       return new StorageError("PERMISSION_DENIED", message, error);
