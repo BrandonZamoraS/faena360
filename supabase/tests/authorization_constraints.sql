@@ -176,16 +176,18 @@ rollback to savepoint test5;
 -- --------------------------------------------------------
 \echo 'Test 6: Duplicate user_roles assignment rejected'
 savepoint test6;
-insert into user_roles (user_id, role_id)
+insert into user_roles (tenant_id, user_id, role_id)
 values (
+  'a0000000-0000-0000-0000-000000000001',
   'c0000000-0000-0000-0000-000000000001',
   'e0000000-0000-0000-0000-000000000001'
 );
 do $$
 begin
   begin
-    insert into user_roles (user_id, role_id)
+    insert into user_roles (tenant_id, user_id, role_id)
     values (
+      'a0000000-0000-0000-0000-000000000001',
       'c0000000-0000-0000-0000-000000000001',
       'e0000000-0000-0000-0000-000000000001'
     ); -- duplicate
@@ -254,8 +256,8 @@ rollback to savepoint test8;
 \echo 'Test 9: Deleting role cascades to join tables'
 savepoint test9;
 
-insert into user_roles (user_id, role_id)
-values ('c0000000-0000-0000-0000-000000000001', 'e0000000-0000-0000-0000-000000000002');
+insert into user_roles (tenant_id, user_id, role_id)
+values ('a0000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000001', 'e0000000-0000-0000-0000-000000000002');
 insert into role_capabilities (role_id, capability_id)
 values ('e0000000-0000-0000-0000-000000000002', 'd0000000-0000-0000-0000-000000000002');
 
@@ -688,6 +690,36 @@ begin
   end;
 end $$;
 rollback to savepoint test23;
+
+-- --------------------------------------------------------
+-- Test 24: Cross-tenant user role assignment rejected
+-- Covers: user_roles must not assign a tenant A user to a tenant B role
+-- --------------------------------------------------------
+\echo 'Test 24: Cross-tenant user role assignment rejected'
+savepoint test24;
+insert into roles (id, tenant_id, name, is_system, is_web_access)
+values (
+  'e0000000-0000-0000-0000-000000000024',
+  'a0000000-0000-0000-0000-000000000002',
+  'cross-tenant-admin',
+  false,
+  true
+);
+do $$
+begin
+  begin
+    insert into user_roles (tenant_id, user_id, role_id)
+    values (
+      'a0000000-0000-0000-0000-000000000001',
+      'c0000000-0000-0000-0000-000000000001',
+      'e0000000-0000-0000-0000-000000000024'
+    );
+    raise exception 'FAIL: cross-tenant user role assignment was accepted';
+  exception when foreign_key_violation then
+    raise notice 'PASS: cross-tenant user role assignment rejected';
+  end;
+end $$;
+rollback to savepoint test24;
 
 \echo '=== All authorization constraint tests complete ==='
 

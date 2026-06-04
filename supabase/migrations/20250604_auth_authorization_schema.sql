@@ -20,7 +20,8 @@ create table user_profiles (
   phone text unique check (length(trim(phone)) > 0),
   full_name text,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  unique (id, tenant_id)
 );
 
 create function normalize_user_profiles_contact_values()
@@ -78,6 +79,7 @@ create table roles (
   is_web_access boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
+  unique (id, tenant_id),
   unique (tenant_id, name)
 );
 
@@ -115,10 +117,13 @@ create table role_capabilities (
 -- 6. user_roles (join: user ↔ role)
 -- --------------------------------------------------------
 create table user_roles (
-  user_id uuid not null references user_profiles(id) on delete cascade,
-  role_id uuid not null references roles(id) on delete cascade,
+  tenant_id uuid not null references tenants(id) on delete cascade,
+  user_id uuid not null,
+  role_id uuid not null,
   created_at timestamptz not null default now(),
-  primary key (user_id, role_id)
+  primary key (user_id, role_id),
+  foreign key (user_id, tenant_id) references user_profiles(id, tenant_id) on delete cascade,
+  foreign key (role_id, tenant_id) references roles(id, tenant_id) on delete cascade
 );
 
 -- --------------------------------------------------------
@@ -158,6 +163,7 @@ create index idx_roles_tenant_id on roles(tenant_id);
 
 -- Join indexes on FK columns not covered by unique/primary constraints
 create index idx_role_capabilities_capability_id on role_capabilities(capability_id);
+create index idx_user_roles_tenant_id on user_roles(tenant_id);
 create index idx_user_roles_role_id on user_roles(role_id);
 create index idx_user_capability_overrides_capability_id on user_capability_overrides(capability_id);
 
