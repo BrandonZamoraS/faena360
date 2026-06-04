@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - development
+      - stage
+      - production
+
+jobs:
+  validate:
+    name: Lint, Format, Typecheck & Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.4.0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check formatting
+        run: pnpm format:check
+
+      - name: Run linter
+        run: pnpm lint
+
+      - name: Run typecheck
+        run: pnpm -r typecheck
+
+      - name: Run tests
+        run: pnpm test
+
+      - name: Build
+        run: pnpm -r build
+        env:
+          # Provide valid-looking dummy values so the build passes in CI.
+          # Real environment values are injected only in deployment workflows.
+          NEXT_PUBLIC_SUPABASE_URL: https://ci-check.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-check-anon-key
