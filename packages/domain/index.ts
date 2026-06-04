@@ -1,8 +1,2 @@
-export type {
-  FileMetadata,
-  UploadParams,
-  ListResult,
-  FileStoragePort,
-  StorageErrorCode,
-} from "./src/storage";
-export { StorageError } from "./src/storage";
+// TODO: export domain entities and value objects
+export {};
