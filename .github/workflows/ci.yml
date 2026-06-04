@@ -6,6 +6,11 @@ on:
       - development
       - stage
       - production
+  push:
+    branches:
+      - development
+      - stage
+      - production
 
 jobs:
   validate:
