@@ -95,6 +95,9 @@ importers:
 
   packages/infrastructure:
     dependencies:
+      '@faena360/application':
+        specifier: workspace:*
+        version: link:../application
       '@faena360/domain':
         specifier: workspace:*
         version: link:../domain
