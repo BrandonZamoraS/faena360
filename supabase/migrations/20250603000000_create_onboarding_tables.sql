@@ -115,24 +115,19 @@ create policy "Tenant users can insert own profiles"
 create policy "Tenant users can update own profiles"
   on user_profiles
   for update
-  using (tenant_id = (auth.jwt()->'app_metadata'->>'tenant_id')::uuid)
-  with check (tenant_id = (auth.jwt()->'app_metadata'->>'tenant_id')::uuid);
+  using (
+    tenant_id = (auth.jwt()->'app_metadata'->>'tenant_id')::uuid
+    and auth_user_id = auth.uid()
+  )
+  with check (
+    tenant_id = (auth.jwt()->'app_metadata'->>'tenant_id')::uuid
+    and auth_user_id = auth.uid()
+  );
 
 create policy "Tenant users can view own roles"
   on roles
   for select
   using (tenant_id = (auth.jwt()->'app_metadata'->>'tenant_id')::uuid);
-
-create policy "Tenant users can insert own roles"
-  on roles
-  for insert
-  with check (tenant_id = (auth.jwt()->'app_metadata'->>'tenant_id')::uuid);
-
-create policy "Tenant users can update own roles"
-  on roles
-  for update
-  using (tenant_id = (auth.jwt()->'app_metadata'->>'tenant_id')::uuid)
-  with check (tenant_id = (auth.jwt()->'app_metadata'->>'tenant_id')::uuid);
 
 create policy "Tenant users can view own role capabilities"
   on role_capabilities
@@ -146,41 +141,7 @@ create policy "Tenant users can view own role capabilities"
     )
   );
 
-create policy "Tenant users can insert own role capabilities"
-  on role_capabilities
-  for insert
-  with check (
-    exists (
-      select 1
-      from roles
-      where roles.id = role_capabilities.role_id
-        and roles.tenant_id = (auth.jwt()->'app_metadata'->>'tenant_id')::uuid
-    )
-  );
-
-create policy "Tenant users can delete own role capabilities"
-  on role_capabilities
-  for delete
-  using (
-    exists (
-      select 1
-      from roles
-      where roles.id = role_capabilities.role_id
-        and roles.tenant_id = (auth.jwt()->'app_metadata'->>'tenant_id')::uuid
-    )
-  );
-
 create policy "Tenant users can view own user roles"
   on user_roles
   for select
-  using (tenant_id = (auth.jwt()->'app_metadata'->>'tenant_id')::uuid);
-
-create policy "Tenant users can insert own user roles"
-  on user_roles
-  for insert
-  with check (tenant_id = (auth.jwt()->'app_metadata'->>'tenant_id')::uuid);
-
-create policy "Tenant users can delete own user roles"
-  on user_roles
-  for delete
   using (tenant_id = (auth.jwt()->'app_metadata'->>'tenant_id')::uuid);

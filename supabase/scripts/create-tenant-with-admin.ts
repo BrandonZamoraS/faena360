@@ -901,12 +901,16 @@ async function rollbackOnFailure(
       return;
     }
 
-    await admin
+    const { error } = await admin
       .from("user_roles")
       .delete()
       .eq("tenant_id", state.tenantId)
       .eq("user_id", state.profileId)
       .eq("role_id", state.adminUserRoleId);
+
+    if (error) {
+      throw new Error(`Failed to delete user_roles: ${error.message}`);
+    }
   });
 
   await guard("delete role_capabilities", async () => {
@@ -914,10 +918,14 @@ async function rollbackOnFailure(
       return;
     }
 
-    await admin
+    const { error } = await admin
       .from("role_capabilities")
       .delete()
       .in("role_id", state.grantedRoleIds);
+
+    if (error) {
+      throw new Error(`Failed to delete role_capabilities: ${error.message}`);
+    }
   });
 
   await guard("delete roles", async () => {
@@ -925,7 +933,13 @@ async function rollbackOnFailure(
       return;
     }
 
-    await admin.from("roles").delete().in("id", state.roleIds);
+    const { error } = await admin
+      .from("roles")
+      .delete()
+      .in("id", state.roleIds);
+    if (error) {
+      throw new Error(`Failed to delete roles: ${error.message}`);
+    }
   });
 
   await guard("delete profile", async () => {
@@ -933,7 +947,14 @@ async function rollbackOnFailure(
       return;
     }
 
-    await admin.from("user_profiles").delete().eq("id", state.profileId);
+    const { error } = await admin
+      .from("user_profiles")
+      .delete()
+      .eq("id", state.profileId);
+
+    if (error) {
+      throw new Error(`Failed to delete user profile: ${error.message}`);
+    }
   });
 
   await guard("delete tenant", async () => {
@@ -941,7 +962,14 @@ async function rollbackOnFailure(
       return;
     }
 
-    await admin.from("tenants").delete().eq("id", state.tenantId);
+    const { error } = await admin
+      .from("tenants")
+      .delete()
+      .eq("id", state.tenantId);
+
+    if (error) {
+      throw new Error(`Failed to delete tenant: ${error.message}`);
+    }
   });
 
   await guard("delete auth user", async () => {
@@ -949,7 +977,11 @@ async function rollbackOnFailure(
       return;
     }
 
-    await admin.auth.admin.deleteUser(state.authUserId);
+    const { error } = await admin.auth.admin.deleteUser(state.authUserId);
+
+    if (error) {
+      throw new Error(`Failed to delete auth user: ${error.message}`);
+    }
   });
 
   extractRollbackErrors(errors);
