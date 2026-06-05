@@ -71,6 +71,10 @@ importers:
         version: 5.9.3
 
   packages/application:
+    dependencies:
+      '@faena360/domain':
+        specifier: workspace:*
+        version: link:../domain
     devDependencies:
       typescript:
         specifier: ^5
@@ -84,6 +88,9 @@ importers:
 
   packages/infrastructure:
     dependencies:
+      '@faena360/application':
+        specifier: workspace:*
+        version: link:../application
       '@faena360/domain':
         specifier: workspace:*
         version: link:../domain
