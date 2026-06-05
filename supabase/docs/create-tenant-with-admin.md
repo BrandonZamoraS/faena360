@@ -38,15 +38,15 @@ type TenantOnboardingRequest = {
   tenant: {
     name: string;
     slug: string;
-    timezone: string;      // must be valid IANA timezone
-    currency: string;      // ISO-4217 currency code (e.g. USD)
+    timezone: string; // must be valid IANA timezone
+    currency: string; // ISO-4217 currency code (e.g. USD)
     fuelUnit: "liters" | "gallons_us" | "gallons_imperial";
   };
   admin: {
-    email: string;                     // valid email
-    temporaryPassword: string;          // minimum 6 chars
-    fullName: string;                  // required for initial profile
-    phone?: string;                    // optional
+    email: string; // valid email
+    temporaryPassword: string; // minimum 6 chars
+    fullName: string; // required for initial profile
+    phone?: string; // optional
   };
 };
 ```

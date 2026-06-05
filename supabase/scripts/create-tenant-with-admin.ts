@@ -96,8 +96,9 @@ function toSupportedTimezone(value: string): string {
   }
 
   try {
-    return new Intl.DateTimeFormat("en-US", { timeZone: trimmed }).resolvedOptions()
-      .timeZone;
+    return new Intl.DateTimeFormat("en-US", {
+      timeZone: trimmed,
+    }).resolvedOptions().timeZone;
   } catch {
     return TIMEZONE_FALLBACK.has(trimmed) ? trimmed : "";
   }
@@ -428,19 +429,27 @@ export type OnboardingClients = {
     keys: readonly string[]
   ) => Promise<Set<string>>;
   readonly createTenant: (request: TenantInputs) => Promise<string>;
-  readonly createAuthUser: (tenantId: string, admin: AdminInputs) => Promise<string>;
+  readonly createAuthUser: (
+    tenantId: string,
+    admin: AdminInputs
+  ) => Promise<string>;
   readonly createProfile: (
     tenantId: string,
     authUserId: string,
     admin: AdminInputs
   ) => Promise<string>;
-  readonly createRoles: (tenantId: string) => Promise<ReadonlyMap<string, string>>;
+  readonly createRoles: (
+    tenantId: string
+  ) => Promise<ReadonlyMap<string, string>>;
   readonly mapCapabilitiesToRoles: (
     tenantId: string,
     roleIdsByName: ReadonlyMap<string, string>,
     availableCapabilityIds: ReadonlyMap<string, string>
   ) => Promise<void>;
-  readonly assignAdminRole: (tenantId: string, profileId: string) => Promise<string>;
+  readonly assignAdminRole: (
+    tenantId: string,
+    profileId: string
+  ) => Promise<string>;
 };
 
 type ProvisionedState = {
@@ -490,7 +499,9 @@ function parseJsonPayloadArgument(args: string[]): string | null {
   return null;
 }
 
-async function resolvePayloadFromInput(args: string[]): Promise<ParseResult<string>> {
+async function resolvePayloadFromInput(
+  args: string[]
+): Promise<ParseResult<string>> {
   const inlinePayload = parseJsonPayloadArgument(args);
 
   if (inlinePayload && !inlinePayload.startsWith("[payload-file:")) {
@@ -567,7 +578,10 @@ function formatPreflightIssues(issues: readonly PreflightIssue[]): string {
   return issues.map((issue) => `${issue.field}: ${issue.message}`).join("\n");
 }
 
-function buildSupabaseClients(url: string, serviceRoleKey: string): {
+function buildSupabaseClients(
+  url: string,
+  serviceRoleKey: string
+): {
   readonly preflightClients: PreflightClients;
   readonly onboardClients: OnboardingClients;
   readonly admin: SupabaseClient;
@@ -613,7 +627,9 @@ function buildSupabaseClients(url: string, serviceRoleKey: string): {
       while (true) {
         const response = await admin.auth.admin.listUsers({ page, perPage });
         if (response.error) {
-          throw new Error(`auth identity preflight failed: ${response.error.message}`);
+          throw new Error(
+            `auth identity preflight failed: ${response.error.message}`
+          );
         }
 
         const users = response.data?.users ?? [];
@@ -644,12 +660,12 @@ function buildSupabaseClients(url: string, serviceRoleKey: string): {
         .in("key", keys);
 
       if (error) {
-        throw new Error(`capability mapping preflight failed: ${error.message}`);
+        throw new Error(
+          `capability mapping preflight failed: ${error.message}`
+        );
       }
 
-        return new Set(
-          (data ?? []).map((row: { key: string }) => row.key)
-        );
+      return new Set((data ?? []).map((row: { key: string }) => row.key));
     },
   };
 
@@ -685,6 +701,7 @@ function buildSupabaseClients(url: string, serviceRoleKey: string): {
       const { data, error } = await adminClient().auth.admin.createUser({
         email: adminIdentity.email,
         password: adminIdentity.temporaryPassword,
+        email_confirm: true,
         app_metadata: {
           tenant_id: tenantId,
         },
@@ -718,7 +735,9 @@ function buildSupabaseClients(url: string, serviceRoleKey: string): {
       }
 
       if (!data) {
-        throw new Error("Failed to create admin profile: no profile row returned.");
+        throw new Error(
+          "Failed to create admin profile: no profile row returned."
+        );
       }
 
       return data.id;
@@ -740,7 +759,10 @@ function buildSupabaseClients(url: string, serviceRoleKey: string): {
         throw new Error(`Failed to create default roles: ${error.message}`);
       }
 
-      const created = (data ?? []) as ReadonlyArray<{ readonly id: string; readonly name: string }>;
+      const created = (data ?? []) as ReadonlyArray<{
+        readonly id: string;
+        readonly name: string;
+      }>;
 
       const byName = new Map<string, string>(
         created.map((role) => [role.name, role.id])
@@ -754,13 +776,19 @@ function buildSupabaseClients(url: string, serviceRoleKey: string): {
 
       return byName;
     },
-    mapCapabilitiesToRoles: async (_tenantId, roleIdsByName, capabilityIdsByKey) => {
+    mapCapabilitiesToRoles: async (
+      _tenantId,
+      roleIdsByName,
+      capabilityIdsByKey
+    ) => {
       const assignments: Array<{ role_id: string; capability_id: string }> = [];
 
       for (const role of DEFAULT_ROLES) {
         const roleId = roleIdsByName.get(role.name);
         if (!roleId) {
-          throw new Error(`Cannot seed capability grants; missing role id for ${role.name}.`);
+          throw new Error(
+            `Cannot seed capability grants; missing role id for ${role.name}.`
+          );
         }
 
         for (const capabilityKey of role.capabilityKeys) {
@@ -781,10 +809,14 @@ function buildSupabaseClients(url: string, serviceRoleKey: string): {
 
       const { error } = await admin
         .from("role_capabilities")
-        .insert(assignments as Array<{ role_id: string; capability_id: string }>);
+        .insert(
+          assignments as Array<{ role_id: string; capability_id: string }>
+        );
 
       if (error) {
-        throw new Error(`Failed to create role capability assignments: ${error.message}`);
+        throw new Error(
+          `Failed to create role capability assignments: ${error.message}`
+        );
       }
     },
     assignAdminRole: async (tenantId, profileId) => {
@@ -808,7 +840,9 @@ function buildSupabaseClients(url: string, serviceRoleKey: string): {
       });
 
       if (error) {
-        throw new Error(`Failed to assign administrador role: ${error.message}`);
+        throw new Error(
+          `Failed to assign administrador role: ${error.message}`
+        );
       }
 
       return roles.id;
@@ -822,7 +856,9 @@ function buildSupabaseClients(url: string, serviceRoleKey: string): {
   return { preflightClients, onboardClients, admin };
 }
 
-async function loadCapabilities(admin: SupabaseClient): Promise<ReadonlyMap<string, string>> {
+async function loadCapabilities(
+  admin: SupabaseClient
+): Promise<ReadonlyMap<string, string>> {
   const requiredKeys = getDefaultRoleCapabilityKeys();
   const { data, error } = await admin
     .from("capabilities")
@@ -833,7 +869,9 @@ async function loadCapabilities(admin: SupabaseClient): Promise<ReadonlyMap<stri
     throw new Error(`Failed to load capability IDs: ${error.message}`);
   }
 
-  return new Map((data ?? []).map((row: { key: string; id: string }) => [row.key, row.id]));
+  return new Map(
+    (data ?? []).map((row: { key: string; id: string }) => [row.key, row.id])
+  );
 }
 
 function extractRollbackErrors(errors: readonly RollbackError[]): void {
@@ -942,7 +980,9 @@ export async function runTenantOnboardingFlow(
   });
 
   if (!preflight.ok) {
-    throw new Error(`Preflight checks failed:\n${formatPreflightIssues(preflight.issues)}`);
+    throw new Error(
+      `Preflight checks failed:\n${formatPreflightIssues(preflight.issues)}`
+    );
   }
 
   const state: ProvisionedState = {
@@ -989,7 +1029,9 @@ export async function runTenantOnboardingFlow(
   } catch (error) {
     await rollbackOnFailure(admin, state);
     const message = normalizeErrorMessage(error);
-    throw new Error(`Onboarding flow failed; resources rolled back: ${message}`);
+    throw new Error(
+      `Onboarding flow failed; resources rolled back: ${message}`
+    );
   }
 }
 
@@ -1031,7 +1073,9 @@ Payload shape:
     return;
   }
 
-  const requestResult = parseTenantOnboardingRequestFromJson(payloadResult.value);
+  const requestResult = parseTenantOnboardingRequestFromJson(
+    payloadResult.value
+  );
   if (!requestResult.ok) {
     console.error(formatPreflightIssues(requestResult.issues));
     process.exitCode = 1;

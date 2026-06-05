@@ -3,6 +3,7 @@
 ## Requisitos Previos
 
 1. **Supabase CLI** instalado globalmente:
+
    ```bash
    npm install -g supabase
    ```
@@ -87,6 +88,7 @@ pnpm test:onboarding
 ```
 
 Verifica:
+
 - Que Supabase local esté corriendo (`supabase status`)
 - Que las migraciones estén aplicadas (`supabase migration up`)
 - Que el catálogo de capabilities esté seedeado
@@ -94,6 +96,7 @@ Verifica:
 ## Datos de Prueba
 
 Cada ejecución usa datos únicos (basados en timestamp) para evitar colisiones si el cleanup falla:
+
 - **Tenant slug**: `onboarding-test-test-{timestamp}`
 - **Admin email**: `admin-test-{timestamp}@test.local`
 - **Contraseña**: `TempPass_test-{timestamp}`
@@ -109,6 +112,7 @@ supabase start
 ### "Preflight checks failed: missing capability keys"
 
 Aplica las migraciones:
+
 ```bash
 supabase migration up
 ```
@@ -116,6 +120,7 @@ supabase migration up
 ### "Duplicate tenant slug"
 
 Si el cleanup previo falló, datos de prueba anteriores pueden quedar. Ejecuta manualmente:
+
 ```sql
 delete from tenants where slug like 'onboarding-test-%';
 ```

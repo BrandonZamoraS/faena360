@@ -86,7 +86,10 @@ function getSupabaseStatus(): SupabaseStatus {
   }
 }
 
-function createSupabaseClient(url: string, serviceRoleKey: string): SupabaseClient {
+function createSupabaseClient(
+  url: string,
+  serviceRoleKey: string
+): SupabaseClient {
   return createClient(url, serviceRoleKey, {
     auth: {
       autoRefreshToken: false,
@@ -279,10 +282,7 @@ async function verifyOnboardingResult(
       .in(
         "role_id",
         (
-          await admin
-            .from("roles")
-            .select("id")
-            .eq("tenant_id", tenantId)
+          await admin.from("roles").select("id").eq("tenant_id", tenantId)
         ).data?.map((r) => r.id) ?? []
       );
 
@@ -431,9 +431,8 @@ async function runNegativeTests(
     },
   };
 
-  const { parseTenantOnboardingRequestFromJson } = await import(
-    "./create-tenant-with-admin"
-  );
+  const { parseTenantOnboardingRequestFromJson } =
+    await import("./create-tenant-with-admin");
 
   // Test 1: Invalid shape (empty fullName)
   {
@@ -689,7 +688,8 @@ async function runNegativeTests(
         results.push({
           name: "Missing capability keys block onboarding",
           passed: true,
-          message: "✅ Missing capability correctly blocks onboarding via preflight",
+          message:
+            "✅ Missing capability correctly blocks onboarding via preflight",
         });
       } else {
         results.push({
@@ -702,7 +702,8 @@ async function runNegativeTests(
       results.push({
         name: "Missing capability keys block onboarding",
         passed: false,
-        message: "❌ Could not find 'assignments:create' capability to remove for test",
+        message:
+          "❌ Could not find 'assignments:create' capability to remove for test",
       });
     }
   }
@@ -717,7 +718,9 @@ async function runTest(): Promise<void> {
   console.log("📡 Detecting Supabase local credentials...");
   const status = getSupabaseStatus();
   console.log(`   API URL: ${status.API_URL}`);
-  console.log(`   Service Role Key: ${status.SERVICE_ROLE_KEY.slice(0, 20)}...`);
+  console.log(
+    `   Service Role Key: ${status.SERVICE_ROLE_KEY.slice(0, 20)}...`
+  );
 
   // Set environment variables for the onboarding flow
   process.env["SUPABASE_URL"] = status.API_URL;
@@ -727,9 +730,8 @@ async function runTest(): Promise<void> {
 
   // 2. Run preflight checks first
   console.log("\n🔍 Running preflight checks for positive flow...");
-  const { runPreflightChecks, buildIdempotencyMarkers } = await import(
-    "./create-tenant-with-admin"
-  );
+  const { runPreflightChecks, buildIdempotencyMarkers } =
+    await import("./create-tenant-with-admin");
 
   const preflightClients = {
     tenantSlugExists: async (slug: string) => {
@@ -778,7 +780,9 @@ async function runTest(): Promise<void> {
     preflight.issues.forEach((issue) => {
       console.error(`   - ${issue.field}: ${issue.message}`);
     });
-    console.error("\n💡 Tip: Make sure migrations are applied. Run: supabase migration up");
+    console.error(
+      "\n💡 Tip: Make sure migrations are applied. Run: supabase migration up"
+    );
     process.exit(1);
   }
   console.log("   ✅ Preflight checks passed");
@@ -836,13 +840,21 @@ async function runTest(): Promise<void> {
   if (totalFailed > 0) {
     console.error(`❌ TEST SUITE FAILED: ${totalFailed} test(s) failed`);
     console.error(`   Passed: ${totalPassed}/${totalTests}`);
-    console.error(`\n   Positive flow: ${passed.length}/${verificationResults.length} passed`);
-    console.error(`   Negative flow: ${negativePassed.length}/${negativeResults.length} passed`);
+    console.error(
+      `\n   Positive flow: ${passed.length}/${verificationResults.length} passed`
+    );
+    console.error(
+      `   Negative flow: ${negativePassed.length}/${negativeResults.length} passed`
+    );
     process.exit(1);
   } else {
     console.log(`✅ TEST SUITE PASSED: All ${totalTests} tests passed`);
-    console.log(`\n   Positive flow: ${passed.length}/${verificationResults.length} passed`);
-    console.log(`   Negative flow: ${negativePassed.length}/${negativeResults.length} passed`);
+    console.log(
+      `\n   Positive flow: ${passed.length}/${verificationResults.length} passed`
+    );
+    console.log(
+      `   Negative flow: ${negativePassed.length}/${negativeResults.length} passed`
+    );
     console.log(`\n   Tenant ID: ${result.tenantId}`);
     console.log(`   Auth User ID: ${result.authUserId}`);
     console.log(`   Profile ID: ${result.profileId}`);
@@ -852,6 +864,8 @@ async function runTest(): Promise<void> {
 }
 
 void runTest().catch((error) => {
-  console.error(`💥 Unexpected error: ${error instanceof Error ? error.message : String(error)}`);
+  console.error(
+    `💥 Unexpected error: ${error instanceof Error ? error.message : String(error)}`
+  );
   process.exit(1);
 });
