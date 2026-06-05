@@ -548,6 +548,111 @@ end $$;
 
 rollback to savepoint rls_test18;
 
+-- ========================================================
+-- Test 19: Authenticated user CANNOT UPDATE audit_log (append-only)
+-- Covers: review P5 — audit_log UPDATE deny policy
+-- ========================================================
+\echo 'Test 19: Authenticated user CANNOT UPDATE audit_log (append-only)'
+savepoint rls_test19;
+
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"bbbb0000-0000-0000-0000-000000000001","app_metadata":{"tenant_id":"aaaa0000-0000-0000-0000-000000000001"}}';
+
+do $$
+declare
+  v_updated int;
+begin
+  update audit_log
+  set action = 'tampered'
+  where id = 'ffff0000-0000-0000-0000-000000000001'; -- own tenant audit row
+  get diagnostics v_updated = row_count;
+  if v_updated = 0 then
+    raise notice 'PASS: audit_log UPDATE denied for authenticated user (append-only)';
+  else
+    raise exception 'FAIL: audit_log UPDATE succeeded for % rows (expected 0 — append-only)', v_updated;
+  end if;
+end $$;
+
+rollback to savepoint rls_test19;
+
+-- ========================================================
+-- Test 20: user_capability_overrides cross-tenant user/tenant mismatch rejected
+-- Covers: review P1 — composite FK (user_id, tenant_id) → user_profiles(id, tenant_id)
+-- ========================================================
+\echo 'Test 20: user_capability_overrides INSERT with mismatched user/tenant rejected by composite FK'
+savepoint rls_test20;
+
+do $$
+begin
+  begin
+    -- User cccc...001 belongs to tenant aaaa...001, but we supply tenant aaaa...002
+    insert into user_capability_overrides (user_id, capability_id, grant_type, tenant_id)
+    values (
+      'cccc0000-0000-0000-0000-000000000001', -- tenant A user
+      'eeee0000-0000-0000-0000-000000000001',
+      'allow',
+      'aaaa0000-0000-0000-0000-000000000002'  -- tenant B
+    );
+    raise exception 'FAIL: cross-tenant user_capability_overrides INSERT was accepted';
+  exception when foreign_key_violation then
+    raise notice 'PASS: cross-tenant user_capability_overrides INSERT rejected by composite FK';
+  end;
+end $$;
+
+rollback to savepoint rls_test20;
+
+-- ========================================================
+-- Test 21: audit_log INSERT with cross-tenant actor rejected by trigger
+-- Covers: review P2 — validate_audit_log_tenant trigger
+-- ========================================================
+\echo 'Test 21: audit_log INSERT with cross-tenant actor rejected by trigger'
+savepoint rls_test21;
+
+do $$
+begin
+  begin
+    -- Actor cccc...001 belongs to tenant aaaa...001, but audit row claims tenant aaaa...002
+    insert into audit_log (tenant_id, actor_user_id, target_user_id, action)
+    values (
+      'aaaa0000-0000-0000-0000-000000000002',  -- tenant B
+      'cccc0000-0000-0000-0000-000000000001',  -- tenant A user
+      'cccc0000-0000-0000-0000-000000000004',  -- tenant B user
+      'role_assigned'
+    );
+    raise exception 'FAIL: audit_log INSERT with cross-tenant actor was accepted';
+  exception when raise_exception then
+    raise notice 'PASS: audit_log INSERT with cross-tenant actor rejected by trigger';
+  end;
+end $$;
+
+rollback to savepoint rls_test21;
+
+-- ========================================================
+-- Test 22: audit_log INSERT with cross-tenant target rejected by trigger
+-- Covers: review P2 — validate_audit_log_tenant trigger
+-- ========================================================
+\echo 'Test 22: audit_log INSERT with cross-tenant target rejected by trigger'
+savepoint rls_test22;
+
+do $$
+begin
+  begin
+    -- Target cccc...003 belongs to tenant aaaa...002, but audit row claims tenant aaaa...001
+    insert into audit_log (tenant_id, actor_user_id, target_user_id, action)
+    values (
+      'aaaa0000-0000-0000-0000-000000000001',  -- tenant A
+      'cccc0000-0000-0000-0000-000000000001',  -- tenant A user
+      'cccc0000-0000-0000-0000-000000000003',  -- tenant B user
+      'role_assigned'
+    );
+    raise exception 'FAIL: audit_log INSERT with cross-tenant target was accepted';
+  exception when raise_exception then
+    raise notice 'PASS: audit_log INSERT with cross-tenant target rejected by trigger';
+  end;
+end $$;
+
+rollback to savepoint rls_test22;
+
 \echo '=== All RLS multitenant isolation tests complete ==='
 
 rollback;

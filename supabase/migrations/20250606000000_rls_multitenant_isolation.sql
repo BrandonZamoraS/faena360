@@ -254,9 +254,61 @@ create policy "audit_log tenant isolation - INSERT"
   to authenticated
   with check (tenant_id = current_app_tenant_id());
 
-create policy "audit_log tenant isolation - UPDATE"
+-- Audit rows are append-only for authenticated clients.
+-- Service role / backend functions remain the trusted update path.
+create policy "audit_log tenant isolation - UPDATE deny"
   on audit_log
   for update
   to authenticated
-  using (tenant_id = current_app_tenant_id())
-  with check (tenant_id = current_app_tenant_id());
+  using (false);
+
+-- --------------------------------------------------------
+-- 14. Composite FK — user_capability_overrides(user_id, tenant_id)
+-- --------------------------------------------------------
+-- Ensures the override's tenant_id matches the user's actual tenant in
+-- user_profiles. The referenced unique (id, tenant_id) on user_profiles
+-- already exists in 20250604_auth_authorization_schema.sql.
+alter table user_capability_overrides
+  add constraint uco_user_tenant_fk
+  foreign key (user_id, tenant_id)
+  references user_profiles(id, tenant_id)
+  on delete cascade;
+
+-- --------------------------------------------------------
+-- 15. Trigger — audit_log actor/target tenant validation
+-- --------------------------------------------------------
+-- Composite FKs are not viable here because the original actor/target FKs
+-- use ON DELETE SET NULL, and a composite SET NULL would also null the
+-- NOT NULL tenant_id column. A BEFORE INSERT OR UPDATE trigger enforces
+-- that non-null actor/target profiles belong to the same tenant as the
+-- audit row.
+create or replace function public.validate_audit_log_tenant()
+returns trigger language plpgsql as $$
+begin
+  if new.actor_user_id is not null then
+    if not exists (
+      select 1 from user_profiles
+      where id = new.actor_user_id and tenant_id = new.tenant_id
+    ) then
+      raise exception 'audit_log: actor_user_id % does not belong to tenant %',
+        new.actor_user_id, new.tenant_id;
+    end if;
+  end if;
+
+  if new.target_user_id is not null then
+    if not exists (
+      select 1 from user_profiles
+      where id = new.target_user_id and tenant_id = new.tenant_id
+    ) then
+      raise exception 'audit_log: target_user_id % does not belong to tenant %',
+        new.target_user_id, new.tenant_id;
+    end if;
+  end if;
+
+  return new;
+end $$;
+
+create trigger audit_log_validate_tenant
+  before insert or update on audit_log
+  for each row
+  execute function public.validate_audit_log_tenant();

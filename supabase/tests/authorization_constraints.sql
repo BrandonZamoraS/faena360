@@ -727,6 +727,89 @@ begin
 end $$;
 rollback to savepoint test24;
 
+-- --------------------------------------------------------
+-- Test 25: user_capability_overrides composite FK — user/tenant mismatch rejected
+-- Covers: review P1 — (user_id, tenant_id) must reference user_profiles(id, tenant_id)
+-- --------------------------------------------------------
+\echo 'Test 25: user_capability_overrides with mismatched user/tenant rejected by composite FK'
+savepoint test25;
+do $$
+begin
+  begin
+    -- User c...001 belongs to tenant a...001, but we supply tenant a...002
+    insert into user_capability_overrides (tenant_id, user_id, capability_id, grant_type)
+    values (
+      'a0000000-0000-0000-0000-000000000002',
+      'c0000000-0000-0000-0000-000000000001',
+      'd0000000-0000-0000-0000-000000000001',
+      'allow'
+    );
+    raise exception 'FAIL: mismatched user/tenant override was accepted';
+  exception when foreign_key_violation then
+    raise notice 'PASS: user_capability_overrides composite FK rejects mismatched user/tenant';
+  end;
+end $$;
+rollback to savepoint test25;
+
+-- --------------------------------------------------------
+-- Test 26: audit_log trigger — cross-tenant actor rejected
+-- Covers: review P2 — validate_audit_log_tenant trigger
+-- --------------------------------------------------------
+\echo 'Test 26: audit_log INSERT with cross-tenant actor rejected by trigger'
+savepoint test26;
+-- Insert a user profile in tenant 2 for cross-tenant test
+insert into auth.users (id, email, email_confirmed_at)
+values ('b0000000-0000-0000-0000-000000000026', 'user26@test.com', now())
+on conflict (id) do nothing;
+insert into user_profiles (id, tenant_id, auth_user_id, email)
+values (
+  'c0000000-0000-0000-0000-000000000026',
+  'a0000000-0000-0000-0000-000000000002',
+  'b0000000-0000-0000-0000-000000000026',
+  'user26@test.com'
+);
+do $$
+begin
+  begin
+    -- Actor c...026 belongs to tenant a...002, but audit row claims tenant a...001
+    insert into audit_log (tenant_id, actor_user_id, target_user_id, action)
+    values (
+      'a0000000-0000-0000-0000-000000000001',
+      'c0000000-0000-0000-0000-000000000026',
+      'c0000000-0000-0000-0000-000000000001',
+      'cross_tenant_test'
+    );
+    raise exception 'FAIL: audit_log INSERT with cross-tenant actor was accepted';
+  exception when raise_exception then
+    raise notice 'PASS: audit_log trigger rejects cross-tenant actor';
+  end;
+end $$;
+rollback to savepoint test26;
+
+-- --------------------------------------------------------
+-- Test 27: audit_log trigger — cross-tenant target rejected
+-- Covers: review P2 — validate_audit_log_tenant trigger
+-- --------------------------------------------------------
+\echo 'Test 27: audit_log INSERT with cross-tenant target rejected by trigger'
+savepoint test27;
+do $$
+begin
+  begin
+    -- Target c...026 belongs to tenant a...002, but audit row claims tenant a...001
+    insert into audit_log (tenant_id, actor_user_id, target_user_id, action)
+    values (
+      'a0000000-0000-0000-0000-000000000001',
+      'c0000000-0000-0000-0000-000000000001',
+      'c0000000-0000-0000-0000-000000000026',
+      'cross_tenant_test'
+    );
+    raise exception 'FAIL: audit_log INSERT with cross-tenant target was accepted';
+  exception when raise_exception then
+    raise notice 'PASS: audit_log trigger rejects cross-tenant target';
+  end;
+end $$;
+rollback to savepoint test27;
+
 \echo '=== All authorization constraint tests complete ==='
 
 rollback;

@@ -77,21 +77,22 @@ end $$;
 ```
 
 **Contract:**
+
 - Returns the `uuid` tenant ID from the current JWT's `app_metadata.tenant_id`.
 - Returns `NULL` when the claim is missing, empty, or not a valid UUID.
 - Marked `STABLE` so PostgreSQL caches the result within a single query.
 
 ### RLS-Protected Authorization Tables
 
-| Table | Policy type | Isolation method |
-|---|---|---|
-| `user_profiles` | SELECT / INSERT / UPDATE / DELETE-deny | Direct `tenant_id` column |
-| `roles` | SELECT / INSERT / UPDATE | Direct `tenant_id` column |
-| `user_roles` | SELECT / INSERT / UPDATE / DELETE | Join through `roles.tenant_id` |
-| `role_capabilities` | SELECT / INSERT / UPDATE / DELETE | Join through `roles.tenant_id` |
-| `user_capability_overrides` | SELECT / INSERT / UPDATE | Direct `tenant_id` column |
-| `audit_log` | SELECT / INSERT / UPDATE | Direct `tenant_id` column |
-| `capabilities` | *(none — global catalog)* | No tenant filter |
+| Table                       | Policy type                            | Isolation method               |
+| --------------------------- | -------------------------------------- | ------------------------------ |
+| `user_profiles`             | SELECT / INSERT / UPDATE / DELETE-deny | Direct `tenant_id` column      |
+| `roles`                     | SELECT / INSERT / UPDATE               | Direct `tenant_id` column      |
+| `user_roles`                | SELECT / INSERT / UPDATE / DELETE      | Join through `roles.tenant_id` |
+| `role_capabilities`         | SELECT / INSERT / UPDATE / DELETE      | Join through `roles.tenant_id` |
+| `user_capability_overrides` | SELECT / INSERT / UPDATE               | Direct `tenant_id` column      |
+| `audit_log`                 | SELECT / INSERT / UPDATE-deny          | Direct `tenant_id` column      |
+| `capabilities`              | _(none — global catalog)_              | No tenant filter               |
 
 ### Hard-Delete Denial on `user_profiles`
 
@@ -99,7 +100,23 @@ An explicit `FOR DELETE USING (false)` policy prevents application-level hard de
 
 ### `tenant_id` on `audit_log` and `user_capability_overrides`
 
-Both tables now carry a `NOT NULL` `tenant_id` column with a foreign key to `tenants(id) ON DELETE CASCADE`. This ensures tenant isolation even when `actor_user_id` or `target_user_id` is `NULL` (e.g., system events or post-deletion audit history).
+Both tables carry a `NOT NULL` `tenant_id` column with a foreign key to `tenants(id)`. The delete behavior differs by design:
+
+| Table                       | `tenant_id` FK delete behavior | Rationale                                                                                             |
+| --------------------------- | ------------------------------ | ----------------------------------------------------------------------------------------------------- |
+| `user_capability_overrides` | `ON DELETE CASCADE`            | Overrides are operational config; removing a tenant removes its overrides.                            |
+| `audit_log`                 | `ON DELETE RESTRICT`           | Audit history must outlive tenant deletion. A tenant cannot be removed while audit rows reference it. |
+
+### Tenant Coupling Constraints
+
+RLS policies check the JWT-supplied `tenant_id`, but the database also enforces that the `tenant_id` stored on each row matches the user's actual tenant in `user_profiles`:
+
+- **`user_capability_overrides`**: A composite FK `(user_id, tenant_id) REFERENCES user_profiles(id, tenant_id)` ensures the override's tenant matches the user's tenant. This follows the same pattern already used by `user_roles`.
+- **`audit_log`**: A `BEFORE INSERT OR UPDATE` trigger (`validate_audit_log_tenant`) ensures that non-null `actor_user_id` and `target_user_id` belong to the same tenant as the audit row's `tenant_id`. A composite FK was not viable here because the original actor/target FKs use `ON DELETE SET NULL`, and a composite `SET NULL` would also null the `NOT NULL tenant_id` column.
+
+### Append-Only Audit Log
+
+The `audit_log` table denies `UPDATE` operations for authenticated clients via an explicit `FOR UPDATE USING (false)` RLS policy. Audit rows are append-only from the client side; the service role and backend functions remain the trusted path for any corrections. This prevents tampering with audit history after the fact.
 
 ### Service-Role Bypass Warning
 

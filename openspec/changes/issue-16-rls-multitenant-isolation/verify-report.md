@@ -96,6 +96,17 @@ Evidence: User reported the script initially failed because `tenant_id` was miss
 - Update `openspec/config.yaml` quality commands to match the current monorepo paths.
 - Adjust `apps/web/tsconfig.json` or the verification order so standalone typecheck does not depend on a prior build-generated `.next/types` artifact.
 
+### Review Feedback Fixes (Phase 5)
+
+| Item | Priority | What Changed | Evidence |
+|------|----------|-------------|----------|
+| P1: Composite FK on `user_capability_overrides` | P1 | Added `uco_user_tenant_fk`: `(user_id, tenant_id) REFERENCES user_profiles(id, tenant_id) ON DELETE CASCADE` | Migration section 14; tests 20 (RLS) and 25 (constraints) |
+| P2: Audit actor/target tenant validation | P2 | Added `validate_audit_log_tenant()` trigger (BEFORE INSERT OR UPDATE) — composite FK not viable due to SET NULL / NOT NULL conflict | Migration section 15; tests 21-22 (RLS) and 26-27 (constraints) |
+| P2: SQL fixture compatibility | P2 | Verified all existing test fixtures use matching tenant/user combinations — no fixture changes needed | Static inspection of all INSERT statements |
+| P3: Docs correction | P3 | Fixed `audit_log.tenant_id` ON DELETE behavior (RESTRICT, not CASCADE); added tenant coupling and append-only sections | `tenant-isolation-strategy.md` |
+| P5: Audit append-only | P2 | Replaced `audit_log` UPDATE policy with explicit deny (`using (false)`) | Migration section 13; test 19 (RLS) |
+| P6: SQL test cases | — | 7 new tests across both test files (tests 19-22 in RLS, tests 25-27 in constraints) | Test files |
+
 ### Verdict
 PASS WITH WARNINGS
-The change satisfies the modified spec, matches the approved design, and all 27 tasks verify complete. Non-Supabase quality checks passed, and both required SQL validation artifacts have fresh passing runtime evidence supplied by the human under the repo's Supabase execution gate.
+The change satisfies the modified spec, matches the approved design, and all 34 tasks (27 original + 7 review fixes) verify complete. Non-Supabase quality checks passed (lint + typecheck), and both required SQL validation artifacts have fresh passing runtime evidence supplied by the human under the repo's Supabase execution gate. Review feedback items have been implemented with corresponding test coverage.

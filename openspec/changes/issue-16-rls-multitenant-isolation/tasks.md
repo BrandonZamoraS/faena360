@@ -61,3 +61,13 @@ Chain strategy: pending
 
 - [x] 4.1 Update `supabase/docs/tenant-isolation-strategy.md` — add section on `current_app_tenant_id()` contract, auth-table RLS policies, service-role bypass warning, and Issue 3 JWT dependency
 - [x] 4.2 Update `supabase/tests/authorization_constraints.sql` — add `tenant_id` to `audit_log` and `user_capability_overrides` INSERT statements where required by schema changes
+
+## Phase 5: Review Feedback Fixes
+
+- [x] 5.1 Add composite FK `(user_id, tenant_id) REFERENCES user_profiles(id, tenant_id)` on `user_capability_overrides` — ties override tenant to user's actual tenant
+- [x] 5.2 Add `validate_audit_log_tenant()` trigger — ensures non-null actor/target belong to same tenant as audit row (composite FK not viable due to SET NULL conflict with NOT NULL tenant_id)
+- [x] 5.3 Replace `audit_log` UPDATE policy with explicit deny (`using (false)`) — append-only for authenticated clients
+- [x] 5.4 Correct docs: `audit_log.tenant_id` uses `ON DELETE RESTRICT` (not CASCADE); document tenant coupling constraints and append-only audit design
+- [x] 5.5 Add SQL test cases: audit UPDATE deny (test 19), composite FK cross-tenant rejection (test 20), trigger cross-tenant actor/target rejection (tests 21-22) in `rls_multitenant_isolation.sql`
+- [x] 5.6 Add SQL test cases: composite FK mismatch rejection (test 25), trigger cross-tenant actor/target rejection (tests 26-27) in `authorization_constraints.sql`
+- [x] 5.7 Verify existing test fixtures are compatible with new composite FK and trigger constraints — all existing inserts use matching tenant/user combinations
