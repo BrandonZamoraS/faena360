@@ -893,6 +893,7 @@ begin
     tenant_id,
     auth_user_id,
     email,
+    full_name,
     status
   )
   values (
@@ -900,6 +901,7 @@ begin
     'd0000000-0000-0000-0000-000000000021',
     'e1000000-0000-0000-0000-000000000021',
     'active-issue20@example.com',
+    'Active issue20 user',
     default
   ),
   (
@@ -907,6 +909,7 @@ begin
     'd0000000-0000-0000-0000-000000000021',
     'e2000000-0000-0000-0000-000000000021',
     'inactive-issue20@example.com',
+    'Inactive issue20 user',
     'inactive'
   )
   on conflict (id) do nothing;
@@ -942,12 +945,14 @@ begin
       tenant_id,
       auth_user_id,
       email,
+      full_name,
       status
     ) values (
       'd3000000-0000-0000-0000-000000000021',
       'd0000000-0000-0000-0000-000000000021',
       'e3000000-0000-0000-0000-000000000021',
       'blocked-issue20@example.com',
+      'Blocked issue20 user',
       'pending'
     );
 

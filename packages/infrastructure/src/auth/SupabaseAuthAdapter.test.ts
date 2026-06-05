@@ -155,6 +155,7 @@ describe("SupabaseAuthAdapter", () => {
     await expect(adapter.signOut()).resolves.toBeUndefined();
 
     expect(auth.signOut).toHaveBeenCalledOnce();
+    expect(auth.signOut).toHaveBeenCalledWith({ scope: "local" });
   });
 
   it("throws when Supabase signOut fails", async () => {

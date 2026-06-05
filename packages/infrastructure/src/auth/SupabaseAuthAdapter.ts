@@ -44,7 +44,9 @@ export class SupabaseAuthAdapter implements AuthIdentityPort {
    * Clears any signed-in Supabase auth session.
    */
   async signOut(): Promise<void> {
-    const { error } = await this.client.auth.signOut();
+    const { error } = await this.client.auth.signOut({
+      scope: "local",
+    });
 
     if (error) {
       throw error;
