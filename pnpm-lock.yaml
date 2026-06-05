@@ -78,6 +78,10 @@ importers:
         version: 5.9.3
 
   packages/application:
+    dependencies:
+      '@faena360/domain':
+        specifier: workspace:*
+        version: link:../domain
     devDependencies:
       typescript:
         specifier: ^5

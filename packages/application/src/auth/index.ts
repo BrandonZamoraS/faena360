@@ -4,10 +4,10 @@ export {
   createEffectiveCapabilitiesCacheKey,
   createEffectiveCapabilitiesResolver,
   InMemoryEffectiveCapabilitiesCache,
-} from "./src/auth";
+} from "./effective-capabilities";
 
 export type {
   EffectiveCapabilitiesCache,
   EffectiveCapabilitiesRepository,
   EffectiveCapabilitiesResolverOptions,
-} from "./src/auth";
+} from "./effective-capabilities";

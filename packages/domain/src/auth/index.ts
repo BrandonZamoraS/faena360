@@ -1,4 +1,3 @@
-export * from "./storage";
 export type {
   CapabilityCode,
   CapabilityOverrideEffect,
@@ -8,4 +7,4 @@ export type {
   TenantUserScope,
   UserCapabilityOverride,
   UserId,
-} from "./auth";
+} from "./capabilities";
