@@ -5,6 +5,9 @@
   "scripts": {
     "typecheck": "tsc --noEmit"
   },
+  "dependencies": {
+    "@faena360/domain": "workspace:*"
+  },
   "devDependencies": {
     "typescript": "^5"
   }
