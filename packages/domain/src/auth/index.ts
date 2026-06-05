@@ -8,3 +8,12 @@ export type {
   UserCapabilityOverride,
   UserId,
 } from "./capabilities";
+export type {
+  AppAuthErrorCode,
+  AppAuthFailure,
+  AppAuthResult,
+  AppAuthSuccess,
+  AppSession,
+  AuthUser,
+  UserProfileStatus,
+} from "./session";
