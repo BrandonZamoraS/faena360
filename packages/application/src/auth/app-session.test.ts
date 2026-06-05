@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { AppAuthErrorCode, type AppSession } from "@faena360/domain";
-import {
-  LoginWithEmailPasswordServiceImpl,
-  type LoginInput,
-} from "./index";
+import { LoginWithEmailPasswordServiceImpl, type LoginInput } from "./index";
 
 const baseInput: LoginInput = {
   email: "alice@example.com",

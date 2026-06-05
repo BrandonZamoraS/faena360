@@ -36,9 +36,7 @@ export class LoginWithEmailPasswordServiceImpl implements LoginWithEmailPassword
     });
   }
 
-  async login(
-    input: LoginInput
-  ): Promise<LoginWithEmailPasswordOutcome> {
+  async login(input: LoginInput): Promise<LoginWithEmailPasswordOutcome> {
     let authUser: AuthUser;
 
     try {
@@ -72,14 +70,12 @@ export class LoginWithEmailPasswordServiceImpl implements LoginWithEmailPassword
       };
     }
 
-    let userProfile:
-      | {
-          readonly userId: string;
-          readonly email: string;
-          readonly status: "active" | "inactive";
-          readonly tenantId: string;
-        }
-      | null;
+    let userProfile: {
+      readonly userId: string;
+      readonly email: string;
+      readonly status: "active" | "inactive";
+      readonly tenantId: string;
+    } | null;
     try {
       userProfile = await this.appSessionRepository.getUserProfile({
         tenantId,
@@ -167,5 +163,4 @@ export class LoginWithEmailPasswordServiceImpl implements LoginWithEmailPassword
       },
     };
   }
-
 }

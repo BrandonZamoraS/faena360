@@ -70,9 +70,9 @@ describe("SupabaseAppSessionRepository", () => {
 
     const repository = new SupabaseAppSessionRepository(client);
 
-    await expect(repository.getTenant({ tenantId: "tenant-001" })).resolves.toEqual(
-      { id: "tenant-001", status: "active" }
-    );
+    await expect(
+      repository.getTenant({ tenantId: "tenant-001" })
+    ).resolves.toEqual({ id: "tenant-001", status: "active" });
 
     expect(tenantQuery.select).toHaveBeenCalledWith("id, status");
     expect(tenantQuery.eq).toHaveBeenNthCalledWith(1, "id", "tenant-001");
@@ -91,9 +91,9 @@ describe("SupabaseAppSessionRepository", () => {
 
     const repository = new SupabaseAppSessionRepository(client);
 
-    await expect(repository.getTenant({ tenantId: "tenant-missing" })).rejects.toThrow(
-      "tenant missing"
-    );
+    await expect(
+      repository.getTenant({ tenantId: "tenant-missing" })
+    ).rejects.toThrow("tenant missing");
   });
 
   it("getUserProfile: maps row and returns null when missing", async () => {
@@ -119,7 +119,10 @@ describe("SupabaseAppSessionRepository", () => {
     const repository = new SupabaseAppSessionRepository(client);
 
     await expect(
-      repository.getUserProfile({ tenantId: "tenant-001", authUserId: "auth-001" })
+      repository.getUserProfile({
+        tenantId: "tenant-001",
+        authUserId: "auth-001",
+      })
     ).resolves.toEqual({
       userId: "user-001",
       email: "alice@example.com",
@@ -128,7 +131,10 @@ describe("SupabaseAppSessionRepository", () => {
     });
 
     await expect(
-      repository.getUserProfile({ tenantId: "tenant-001", authUserId: "auth-404" })
+      repository.getUserProfile({
+        tenantId: "tenant-001",
+        authUserId: "auth-404",
+      })
     ).resolves.toBeNull();
   });
 
@@ -145,13 +151,20 @@ describe("SupabaseAppSessionRepository", () => {
     const repository = new SupabaseAppSessionRepository(client);
 
     await expect(
-      repository.getUserProfile({ tenantId: "tenant-001", authUserId: "auth-001" })
+      repository.getUserProfile({
+        tenantId: "tenant-001",
+        authUserId: "auth-001",
+      })
     ).rejects.toThrow("query failed");
   });
 
   it("listUserRoles: deduplicates role ids", async () => {
     const query = createQueryBuilder({
-      data: [{ role_id: "r-admin" }, { role_id: "r-reader" }, { role_id: "r-admin" }],
+      data: [
+        { role_id: "r-admin" },
+        { role_id: "r-reader" },
+        { role_id: "r-admin" },
+      ],
       error: null,
     });
 
@@ -195,60 +208,70 @@ describe("SupabaseAppSessionRepository", () => {
       roleIds: ["r-admin", "r-reader", "  ", "r-admin"],
     });
 
-    expect(capabilityQuery.in).toHaveBeenCalledWith("role_id", ["r-admin", "r-reader"]);
+    expect(capabilityQuery.in).toHaveBeenCalledWith("role_id", [
+      "r-admin",
+      "r-reader",
+    ]);
     expect(roleQuery.in).toHaveBeenCalledWith("id", ["r-admin", "r-reader"]);
     expect(capabilities).toEqual(
-      expect.arrayContaining(["orders.read", "orders.write", "web.portal.access"])
+      expect.arrayContaining([
+        "orders.read",
+        "orders.write",
+        "web.portal.access",
+      ])
     );
   });
 
-    it("listTenantRoleCapabilities: returns empty list when roleIds are blank", async () => {
-      const client = createClientFromPlan({});
-      const repository = new SupabaseAppSessionRepository(client);
+  it("listTenantRoleCapabilities: returns empty list when roleIds are blank", async () => {
+    const client = createClientFromPlan({});
+    const repository = new SupabaseAppSessionRepository(client);
 
-      await expect(
-        repository.listTenantRoleCapabilities({ tenantId: "tenant-001", roleIds: ["", "  "] })
-      ).resolves.toEqual([]);
+    await expect(
+      repository.listTenantRoleCapabilities({
+        tenantId: "tenant-001",
+        roleIds: ["", "  "],
+      })
+    ).resolves.toEqual([]);
+  });
+
+  it("hasWebAccessRole: returns true when a role grants web access", async () => {
+    const roleQuery = createQueryBuilder({
+      data: [{ is_web_access: false }, { is_web_access: true }],
+      error: null,
     });
 
-    it("hasWebAccessRole: returns true when a role grants web access", async () => {
-      const roleQuery = createQueryBuilder({
-        data: [{ is_web_access: false }, { is_web_access: true }],
-        error: null,
-      });
-
-      const client = createClientFromPlan({
-        roles: [roleQuery],
-      });
-
-      const repository = new SupabaseAppSessionRepository(client);
-
-      await expect(
-        repository.hasWebAccessRole({
-          tenantId: "tenant-001",
-          userId: "user-001",
-          roleIds: ["r-admin", "r-reader"],
-        })
-      ).resolves.toBe(true);
-
-      expect(roleQuery.in).toHaveBeenCalledWith("id", ["r-admin", "r-reader"]);
+    const client = createClientFromPlan({
+      roles: [roleQuery],
     });
 
-    it("hasWebAccessRole: returns false when roleIds are empty", async () => {
-      const client = createClientFromPlan({
-        roles: [],
-      });
+    const repository = new SupabaseAppSessionRepository(client);
 
-      const repository = new SupabaseAppSessionRepository(client);
+    await expect(
+      repository.hasWebAccessRole({
+        tenantId: "tenant-001",
+        userId: "user-001",
+        roleIds: ["r-admin", "r-reader"],
+      })
+    ).resolves.toBe(true);
 
-      await expect(
-        repository.hasWebAccessRole({
-          tenantId: "tenant-001",
-          userId: "user-001",
-          roleIds: [],
-        })
-      ).resolves.toBe(false);
+    expect(roleQuery.in).toHaveBeenCalledWith("id", ["r-admin", "r-reader"]);
+  });
+
+  it("hasWebAccessRole: returns false when roleIds are empty", async () => {
+    const client = createClientFromPlan({
+      roles: [],
     });
+
+    const repository = new SupabaseAppSessionRepository(client);
+
+    await expect(
+      repository.hasWebAccessRole({
+        tenantId: "tenant-001",
+        userId: "user-001",
+        roleIds: [],
+      })
+    ).resolves.toBe(false);
+  });
 
   it("listUserCapabilityOverrides: maps snake_case rows to override interface", async () => {
     const query = createQueryBuilder({
@@ -266,14 +289,17 @@ describe("SupabaseAppSessionRepository", () => {
     const repository = new SupabaseAppSessionRepository(client);
 
     await expect(
-      repository.listUserCapabilityOverrides({ tenantId: "tenant-001", userId: "user-001" })
+      repository.listUserCapabilityOverrides({
+        tenantId: "tenant-001",
+        userId: "user-001",
+      })
     ).resolves.toEqual([
       { capabilityCode: "feature.a", effect: "allow" },
       { capabilityCode: "feature.b", effect: "deny" },
     ]);
   });
 
-    it("throws when role capability lookup fails", async () => {
+  it("throws when role capability lookup fails", async () => {
     const capabilityQuery = createQueryBuilder({
       data: null,
       error: { message: "capability lookup failed" },
@@ -292,7 +318,10 @@ describe("SupabaseAppSessionRepository", () => {
     const repository = new SupabaseAppSessionRepository(client);
 
     await expect(
-      repository.listTenantRoleCapabilities({ tenantId: "tenant-001", roleIds: ["r-admin"] })
+      repository.listTenantRoleCapabilities({
+        tenantId: "tenant-001",
+        roleIds: ["r-admin"],
+      })
     ).rejects.toThrow("capability lookup failed");
   });
 });

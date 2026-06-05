@@ -63,10 +63,7 @@ export interface AppSessionRepository {
    * Loads a local user profile for a tenant-scoped user.
    * Returns `null` when profile does not exist.
    */
-  getUserProfile(input: {
-    tenantId: string;
-    authUserId: string;
-  }): Promise<{
+  getUserProfile(input: { tenantId: string; authUserId: string }): Promise<{
     readonly userId: string;
     readonly email: string;
     readonly status: "active" | "inactive";

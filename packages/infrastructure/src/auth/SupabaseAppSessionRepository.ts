@@ -110,8 +110,9 @@ export class SupabaseAppSessionRepository implements AppSessionRepository {
     }
 
     const roles =
-      data?.map((item: UserRoleRow) => item.role_id).filter((value) => !!value) ??
-      [];
+      data
+        ?.map((item: UserRoleRow) => item.role_id)
+        .filter((value) => !!value) ?? [];
 
     return [...new Set(roles)];
   }
@@ -122,14 +123,17 @@ export class SupabaseAppSessionRepository implements AppSessionRepository {
     roleIds?: readonly string[];
   }): Promise<boolean> {
     const explicitRoleIds = input.roleIds
-      ? Array.from(new Set(input.roleIds)).filter((roleId) => roleId.trim().length > 0)
+      ? Array.from(new Set(input.roleIds)).filter(
+          (roleId) => roleId.trim().length > 0
+        )
       : null;
 
     if (explicitRoleIds && explicitRoleIds.length === 0) {
       return false;
     }
 
-    const roleIds = explicitRoleIds ??
+    const roleIds =
+      explicitRoleIds ??
       (await this.listUserRoles({
         tenantId: input.tenantId,
         userId: input.userId,
@@ -172,7 +176,10 @@ export class SupabaseAppSessionRepository implements AppSessionRepository {
         .eq("tenant_id", input.tenantId)
         .in("role_id", normalizedRoleIds)
         .then((result) =>
-          this.ensureRows<CapabilityRow>(result, "Role capability lookup failed")
+          this.ensureRows<CapabilityRow>(
+            result,
+            "Role capability lookup failed"
+          )
         ),
       this.client
         .from("roles")
@@ -184,7 +191,9 @@ export class SupabaseAppSessionRepository implements AppSessionRepository {
         ),
     ]);
 
-    const capabilities = new Set(capabilityResult.map((row) => row.capability_code));
+    const capabilities = new Set(
+      capabilityResult.map((row) => row.capability_code)
+    );
 
     const hasWebRole = roleResult.some((row) => row.is_web_access === true);
     if (hasWebRole) {
