@@ -32,12 +32,16 @@ alter table tenants
 create table user_profiles (
   id uuid primary key default gen_random_uuid(),
   tenant_id uuid not null references tenants(id) on delete cascade,
-  auth_user_id uuid not null,
+  auth_user_id uuid not null references auth.users(id) on delete cascade,
   email text not null,
   full_name text not null,
   phone text,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  unique (auth_user_id),
+  unique (email),
+  unique (phone),
+  unique (tenant_id, id)
 );
 
 create trigger user_profiles_updated_at
@@ -56,6 +60,7 @@ create table roles (
   is_web_access boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
+  unique (tenant_id, id),
   unique (tenant_id, "name")
 );
 
@@ -80,8 +85,102 @@ create table role_capabilities (
 create table user_roles (
   id uuid primary key default gen_random_uuid(),
   tenant_id uuid not null references tenants(id) on delete cascade,
-  user_id uuid not null references user_profiles(id) on delete cascade,
-  role_id uuid not null references roles(id) on delete cascade,
+  user_id uuid not null,
+  role_id uuid not null,
   created_at timestamptz not null default now(),
+  foreign key (tenant_id, user_id) references user_profiles(tenant_id, id) on delete cascade,
+  foreign key (tenant_id, role_id) references roles(tenant_id, id) on delete cascade,
   unique (tenant_id, user_id, role_id)
 );
+
+-- --------------------------------------------------------
+-- Row Level Security (RLS)
+-- --------------------------------------------------------
+
+alter table user_profiles enable row level security;
+alter table roles enable row level security;
+alter table role_capabilities enable row level security;
+alter table user_roles enable row level security;
+
+create policy "Tenant users can view own profiles"
+  on user_profiles
+  for select
+  using (tenant_id = (auth.jwt()->'app_metadata'->>'tenant_id')::uuid);
+
+create policy "Tenant users can insert own profiles"
+  on user_profiles
+  for insert
+  with check (tenant_id = (auth.jwt()->'app_metadata'->>'tenant_id')::uuid);
+
+create policy "Tenant users can update own profiles"
+  on user_profiles
+  for update
+  using (tenant_id = (auth.jwt()->'app_metadata'->>'tenant_id')::uuid)
+  with check (tenant_id = (auth.jwt()->'app_metadata'->>'tenant_id')::uuid);
+
+create policy "Tenant users can view own roles"
+  on roles
+  for select
+  using (tenant_id = (auth.jwt()->'app_metadata'->>'tenant_id')::uuid);
+
+create policy "Tenant users can insert own roles"
+  on roles
+  for insert
+  with check (tenant_id = (auth.jwt()->'app_metadata'->>'tenant_id')::uuid);
+
+create policy "Tenant users can update own roles"
+  on roles
+  for update
+  using (tenant_id = (auth.jwt()->'app_metadata'->>'tenant_id')::uuid)
+  with check (tenant_id = (auth.jwt()->'app_metadata'->>'tenant_id')::uuid);
+
+create policy "Tenant users can view own role capabilities"
+  on role_capabilities
+  for select
+  using (
+    exists (
+      select 1
+      from roles
+      where roles.id = role_capabilities.role_id
+        and roles.tenant_id = (auth.jwt()->'app_metadata'->>'tenant_id')::uuid
+    )
+  );
+
+create policy "Tenant users can insert own role capabilities"
+  on role_capabilities
+  for insert
+  with check (
+    exists (
+      select 1
+      from roles
+      where roles.id = role_capabilities.role_id
+        and roles.tenant_id = (auth.jwt()->'app_metadata'->>'tenant_id')::uuid
+    )
+  );
+
+create policy "Tenant users can delete own role capabilities"
+  on role_capabilities
+  for delete
+  using (
+    exists (
+      select 1
+      from roles
+      where roles.id = role_capabilities.role_id
+        and roles.tenant_id = (auth.jwt()->'app_metadata'->>'tenant_id')::uuid
+    )
+  );
+
+create policy "Tenant users can view own user roles"
+  on user_roles
+  for select
+  using (tenant_id = (auth.jwt()->'app_metadata'->>'tenant_id')::uuid);
+
+create policy "Tenant users can insert own user roles"
+  on user_roles
+  for insert
+  with check (tenant_id = (auth.jwt()->'app_metadata'->>'tenant_id')::uuid);
+
+create policy "Tenant users can delete own user roles"
+  on user_roles
+  for delete
+  using (tenant_id = (auth.jwt()->'app_metadata'->>'tenant_id')::uuid);

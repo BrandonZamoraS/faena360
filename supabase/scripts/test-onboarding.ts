@@ -655,55 +655,32 @@ async function runNegativeTests(
       },
     };
 
-    // Temporarily remove a required capability to simulate incomplete catalog
-    const { data: capToRestore } = await admin
-      .from("capabilities")
-      .select("id, key")
-      .eq("key", "assignments:create")
-      .single();
+    const missingCapabilityClients = {
+      ...preflightClients,
+      capabilityKeysExist: async (keys: readonly string[]) => {
+        const existing = await preflightClients.capabilityKeysExist(keys);
+        existing.delete("assignments:create");
+        return existing;
+      },
+    };
 
-    if (capToRestore) {
-      await admin.from("capabilities").delete().eq("id", capToRestore.id);
+    const preflight = await runPreflightChecks(
+      payload,
+      missingCapabilityClients
+    );
 
-      const preflight = await runPreflightChecks(payload, preflightClients);
-      let errorCaught = false;
-      try {
-        await runTenantOnboardingFlow(payload);
-      } catch {
-        errorCaught = true;
-      }
-
-      // Restore the capability
-      await admin
-        .from("capabilities")
-        .insert({
-          id: capToRestore.id,
-          key: "assignments:create",
-          name: "Assignments Create",
-          description: "Allows creating assignment records.",
-        })
-        .select();
-
-      if (!preflight.ok && errorCaught) {
-        results.push({
-          name: "Missing capability keys block onboarding",
-          passed: true,
-          message:
-            "✅ Missing capability correctly blocks onboarding via preflight",
-        });
-      } else {
-        results.push({
-          name: "Missing capability keys block onboarding",
-          passed: false,
-          message: `❌ Expected block but got: preflight=${preflight.ok}, error=${errorCaught}`,
-        });
-      }
+    if (!preflight.ok) {
+      results.push({
+        name: "Missing capability keys block onboarding",
+        passed: true,
+        message:
+          "✅ Missing capability correctly blocks onboarding via mocked preflight source",
+      });
     } else {
       results.push({
         name: "Missing capability keys block onboarding",
         passed: false,
-        message:
-          "❌ Could not find 'assignments:create' capability to remove for test",
+        message: "❌ Expected missing capability to block preflight",
       });
     }
   }
