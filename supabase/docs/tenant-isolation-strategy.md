@@ -57,3 +57,54 @@ RLS and Storage policies are the safety net. The application must **also** expli
 ## Phase 1.1 Dependency
 
 When auth is implemented, the login/session flow must ensure `app_metadata.tenant_id` is set correctly before the user can access any tenant-scoped data.
+
+---
+
+## Authorization Table RLS (Phase 1.1 — Issue #16)
+
+### `current_app_tenant_id()` Helper
+
+All authorization-table RLS policies rely on a single helper function instead of repeating raw JWT casts:
+
+```sql
+create or replace function public.current_app_tenant_id()
+returns uuid language plpgsql stable as $$
+begin
+  return nullif(auth.jwt()->'app_metadata'->>'tenant_id', '')::uuid;
+exception when invalid_text_representation then
+  return null;
+end $$;
+```
+
+**Contract:**
+- Returns the `uuid` tenant ID from the current JWT's `app_metadata.tenant_id`.
+- Returns `NULL` when the claim is missing, empty, or not a valid UUID.
+- Marked `STABLE` so PostgreSQL caches the result within a single query.
+
+### RLS-Protected Authorization Tables
+
+| Table | Policy type | Isolation method |
+|---|---|---|
+| `user_profiles` | SELECT / INSERT / UPDATE / DELETE-deny | Direct `tenant_id` column |
+| `roles` | SELECT / INSERT / UPDATE | Direct `tenant_id` column |
+| `user_roles` | SELECT / INSERT / UPDATE / DELETE | Join through `roles.tenant_id` |
+| `role_capabilities` | SELECT / INSERT / UPDATE / DELETE | Join through `roles.tenant_id` |
+| `user_capability_overrides` | SELECT / INSERT / UPDATE | Direct `tenant_id` column |
+| `audit_log` | SELECT / INSERT / UPDATE | Direct `tenant_id` column |
+| `capabilities` | *(none — global catalog)* | No tenant filter |
+
+### Hard-Delete Denial on `user_profiles`
+
+An explicit `FOR DELETE USING (false)` policy prevents application-level hard deletes of user profiles. This makes the prohibition visible and auditable, beyond the implicit default-deny of having no DELETE policy.
+
+### `tenant_id` on `audit_log` and `user_capability_overrides`
+
+Both tables now carry a `NOT NULL` `tenant_id` column with a foreign key to `tenants(id) ON DELETE CASCADE`. This ensures tenant isolation even when `actor_user_id` or `target_user_id` is `NULL` (e.g., system events or post-deletion audit history).
+
+### Service-Role Bypass Warning
+
+> **RLS does NOT apply to the `service_role`.** Supabase's `service_role` bypasses all RLS policies by design. Backend code running with the service-role key must enforce tenant boundaries at the application level. RLS is a safety net for client-side and PostgREST access, not a replacement for backend authorization controls.
+
+### Issue 3 JWT Dependency
+
+The entire RLS isolation depends on `app_metadata.tenant_id` being populated in the JWT. **Issue 3** must implement the login/session flow that sets this claim. Until then, `current_app_tenant_id()` returns `NULL` for real application sessions, and all tenant-scoped queries return zero rows.

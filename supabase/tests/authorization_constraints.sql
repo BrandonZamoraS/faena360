@@ -228,8 +228,9 @@ rollback to savepoint test7;
 -- --------------------------------------------------------
 \echo 'Test 8: Duplicate user_capability_overrides rejected'
 savepoint test8;
-insert into user_capability_overrides (user_id, capability_id, grant_type)
+insert into user_capability_overrides (tenant_id, user_id, capability_id, grant_type)
 values (
+  'a0000000-0000-0000-0000-000000000001',
   'c0000000-0000-0000-0000-000000000001',
   'd0000000-0000-0000-0000-000000000001',
   'allow'
@@ -237,8 +238,9 @@ values (
 do $$
 begin
   begin
-    insert into user_capability_overrides (user_id, capability_id, grant_type)
+    insert into user_capability_overrides (tenant_id, user_id, capability_id, grant_type)
     values (
+      'a0000000-0000-0000-0000-000000000001',
       'c0000000-0000-0000-0000-000000000001',
       'd0000000-0000-0000-0000-000000000001',
       'deny'
@@ -286,8 +288,8 @@ savepoint test10;
 
 insert into role_capabilities (role_id, capability_id)
 values ('e0000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000002');
-insert into user_capability_overrides (user_id, capability_id, grant_type)
-values ('c0000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000002', 'deny');
+insert into user_capability_overrides (tenant_id, user_id, capability_id, grant_type)
+values ('a0000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000002', 'deny');
 
 delete from capabilities where id = 'd0000000-0000-0000-0000-000000000002';
 
@@ -312,8 +314,9 @@ rollback to savepoint test10;
 \echo 'Test 11: Deleting users sets audit_log refs to null'
 savepoint test11;
 
-insert into audit_log (actor_user_id, target_user_id, action)
+insert into audit_log (tenant_id, actor_user_id, target_user_id, action)
 values (
+  'a0000000-0000-0000-0000-000000000001',
   'c0000000-0000-0000-0000-000000000001',
   'c0000000-0000-0000-0000-000000000002',
   'role_assigned'
@@ -364,8 +367,9 @@ savepoint test13;
 do $$
 begin
   begin
-    insert into user_capability_overrides (user_id, capability_id, grant_type)
+    insert into user_capability_overrides (tenant_id, user_id, capability_id, grant_type)
     values (
+      'a0000000-0000-0000-0000-000000000001',
       'c0000000-0000-0000-0000-000000000001',
       'd0000000-0000-0000-0000-000000000002',
       'maybe'
@@ -529,8 +533,9 @@ begin
   );
 
   -- Insert a user override for the SAME capability with deny
-  insert into user_capability_overrides (user_id, capability_id, grant_type)
+  insert into user_capability_overrides (tenant_id, user_id, capability_id, grant_type)
   values (
+    'a0000000-0000-0000-0000-000000000001',
     'c0000000-0000-0000-0000-000000000001',
     'd0000000-0000-0000-0000-000000000002',
     'deny'
@@ -603,8 +608,9 @@ declare
   v_action text;
   v_occurred timestamptz;
 begin
-  insert into audit_log (actor_user_id, target_user_id, action)
+  insert into audit_log (tenant_id, actor_user_id, target_user_id, action)
   values (
+    'a0000000-0000-0000-0000-000000000001',
     'c0000000-0000-0000-0000-000000000002',
     'c0000000-0000-0000-0000-000000000001',
     'override_created'
