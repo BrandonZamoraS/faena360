@@ -843,7 +843,7 @@ begin
     raise exception 'FAIL: public.user_profiles.status missing.';
   end if;
 
-  select column_default
+  select split_part(column_default, '''', 2)
     into v_status_default
   from information_schema.columns
   where table_schema = 'public'
@@ -851,7 +851,7 @@ begin
     and column_name = 'status';
 
   if v_status_default is null
-     or v_status_default !~ 'active' then
+    or v_status_default <> 'active' then
     raise exception 'FAIL: user_profiles.status default is not active. Found: %', v_status_default;
   end if;
 
@@ -879,7 +879,7 @@ begin
 
   insert into public.tenants (id, name, slug, timezone, currency, status)
   values (
-    'd00000000-0000-0000-0000-000000000021',
+    'd0000000-0000-0000-0000-000000000021',
     'Issue 20 Tenant',
     'issue-20-tenant',
     'UTC',
@@ -897,14 +897,14 @@ begin
   )
   values (
     'd1000000-0000-0000-0000-000000000021',
-    'd00000000-0000-0000-0000-000000000021',
+    'd0000000-0000-0000-0000-000000000021',
     'e1000000-0000-0000-0000-000000000021',
     'active-issue20@example.com',
     default
   ),
   (
     'd2000000-0000-0000-0000-000000000021',
-    'd00000000-0000-0000-0000-000000000021',
+    'd0000000-0000-0000-0000-000000000021',
     'e2000000-0000-0000-0000-000000000021',
     'inactive-issue20@example.com',
     'inactive'
@@ -945,7 +945,7 @@ begin
       status
     ) values (
       'd3000000-0000-0000-0000-000000000021',
-      'd00000000-0000-0000-0000-000000000021',
+      'd0000000-0000-0000-0000-000000000021',
       'e3000000-0000-0000-0000-000000000021',
       'blocked-issue20@example.com',
       'pending'

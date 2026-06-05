@@ -24,6 +24,10 @@ begin
     alter table public.user_profiles
       alter column status set default 'active';
 
+    update public.user_profiles
+    set status = 'active'
+    where status is null;
+
     alter table public.user_profiles
       alter column status set not null;
 
