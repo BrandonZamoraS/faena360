@@ -68,7 +68,7 @@ export interface AppSessionRepository {
    */
   getUserProfile(input: { tenantId: string; authUserId: string }): Promise<{
     readonly userId: string;
-    readonly email: string;
+    readonly email?: string | null;
     readonly status: "active" | "inactive";
     readonly tenantId: string;
   } | null>;

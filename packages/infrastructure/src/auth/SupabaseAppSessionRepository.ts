@@ -4,8 +4,6 @@ import type {
 } from "@faena360/application";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-const WEB_ACCESS_CAPABILITY = "web.portal.access";
-
 type TenantRow = {
   id: string;
   status: string;
@@ -13,7 +11,7 @@ type TenantRow = {
 
 type UserProfileRow = {
   id: string;
-  email: string;
+  email: string | null;
   status: "active" | "inactive";
   tenant_id: string;
 };
@@ -73,7 +71,7 @@ export class SupabaseAppSessionRepository implements AppSessionRepository {
     authUserId: string;
   }): Promise<{
     readonly userId: string;
-    readonly email: string;
+    readonly email?: string | null;
     readonly status: "active" | "inactive";
     readonly tenantId: string;
   } | null> {
@@ -204,7 +202,7 @@ export class SupabaseAppSessionRepository implements AppSessionRepository {
     );
 
     if (capabilityIds.length === 0) {
-      return this.mergeCapabilities([], roleResult);
+      return [];
     }
 
     const capabilityRows = await this.client
@@ -218,23 +216,7 @@ export class SupabaseAppSessionRepository implements AppSessionRepository {
         )
       );
 
-    return this.mergeCapabilities(
-      capabilityRows.map((row) => row.key),
-      roleResult
-    );
-  }
-
-  private mergeCapabilities(
-    capabilities: string[],
-    roles: RoleRow[]
-  ): string[] {
-    const merged = new Set(capabilities);
-
-    if (roles.some((row) => row.is_web_access === true)) {
-      merged.add(WEB_ACCESS_CAPABILITY);
-    }
-
-    return [...merged];
+    return Array.from(new Set(capabilityRows.map((row) => row.key)));
   }
 
   async listUserCapabilityOverrides(input: {

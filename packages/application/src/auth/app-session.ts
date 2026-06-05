@@ -11,8 +11,6 @@ import {
   type EffectiveCapabilitiesRepository,
 } from "./effective-capabilities";
 
-const WEB_ACCESS_CAPABILITY = "web.portal.access";
-
 export class LoginWithEmailPasswordServiceImpl implements LoginWithEmailPasswordService {
   private readonly capabilityResolver: ReturnType<
     typeof createEffectiveCapabilitiesResolver
@@ -75,7 +73,7 @@ export class LoginWithEmailPasswordServiceImpl implements LoginWithEmailPassword
 
     let userProfile: {
       readonly userId: string;
-      readonly email: string;
+      readonly email?: string | null;
       readonly status: "active" | "inactive";
       readonly tenantId: string;
     } | null;
@@ -93,6 +91,18 @@ export class LoginWithEmailPasswordServiceImpl implements LoginWithEmailPassword
     }
 
     if (!userProfile || userProfile.status !== "active") {
+      await this.cleanupAuthIdentity();
+      return {
+        ok: false,
+        code: "inactive_user",
+      };
+    }
+
+    const profileEmail = userProfile.email?.trim();
+    const authEmail = authUser.email?.trim();
+    const sessionEmail = profileEmail || authEmail;
+
+    if (!sessionEmail) {
       await this.cleanupAuthIdentity();
       return {
         ok: false,
@@ -152,21 +162,13 @@ export class LoginWithEmailPasswordServiceImpl implements LoginWithEmailPassword
       };
     }
 
-    if (!effectiveCapabilities.includes(WEB_ACCESS_CAPABILITY)) {
-      await this.cleanupAuthIdentity();
-      return {
-        ok: false,
-        code: "web_access_denied",
-      };
-    }
-
     return {
       ok: true,
       session: {
         user_id: userProfile.userId,
         auth_user_id: authUser.id,
         tenant_id: tenant.id,
-        email: userProfile.email,
+        email: sessionEmail,
         roles,
         effective_capabilities: effectiveCapabilities,
         status: userProfile.status,

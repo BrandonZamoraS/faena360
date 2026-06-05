@@ -6,7 +6,6 @@ import type {
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 const WEB_TENANT_META_KEY = "tenant_id";
-const APP_TENANT_META_KEY = "tenantId";
 
 /**
  * Adapter around Supabase Auth for the application's identity contract.
@@ -58,8 +57,7 @@ export class SupabaseAuthAdapter implements AuthIdentityPort {
     }
 
     const rawMetadata = appMetadata as Record<string, unknown>;
-    const rawTenantId =
-      rawMetadata[WEB_TENANT_META_KEY] ?? rawMetadata[APP_TENANT_META_KEY];
+    const rawTenantId = rawMetadata[WEB_TENANT_META_KEY];
 
     if (typeof rawTenantId !== "string") {
       return undefined;

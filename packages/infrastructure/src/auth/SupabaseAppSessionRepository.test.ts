@@ -181,7 +181,7 @@ describe("SupabaseAppSessionRepository", () => {
     ).resolves.toEqual(["r-admin", "r-reader"]);
   });
 
-  it("listTenantRoleCapabilities: loads role capabilities and web access marker", async () => {
+  it("listTenantRoleCapabilities: loads role capabilities for tenant roles", async () => {
     const capabilityQuery = createQueryBuilder({
       data: [
         { role_id: "r-admin", capability_id: "cap-read" },
@@ -235,11 +235,7 @@ describe("SupabaseAppSessionRepository", () => {
       "cap-write",
     ]);
     expect(capabilities).toEqual(
-      expect.arrayContaining([
-        "orders.read",
-        "orders.write",
-        "web.portal.access",
-      ])
+      expect.arrayContaining(["orders.read", "orders.write"])
     );
   });
 
@@ -278,9 +274,33 @@ describe("SupabaseAppSessionRepository", () => {
     expect(capabilityKeyQuery.in).toHaveBeenCalledWith("id", [
       "cap-admin-read",
     ]);
-    expect(capabilities).toEqual(
-      expect.arrayContaining(["admin.read", "web.portal.access"])
-    );
+    expect(capabilities).toEqual(expect.arrayContaining(["admin.read"]));
+  });
+
+  it("listTenantRoleCapabilities: does not inject synthetic web capability", async () => {
+    const capabilityQuery = createQueryBuilder({
+      data: [],
+      error: null,
+    });
+
+    const roleQuery = createQueryBuilder({
+      data: [{ id: "r-admin", tenant_id: "tenant-001", is_web_access: true }],
+      error: null,
+    });
+
+    const client = createClientFromPlan({
+      role_capabilities: [capabilityQuery],
+      roles: [roleQuery],
+    });
+
+    const repository = new SupabaseAppSessionRepository(client);
+
+    const capabilities = await repository.listTenantRoleCapabilities({
+      tenantId: "tenant-001",
+      roleIds: ["r-admin"],
+    });
+
+    expect(capabilities).toEqual([]);
   });
 
   it("listTenantRoleCapabilities: returns empty list when roleIds are blank", async () => {

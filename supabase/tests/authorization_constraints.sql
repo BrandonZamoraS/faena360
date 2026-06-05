@@ -872,9 +872,9 @@ begin
 
   insert into auth.users (id, email, email_confirmed_at)
   values
-    ('e10000000-0000-0000-0000-000000000021', 'active-issue20@example.com', now()),
-    ('e20000000-0000-0000-0000-000000000021', 'inactive-issue20@example.com', now()),
-    ('e30000000-0000-0000-0000-000000000021', 'blocked-issue20@example.com', now())
+    ('e1000000-0000-0000-0000-000000000021', 'active-issue20@example.com', now()),
+    ('e2000000-0000-0000-0000-000000000021', 'inactive-issue20@example.com', now()),
+    ('e3000000-0000-0000-0000-000000000021', 'blocked-issue20@example.com', now())
   on conflict (id) do nothing;
 
   insert into public.tenants (id, name, slug, timezone, currency, status)
@@ -896,16 +896,16 @@ begin
     status
   )
   values (
-    'd10000000-0000-0000-0000-000000000021',
+    'd1000000-0000-0000-0000-000000000021',
     'd00000000-0000-0000-0000-000000000021',
-    'e10000000-0000-0000-0000-000000000021',
+    'e1000000-0000-0000-0000-000000000021',
     'active-issue20@example.com',
     default
   ),
   (
-    'd20000000-0000-0000-0000-000000000021',
+    'd2000000-0000-0000-0000-000000000021',
     'd00000000-0000-0000-0000-000000000021',
-    'e20000000-0000-0000-0000-000000000021',
+    'e2000000-0000-0000-0000-000000000021',
     'inactive-issue20@example.com',
     'inactive'
   )
@@ -914,7 +914,7 @@ begin
   if not exists (
     select 1
     from public.user_profiles
-    where id = 'd20000000-0000-0000-0000-000000000021'
+    where id = 'd2000000-0000-0000-0000-000000000021'
       and status = 'inactive'
   ) then
     raise exception 'FAIL: inactive-profile fixture not inserted/retained.';
@@ -923,7 +923,7 @@ begin
   if not exists (
     select 1
     from public.user_profiles
-    where id = 'd10000000-0000-0000-0000-000000000021'
+    where id = 'd1000000-0000-0000-0000-000000000021'
       and status = 'active'
   ) then
     raise exception 'FAIL: active profile row with default status not found.';
@@ -931,7 +931,7 @@ begin
 
   -- Missing profile row should represent inactive_user in app logic.
   if exists (
-    select 1 from public.user_profiles where id = 'd30000000-0000-0000-0000-000000000021'
+    select 1 from public.user_profiles where id = 'd3000000-0000-0000-0000-000000000021'
   ) then
     raise exception 'FAIL: missing-profile fixture placeholder unexpectedly exists.';
   end if;
@@ -944,9 +944,9 @@ begin
       email,
       status
     ) values (
-      'd30000000-0000-0000-0000-000000000021',
+      'd3000000-0000-0000-0000-000000000021',
       'd00000000-0000-0000-0000-000000000021',
-      'e30000000-0000-0000-0000-000000000021',
+      'e3000000-0000-0000-0000-000000000021',
       'blocked-issue20@example.com',
       'pending'
     );

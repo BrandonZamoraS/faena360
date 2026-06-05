@@ -53,7 +53,7 @@ describe("SupabaseAuthAdapter", () => {
     });
   });
 
-  it("falls back to app_metadata.tenantId when tenant_id is absent", async () => {
+  it("does not fall back to tenant metadata camelCase", async () => {
     const { client, auth } = createClient();
 
     auth.signInWithPassword.mockResolvedValue({
@@ -75,7 +75,7 @@ describe("SupabaseAuthAdapter", () => {
       password: "secret",
     });
 
-    expect(user.tenantId).toBe("tenant-camel");
+    expect(user.tenantId).toBeUndefined();
   });
 
   it("uses input email when Supabase user email is unavailable", async () => {
