@@ -47,6 +47,9 @@ export type LoginWithEmailPasswordOutcome = AppAuthResult;
  */
 export interface AuthIdentityPort {
   signInWithPassword(input: LoginInput): Promise<AuthUser>;
+
+  /** Optional cleanup hook to clear the local auth session after app authorization failures. */
+  signOut?(): Promise<void>;
 }
 
 /**

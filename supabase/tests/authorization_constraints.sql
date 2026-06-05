@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 -- DB-level constraint and cascade verification for authorization schema.
 -- Run against local Supabase/Postgres after `supabase db reset`.
 -- Usage: psql -v ON_ERROR_STOP=1 $DATABASE_URL -f supabase/tests/authorization_constraints.sql

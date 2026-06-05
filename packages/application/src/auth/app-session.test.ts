@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { AppAuthErrorCode, type AppSession } from "@faena360/domain";
 import { LoginWithEmailPasswordServiceImpl, type LoginInput } from "./index";
 
@@ -175,6 +175,33 @@ describe("app-session login", () => {
     });
   });
 
+  it("cleans up auth identity when tenant metadata is missing", async () => {
+    const signOut = vi.fn(async () => {});
+
+    const identityPort = {
+      signInWithPassword: async () => ({
+        id: "supabase-auth-id",
+        email: baseInput.email,
+        tenantId: undefined,
+      }),
+      signOut,
+    };
+
+    const repository = createRepository({});
+
+    const service = new LoginWithEmailPasswordServiceImpl(
+      identityPort,
+      repository
+    );
+
+    await expect(service.login(baseInput)).resolves.toEqual({
+      ok: false,
+      code: "missing_tenant" as AppAuthErrorCode,
+    });
+
+    expect(signOut).toHaveBeenCalledOnce();
+  });
+
   it("rejects missing tenant as inactive_tenant", async () => {
     const identityPort = {
       signInWithPassword: async () => ({
@@ -253,11 +280,14 @@ describe("app-session login", () => {
   });
 
   it("normalizes invalid credentials to invalid_credentials", async () => {
+    const signOut = vi.fn(async () => {});
+
     const service = new LoginWithEmailPasswordServiceImpl(
       {
         signInWithPassword: async () => {
           throw new Error("invalid credentials");
         },
+        signOut,
       },
       createRepository({})
     );
@@ -266,6 +296,76 @@ describe("app-session login", () => {
       ok: false,
       code: "invalid_credentials" as AppAuthErrorCode,
     });
+
+    expect(signOut).not.toHaveBeenCalled();
+  });
+
+  it("cleans up auth identity when user has no active local profile", async () => {
+    const signOut = vi.fn(async () => {});
+
+    const identityPort = {
+      signInWithPassword: async () => ({
+        id: "supabase-auth-id",
+        email: baseInput.email,
+        tenantId: "tenant-001",
+      }),
+      signOut,
+    };
+
+    const repository = createRepository({
+      userProfile: null,
+    });
+
+    const service = new LoginWithEmailPasswordServiceImpl(
+      identityPort,
+      repository
+    );
+
+    await expect(service.login(baseInput)).resolves.toEqual({
+      ok: false,
+      code: "inactive_user" as AppAuthErrorCode,
+    });
+
+    expect(signOut).toHaveBeenCalledOnce();
+  });
+
+  it("cleans up auth identity when role based authorization is denied", async () => {
+    const signOut = vi.fn(async () => {});
+
+    const identityPort = {
+      signInWithPassword: async () => ({
+        id: "supabase-auth-id",
+        email: baseInput.email,
+        tenantId: "tenant-001",
+      }),
+      signOut,
+    };
+
+    const repository = {
+      ...createRepository({
+        userProfile: {
+          userId: "user-123",
+          email: baseInput.email,
+          status: "active",
+          tenantId: "tenant-001",
+        },
+        tenantRoleCapabilities: ["orders.read", "web.portal.access"],
+        userRoles: ["operator"],
+      }),
+      hasWebAccessRole: async () => false,
+    };
+
+    const service = new LoginWithEmailPasswordServiceImpl(
+      identityPort,
+      repository
+    );
+
+    await expect(service.login(baseInput)).resolves.toEqual({
+      ok: false,
+      code: "web_access_denied" as AppAuthErrorCode,
+    });
+
+    expect(signOut).toHaveBeenCalledOnce();
   });
 
   it("denies users without web access with web_access_denied", async () => {

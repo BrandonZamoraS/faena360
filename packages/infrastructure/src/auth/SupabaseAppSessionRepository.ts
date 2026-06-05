@@ -12,7 +12,7 @@ type TenantRow = {
 };
 
 type UserProfileRow = {
-  user_id: string;
+  id: string;
   email: string;
   status: "active" | "inactive";
   tenant_id: string;
@@ -22,20 +22,25 @@ type UserRoleRow = {
   role_id: string;
 };
 
-type CapabilityRow = {
-  capability_code: string;
+type RoleCapabilityRow = {
+  role_id: string;
+  capability_id: string;
 };
 
 type RoleRow = {
   id: string;
+  tenant_id: string;
   is_web_access: boolean | null;
 };
 
-type RoleAccessRow = Pick<RoleRow, "is_web_access">;
+type CapabilityLookupRow = {
+  id: string;
+  key: string;
+};
 
 type CapabilityOverrideRow = {
-  capability_code: string;
-  effect: "allow" | "deny";
+  capability_id: string;
+  grant_type: "allow" | "deny";
 };
 
 /**
@@ -74,7 +79,7 @@ export class SupabaseAppSessionRepository implements AppSessionRepository {
   } | null> {
     const { data, error } = await this.client
       .from("user_profiles")
-      .select("user_id, email, status, tenant_id")
+      .select("id, email, status, tenant_id")
       .eq("tenant_id", input.tenantId)
       .eq("auth_user_id", input.authUserId)
       .maybeSingle<UserProfileRow>();
@@ -88,7 +93,7 @@ export class SupabaseAppSessionRepository implements AppSessionRepository {
     }
 
     return {
-      userId: data.user_id,
+      userId: data.id,
       email: data.email,
       status: data.status,
       tenantId: data.tenant_id,
@@ -147,8 +152,7 @@ export class SupabaseAppSessionRepository implements AppSessionRepository {
       .from("roles")
       .select("is_web_access")
       .eq("tenant_id", input.tenantId)
-      .in("id", roleIds)
-      .returns<RoleAccessRow[]>();
+      .in("id", roleIds);
 
     if (error) {
       throw new Error(error.message);
@@ -169,21 +173,20 @@ export class SupabaseAppSessionRepository implements AppSessionRepository {
       return [];
     }
 
-    const [capabilityResult, roleResult] = await Promise.all([
+    const [roleCapabilityResult, roleResult] = await Promise.all([
       this.client
         .from("role_capabilities")
-        .select("capability_code")
-        .eq("tenant_id", input.tenantId)
+        .select("role_id, capability_id")
         .in("role_id", normalizedRoleIds)
         .then((result) =>
-          this.ensureRows<CapabilityRow>(
+          this.ensureRows<RoleCapabilityRow>(
             result,
             "Role capability lookup failed"
           )
         ),
       this.client
         .from("roles")
-        .select("id, is_web_access")
+        .select("id, tenant_id, is_web_access")
         .eq("tenant_id", input.tenantId)
         .in("id", normalizedRoleIds)
         .then((result) =>
@@ -191,36 +194,89 @@ export class SupabaseAppSessionRepository implements AppSessionRepository {
         ),
     ]);
 
-    const capabilities = new Set(
-      capabilityResult.map((row) => row.capability_code)
+    const allowedRoleIds = new Set(roleResult.map((row) => row.id));
+    const roleCapabilities = roleCapabilityResult.filter((row) =>
+      allowedRoleIds.has(row.role_id)
     );
 
-    const hasWebRole = roleResult.some((row) => row.is_web_access === true);
-    if (hasWebRole) {
-      capabilities.add(WEB_ACCESS_CAPABILITY);
+    const capabilityIds = Array.from(
+      new Set(roleCapabilities.map((row) => row.capability_id))
+    );
+
+    if (capabilityIds.length === 0) {
+      return this.mergeCapabilities([], roleResult);
     }
 
-    return [...capabilities];
+    const capabilityRows = await this.client
+      .from("capabilities")
+      .select("id, key")
+      .in("id", capabilityIds)
+      .then((result) =>
+        this.ensureRows<CapabilityLookupRow>(
+          result,
+          "Capability lookup for role capabilities failed"
+        )
+      );
+
+    return this.mergeCapabilities(
+      capabilityRows.map((row) => row.key),
+      roleResult
+    );
+  }
+
+  private mergeCapabilities(
+    capabilities: string[],
+    roles: RoleRow[]
+  ): string[] {
+    const merged = new Set(capabilities);
+
+    if (roles.some((row) => row.is_web_access === true)) {
+      merged.add(WEB_ACCESS_CAPABILITY);
+    }
+
+    return [...merged];
   }
 
   async listUserCapabilityOverrides(input: {
     tenantId: string;
     userId: string;
   }): Promise<readonly UserCapabilityOverride[]> {
-    const { data, error } = await this.client
+    const overrides = await this.client
       .from("user_capability_overrides")
-      .select("capability_code, effect")
+      .select("capability_id, grant_type")
       .eq("tenant_id", input.tenantId)
       .eq("user_id", input.userId)
-      .returns<CapabilityOverrideRow[]>();
+      .then((result) =>
+        this.ensureRows<CapabilityOverrideRow>(
+          result,
+          "User capability override lookup failed"
+        )
+      );
 
-    if (error) {
-      throw new Error(error.message);
+    if (overrides.length === 0) {
+      return [];
     }
 
-    return (data ?? []).map((item) => ({
-      capabilityCode: item.capability_code,
-      effect: item.effect,
+    const capabilityIds = Array.from(
+      new Set(overrides.map((item) => item.capability_id))
+    );
+
+    const capabilities = await this.client
+      .from("capabilities")
+      .select("id, key")
+      .in("id", capabilityIds)
+      .then((result) =>
+        this.ensureRows<CapabilityLookupRow>(
+          result,
+          "Capability lookup for user overrides failed"
+        )
+      );
+
+    const keyById = new Map(capabilities.map((row) => [row.id, row.key]));
+
+    return overrides.map((item) => ({
+      capabilityCode: keyById.get(item.capability_id) ?? item.capability_id,
+      effect: item.grant_type,
     }));
   }
 

@@ -41,6 +41,17 @@ export class SupabaseAuthAdapter implements AuthIdentityPort {
     };
   }
 
+  /**
+   * Clears any signed-in Supabase auth session.
+   */
+  async signOut(): Promise<void> {
+    const { error } = await this.client.auth.signOut();
+
+    if (error) {
+      throw error;
+    }
+  }
+
   private extractTenantId(appMetadata: unknown): string | undefined {
     if (!appMetadata || typeof appMetadata !== "object") {
       return undefined;

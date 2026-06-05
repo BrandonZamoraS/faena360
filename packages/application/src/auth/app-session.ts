@@ -47,6 +47,7 @@ export class LoginWithEmailPasswordServiceImpl implements LoginWithEmailPassword
 
     const tenantId = authUser.tenantId?.trim();
     if (!tenantId) {
+      await this.cleanupAuthIdentity();
       return {
         ok: false,
         code: "missing_tenant",
@@ -57,6 +58,7 @@ export class LoginWithEmailPasswordServiceImpl implements LoginWithEmailPassword
     try {
       tenant = await this.appSessionRepository.getTenant({ tenantId });
     } catch {
+      await this.cleanupAuthIdentity();
       return {
         ok: false,
         code: "inactive_tenant",
@@ -64,6 +66,7 @@ export class LoginWithEmailPasswordServiceImpl implements LoginWithEmailPassword
     }
 
     if (tenant.status !== "active") {
+      await this.cleanupAuthIdentity();
       return {
         ok: false,
         code: "inactive_tenant",
@@ -82,6 +85,7 @@ export class LoginWithEmailPasswordServiceImpl implements LoginWithEmailPassword
         authUserId: authUser.id,
       });
     } catch {
+      await this.cleanupAuthIdentity();
       return {
         ok: false,
         code: "inactive_user",
@@ -89,6 +93,7 @@ export class LoginWithEmailPasswordServiceImpl implements LoginWithEmailPassword
     }
 
     if (!userProfile || userProfile.status !== "active") {
+      await this.cleanupAuthIdentity();
       return {
         ok: false,
         code: "inactive_user",
@@ -102,6 +107,7 @@ export class LoginWithEmailPasswordServiceImpl implements LoginWithEmailPassword
         userId: userProfile.userId,
       });
     } catch {
+      await this.cleanupAuthIdentity();
       return {
         ok: false,
         code: "web_access_denied",
@@ -116,6 +122,7 @@ export class LoginWithEmailPasswordServiceImpl implements LoginWithEmailPassword
       });
       effectiveCapabilities = Array.from(resolved.capabilities);
     } catch {
+      await this.cleanupAuthIdentity();
       return {
         ok: false,
         code: "web_access_denied",
@@ -130,6 +137,7 @@ export class LoginWithEmailPasswordServiceImpl implements LoginWithEmailPassword
         roleIds: roles,
       });
     } catch {
+      await this.cleanupAuthIdentity();
       return {
         ok: false,
         code: "web_access_denied",
@@ -137,6 +145,7 @@ export class LoginWithEmailPasswordServiceImpl implements LoginWithEmailPassword
     }
 
     if (!hasWebAccessRole) {
+      await this.cleanupAuthIdentity();
       return {
         ok: false,
         code: "web_access_denied",
@@ -144,6 +153,7 @@ export class LoginWithEmailPasswordServiceImpl implements LoginWithEmailPassword
     }
 
     if (!effectiveCapabilities.includes(WEB_ACCESS_CAPABILITY)) {
+      await this.cleanupAuthIdentity();
       return {
         ok: false,
         code: "web_access_denied",
@@ -162,5 +172,17 @@ export class LoginWithEmailPasswordServiceImpl implements LoginWithEmailPassword
         status: userProfile.status,
       },
     };
+  }
+
+  private async cleanupAuthIdentity(): Promise<void> {
+    if (!this.authIdentityPort.signOut) {
+      return;
+    }
+
+    try {
+      await this.authIdentityPort.signOut();
+    } catch {
+      return;
+    }
   }
 }

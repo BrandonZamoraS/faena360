@@ -33,6 +33,7 @@ function createClientFromPlan(plan: {
   user_profiles?: QueryBuilder[];
   user_roles?: QueryBuilder[];
   role_capabilities?: QueryBuilder[];
+  capabilities?: QueryBuilder[];
   roles?: QueryBuilder[];
   user_capability_overrides?: QueryBuilder[];
 }): SupabaseClient {
@@ -41,6 +42,7 @@ function createClientFromPlan(plan: {
     user_profiles: [...(plan.user_profiles ?? [])],
     user_roles: [...(plan.user_roles ?? [])],
     role_capabilities: [...(plan.role_capabilities ?? [])],
+    capabilities: [...(plan.capabilities ?? [])],
     roles: [...(plan.roles ?? [])],
     user_capability_overrides: [...(plan.user_capability_overrides ?? [])],
   };
@@ -99,7 +101,7 @@ describe("SupabaseAppSessionRepository", () => {
   it("getUserProfile: maps row and returns null when missing", async () => {
     const existingQuery = createQueryBuilder({
       data: {
-        user_id: "user-001",
+        id: "user-001",
         email: "alice@example.com",
         status: "active",
         tenant_id: "tenant-001",
@@ -182,15 +184,24 @@ describe("SupabaseAppSessionRepository", () => {
   it("listTenantRoleCapabilities: loads role capabilities and web access marker", async () => {
     const capabilityQuery = createQueryBuilder({
       data: [
-        { role_id: "r-admin", capability_code: "orders.read" },
-        { role_id: "r-admin", capability_code: "orders.write" },
+        { role_id: "r-admin", capability_id: "cap-read" },
+        { role_id: "r-reader", capability_id: "cap-write" },
+        { role_id: "r-admin", capability_id: "cap-read" },
+      ],
+      error: null,
+    });
+
+    const capabilityKeyQuery = createQueryBuilder({
+      data: [
+        { id: "cap-read", key: "orders.read" },
+        { id: "cap-write", key: "orders.write" },
       ],
       error: null,
     });
 
     const roleQuery = createQueryBuilder({
       data: [
-        { id: "r-admin", is_web_access: true },
+        { id: "r-admin", tenant_id: "tenant-001", is_web_access: true },
         { id: "r-reader", is_web_access: false },
       ],
       error: null,
@@ -198,6 +209,7 @@ describe("SupabaseAppSessionRepository", () => {
 
     const client = createClientFromPlan({
       role_capabilities: [capabilityQuery],
+      capabilities: [capabilityKeyQuery],
       roles: [roleQuery],
     });
 
@@ -205,20 +217,69 @@ describe("SupabaseAppSessionRepository", () => {
 
     const capabilities = await repository.listTenantRoleCapabilities({
       tenantId: "tenant-001",
-      roleIds: ["r-admin", "r-reader", "  ", "r-admin"],
+      roleIds: ["r-admin", "r-reader", "  ", "r-admin", "r-unauthorized"],
     });
 
     expect(capabilityQuery.in).toHaveBeenCalledWith("role_id", [
       "r-admin",
       "r-reader",
+      "r-unauthorized",
     ]);
-    expect(roleQuery.in).toHaveBeenCalledWith("id", ["r-admin", "r-reader"]);
+    expect(roleQuery.in).toHaveBeenCalledWith("id", [
+      "r-admin",
+      "r-reader",
+      "r-unauthorized",
+    ]);
+    expect(capabilityKeyQuery.in).toHaveBeenCalledWith("id", [
+      "cap-read",
+      "cap-write",
+    ]);
     expect(capabilities).toEqual(
       expect.arrayContaining([
         "orders.read",
         "orders.write",
         "web.portal.access",
       ])
+    );
+  });
+
+  it("listTenantRoleCapabilities: ignores role_capabilities for roles outside tenant", async () => {
+    const capabilityQuery = createQueryBuilder({
+      data: [
+        { role_id: "r-admin", capability_id: "cap-admin-read" },
+        { role_id: "r-other", capability_id: "cap-other-read" },
+      ],
+      error: null,
+    });
+
+    const capabilityKeyQuery = createQueryBuilder({
+      data: [{ id: "cap-admin-read", key: "admin.read" }],
+      error: null,
+    });
+
+    const roleQuery = createQueryBuilder({
+      data: [{ id: "r-admin", tenant_id: "tenant-001", is_web_access: true }],
+      error: null,
+    });
+
+    const client = createClientFromPlan({
+      role_capabilities: [capabilityQuery],
+      roles: [roleQuery],
+      capabilities: [capabilityKeyQuery],
+    });
+
+    const repository = new SupabaseAppSessionRepository(client);
+
+    const capabilities = await repository.listTenantRoleCapabilities({
+      tenantId: "tenant-001",
+      roleIds: ["r-admin", "r-other"],
+    });
+
+    expect(capabilityKeyQuery.in).toHaveBeenCalledWith("id", [
+      "cap-admin-read",
+    ]);
+    expect(capabilities).toEqual(
+      expect.arrayContaining(["admin.read", "web.portal.access"])
     );
   });
 
@@ -276,14 +337,23 @@ describe("SupabaseAppSessionRepository", () => {
   it("listUserCapabilityOverrides: maps snake_case rows to override interface", async () => {
     const query = createQueryBuilder({
       data: [
-        { capability_code: "feature.a", effect: "allow" },
-        { capability_code: "feature.b", effect: "deny" },
+        { capability_id: "cap-a", grant_type: "allow" },
+        { capability_id: "cap-b", grant_type: "deny" },
+      ],
+      error: null,
+    });
+
+    const capabilityQuery = createQueryBuilder({
+      data: [
+        { id: "cap-a", key: "feature.a" },
+        { id: "cap-b", key: "feature.b" },
       ],
       error: null,
     });
 
     const client = createClientFromPlan({
       user_capability_overrides: [query],
+      capabilities: [capabilityQuery],
     });
 
     const repository = new SupabaseAppSessionRepository(client);
@@ -297,6 +367,8 @@ describe("SupabaseAppSessionRepository", () => {
       { capabilityCode: "feature.a", effect: "allow" },
       { capabilityCode: "feature.b", effect: "deny" },
     ]);
+
+    expect(capabilityQuery.in).toHaveBeenCalledWith("id", ["cap-a", "cap-b"]);
   });
 
   it("throws when role capability lookup fails", async () => {

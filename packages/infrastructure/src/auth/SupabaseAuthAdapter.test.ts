@@ -4,6 +4,7 @@ import { SupabaseAuthAdapter } from "./SupabaseAuthAdapter";
 
 type SupabaseAuthQuery = {
   signInWithPassword: ReturnType<typeof vi.fn>;
+  signOut: ReturnType<typeof vi.fn>;
 };
 
 function createClient(): {
@@ -12,6 +13,7 @@ function createClient(): {
 } {
   const auth: SupabaseAuthQuery = {
     signInWithPassword: vi.fn(),
+    signOut: vi.fn(),
   };
 
   const client = {
@@ -141,5 +143,27 @@ describe("SupabaseAuthAdapter", () => {
         password: "secret",
       })
     ).rejects.toThrow("Authenticated user has no email");
+  });
+
+  it("signOut delegates to Supabase auth signOut", async () => {
+    const { client, auth } = createClient();
+
+    auth.signOut.mockResolvedValue({ error: null });
+
+    const adapter = new SupabaseAuthAdapter(client);
+
+    await expect(adapter.signOut()).resolves.toBeUndefined();
+
+    expect(auth.signOut).toHaveBeenCalledOnce();
+  });
+
+  it("throws when Supabase signOut fails", async () => {
+    const { client, auth } = createClient();
+
+    auth.signOut.mockResolvedValue({ error: { message: "Sign-out failed" } });
+
+    const adapter = new SupabaseAuthAdapter(client);
+
+    await expect(adapter.signOut()).rejects.toThrow("Sign-out failed");
   });
 });
