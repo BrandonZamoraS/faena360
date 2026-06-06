@@ -3,7 +3,11 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      "@faena360/application": [
+        "../application/src",
+        "../application"
+      ]
     }
   },
   "include": ["**/*.ts"],
