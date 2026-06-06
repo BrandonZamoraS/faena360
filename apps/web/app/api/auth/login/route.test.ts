@@ -6,7 +6,7 @@ import {
 } from "../../../../../../packages/application/src/auth/app-session";
 import type { AppSessionRepository } from "../../../../../../packages/application/src/auth/index";
 import { APP_SESSION_COOKIE_NAME } from "../../../../lib/auth/session";
-import { POST, DELETE } from "./route";
+import { handleLoginDelete, handleLoginPost } from "./handler";
 
 const successfulSession = {
   user_id: "user-id",
@@ -130,7 +130,7 @@ describe("POST /api/auth/login", () => {
       body: JSON.stringify({ email: "admin@faena360.com", password: "password" }),
     });
 
-    const response = await POST(request, { service: { login } });
+    const response = await handleLoginPost(request, { service: { login } });
     const payload = await response.json();
 
     expect(response.status).toBe(200);
@@ -158,7 +158,7 @@ describe("POST /api/auth/login", () => {
         body: JSON.stringify({ email: "admin@faena360.com", password: "password" }),
       });
 
-      const response = await POST(request, { service: { login } });
+      const response = await handleLoginPost(request, { service: { login } });
       const payload = await response.json();
 
       expect(response.status).toBe(code === "invalid_credentials" ? 401 : 403);
@@ -175,7 +175,7 @@ describe("POST /api/auth/login", () => {
       body: JSON.stringify({ email: "supervisor@faena360.com", password: "password" }),
     });
 
-    const response = await POST(request, { service: { login } });
+    const response = await handleLoginPost(request, { service: { login } });
     const payload = await response.json();
 
     expect(response.status).toBe(200);
@@ -197,7 +197,7 @@ describe("POST /api/auth/login", () => {
       async (role, expectedStatus, shouldSucceed) => {
         const { service } = buildLoginServiceForRole({ role });
 
-        const response = await POST(
+        const response = await handleLoginPost(
           buildLoginRequest(`${role}@faena360.com`),
           { service }
         );
@@ -221,7 +221,7 @@ describe("POST /api/auth/login", () => {
         userStatus: "inactive",
       });
 
-      const response = await POST(
+      const response = await handleLoginPost(
         buildLoginRequest("operator@faena360.com"),
         { service }
       );
@@ -238,7 +238,7 @@ describe("POST /api/auth/login", () => {
         tenantStatus: "inactive",
       });
 
-      const response = await POST(
+      const response = await handleLoginPost(
         buildLoginRequest("admin@faena360.com"),
         { service }
       );
@@ -255,7 +255,7 @@ describe("POST /api/auth/login", () => {
         signInThrows: true,
       });
 
-      const response = await POST(
+      const response = await handleLoginPost(
         buildLoginRequest("admin@faena360.com"),
         { service }
       );
@@ -274,7 +274,7 @@ describe("POST /api/auth/login", () => {
       body: "{ not-json",
     });
 
-    const response = await POST(request, { service: { login } });
+    const response = await handleLoginPost(request, { service: { login } });
     const payload = await response.json();
 
     expect(response.status).toBe(400);
@@ -288,7 +288,7 @@ describe("POST /api/auth/login", () => {
       body: JSON.stringify({ email: "admin@faena360.com" }),
     });
 
-    const response = await POST(request, { service: { login } });
+    const response = await handleLoginPost(request, { service: { login } });
     const payload = await response.json();
 
     expect(response.status).toBe(400);
@@ -298,7 +298,7 @@ describe("POST /api/auth/login", () => {
 
 describe("DELETE /api/auth/login", () => {
   it("clears the session cookie", async () => {
-    const response = await DELETE();
+    const response = await handleLoginDelete();
     const payload = await response.json();
 
     expect(response.status).toBe(200);
