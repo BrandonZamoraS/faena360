@@ -52,6 +52,13 @@ export interface AuthIdentityPort {
   signOut?(): Promise<void>;
 }
 
+export { createUserManagementService } from "./user-management";
+
+export type {
+  TenantUserManagementService,
+  UserManagementServiceDependencies,
+} from "./user-management";
+
 /**
  * Local authorization data required to build a session.
  */

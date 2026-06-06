@@ -3,6 +3,7 @@ export {
   CapabilityDeniedError,
   createEffectiveCapabilitiesCacheKey,
   createEffectiveCapabilitiesResolver,
+  createUserManagementService,
   InMemoryEffectiveCapabilitiesCache,
   LoginWithEmailPasswordServiceImpl,
 } from "./src/auth";
@@ -22,5 +23,7 @@ export type {
   LoginWithEmailPasswordService,
   AuthIdentityPort,
   AppSessionRepository,
+  TenantUserManagementService,
+  UserManagementServiceDependencies,
   UserCapabilityOverride,
 } from "./src/auth";

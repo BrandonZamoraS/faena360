@@ -1,4 +1,4 @@
-import type { PostgrestError, SupabaseClient } from "@supabase/supabase-js";
+import { type SupabaseClient } from "@supabase/supabase-js";
 
 import type {
   TenantUserSummary,
@@ -6,16 +6,12 @@ import type {
 } from "@faena360/domain";
 
 interface SupabaseProfileRow {
-  readonly user_id: string;
+  readonly id: string;
   readonly tenant_id: string;
   readonly email: string;
   readonly full_name: string;
   readonly phone: string | null;
   readonly status: "active" | "inactive";
-}
-
-interface AuditCandidate {
-  readonly [key: string]: unknown;
 }
 
 interface CreateProfileInput {
@@ -38,33 +34,32 @@ interface RecordAuditInput {
 }
 
 export class SupabaseUserManagementRepository implements UserManagementRepository {
-  private readonly client: SupabaseClient;
-
-  public constructor(client: SupabaseClient) {
-    this.client = client;
-  }
+  public constructor(private readonly client: SupabaseClient) {}
 
   public async identifierExists(input: {
     readonly email: string;
     readonly phone?: string;
   }): Promise<boolean> {
-    if (
-      await existsByField(this.client, "user_profiles", "email", input.email)
-    ) {
+    const normalizedEmail = normalizeIdentifierEmail(input.email);
+    const normalizedPhone = input.phone
+      ? normalizeIdentifierPhone(input.phone)
+      : undefined;
+
+    if (await existsByNormalizedField(this.client, "email", normalizedEmail)) {
       return true;
     }
 
-    if (!input.phone) {
+    if (!normalizedPhone) {
       return false;
     }
 
-    return existsByField(this.client, "user_profiles", "phone", input.phone);
+    return existsByNormalizedField(this.client, "phone", normalizedPhone);
   }
 
   public async createProfile(input: CreateProfileInput): Promise<string> {
     const profilePayload = {
       tenant_id: input.tenantId,
-      user_id: input.authUserId,
+      auth_user_id: input.authUserId,
       email: input.email,
       full_name: input.fullName,
       phone: input.phone ?? null,
@@ -74,27 +69,30 @@ export class SupabaseUserManagementRepository implements UserManagementRepositor
     const response = await this.client
       .from("user_profiles")
       .insert(profilePayload)
-      .select("user_id")
+      .select("id")
       .single();
 
-    const data = response.data as { user_id: string } | null;
     if (response.error) {
-      throw new Error(formatSupabaseError(response.error));
+      throw new Error(response.error.message);
     }
 
-    if (!data?.user_id) {
-      throw new Error("Profile creation did not return a user id.");
+    const data = response.data as { id: string } | null;
+
+    if (!data?.id) {
+      throw new Error("Profile creation did not return a local profile id.");
     }
 
-    return data.user_id;
+    return data.id;
   }
 
   public async assignRoles(input: AssignRolesInput): Promise<void> {
-    if (input.roleIds.length === 0) {
+    const uniqueRoleIds = Array.from(new Set(input.roleIds));
+
+    if (uniqueRoleIds.length === 0) {
       return;
     }
 
-    const roleRows = input.roleIds.map((roleId) => ({
+    const roleRows = uniqueRoleIds.map((roleId) => ({
       tenant_id: input.tenantId,
       user_id: input.userId,
       role_id: roleId,
@@ -103,7 +101,7 @@ export class SupabaseUserManagementRepository implements UserManagementRepositor
     const response = await this.client.from("user_roles").insert(roleRows);
 
     if (response.error) {
-      throw new Error(formatSupabaseError(response.error));
+      throw new Error(response.error.message);
     }
   }
 
@@ -112,50 +110,36 @@ export class SupabaseUserManagementRepository implements UserManagementRepositor
   }): Promise<readonly TenantUserSummary[]> {
     const response = await this.client
       .from("user_profiles")
-      .select("user_id,tenant_id,email,full_name,phone,status")
+      .select("id,tenant_id,email,full_name,phone,status")
       .eq("tenant_id", input.tenantId)
       .eq("status", "active");
 
     if (response.error) {
-      throw new Error(formatSupabaseError(response.error));
+      throw new Error(response.error.message);
     }
 
     return (response.data as readonly SupabaseProfileRow[]).map((row) => ({
-      ...row,
+      user_id: row.id,
+      tenant_id: row.tenant_id,
+      email: row.email,
+      full_name: row.full_name,
       phone: row.phone ?? null,
+      status: row.status,
     }));
   }
 
   public async recordUserCreatedAudit(input: RecordAuditInput): Promise<void> {
-    const targetTenantId = await this.resolveTenantIdForProfile(
-      input.targetUserId
-    );
-    const createdAt = new Date().toISOString();
+    const response = await this.client.from("audit_log").insert({
+      tenant_id: await this.resolveTenantIdForProfile(input.targetUserId),
+      actor_user_id: input.actorUserId,
+      target_user_id: input.targetUserId,
+      action: "user_created",
+      occurred_at: new Date().toISOString(),
+    });
 
-    const candidates: readonly AuditCandidate[] = [
-      {
-        event_name: "user_created",
-        tenant_id: targetTenantId,
-        actor_user_id: input.actorUserId,
-        target_user_id: input.targetUserId,
-        created_at: createdAt,
-      },
-      {
-        action: "user_created",
-        tenant_id: targetTenantId,
-        actor_user_id: input.actorUserId,
-        target_user_id: input.targetUserId,
-        created_at: createdAt,
-      },
-      {
-        actor_user_id: input.actorUserId,
-        target_user_id: input.targetUserId,
-        event_code: "user_created",
-        created_at: createdAt,
-      },
-    ];
-
-    await insertAuditRecordWithFallback(this.client, candidates);
+    if (response.error) {
+      throw new Error(response.error.message);
+    }
   }
 
   private async resolveTenantIdForProfile(
@@ -164,7 +148,7 @@ export class SupabaseUserManagementRepository implements UserManagementRepositor
     const response = await this.client
       .from("user_profiles")
       .select("tenant_id")
-      .eq("user_id", userId)
+      .eq("id", userId)
       .single();
 
     if (response.error) {
@@ -176,47 +160,36 @@ export class SupabaseUserManagementRepository implements UserManagementRepositor
   }
 }
 
-async function existsByField(
+async function existsByNormalizedField(
   client: SupabaseClient,
-  table: string,
-  column: string,
+  column: "email" | "phone",
   value: string
 ): Promise<boolean> {
-  const response = await client
-    .from(table)
-    .select("user_id", { count: "exact", head: true })
-    .eq(column, value);
+  const response = await client.from("user_profiles").select(column);
 
   if (response.error) {
-    throw new Error(formatSupabaseError(response.error));
+    throw new Error(response.error.message);
   }
 
-  return (response.count ?? 0) > 0;
+  const rows = response.data as Array<Record<typeof column, string | null>>;
+  const normalize =
+    column === "email" ? normalizeIdentifierEmail : normalizeIdentifierPhone;
+
+  return rows.some((row) => {
+    const currentValue = row[column];
+
+    return (
+      typeof currentValue === "string" && normalize(currentValue) === value
+    );
+  });
 }
 
-async function insertAuditRecordWithFallback(
-  client: SupabaseClient,
-  candidates: readonly AuditCandidate[]
-): Promise<void> {
-  let lastError: PostgrestError | null = null;
-
-  for (const candidate of candidates) {
-    const response = await client.from("audit_log").insert(candidate);
-
-    if (!response.error) {
-      return;
-    }
-
-    lastError = response.error;
-  }
-
-  if (lastError) {
-    throw new Error(formatSupabaseError(lastError));
-  }
+function normalizeIdentifierEmail(value: string): string {
+  return value.trim().toLowerCase();
 }
 
-function formatSupabaseError(error: PostgrestError | Error): string {
-  return "message" in error
-    ? error.message
-    : "Supabase repository request failed.";
+function normalizeIdentifierPhone(value: string): string {
+  const normalized = value.replace(/\D/g, "");
+
+  return normalized.length > 0 ? normalized : value.trim();
 }

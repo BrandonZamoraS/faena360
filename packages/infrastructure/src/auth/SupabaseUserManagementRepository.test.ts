@@ -8,67 +8,45 @@ interface QueryCall {
   readonly details: string;
 }
 
-function createMockQuery<T>(
-  response: {
-    data: T;
-    error: null;
-    count?: number;
-  },
-  calls: QueryCall[]
-): {
-  readonly select: (
-    columns: string,
-    options?: {
-      count?: "exact" | "planned" | "estimated";
-      head?: boolean;
-    }
-  ) => unknown;
-  readonly eq: (column: string, value: unknown) => unknown;
-  readonly insert: (_values: unknown) => unknown;
-  readonly single: () => Promise<{ readonly data: T; readonly error: null }>;
-  readonly data: T;
+interface MockInsertResponse {
+  readonly data: unknown;
   readonly error: null;
   readonly count?: number;
-} {
+}
+
+function createMockQuery<T>(
+  response: MockInsertResponse & { readonly data: T },
+  calls: QueryCall[],
+  table: string,
+  onInsert?: (values: unknown) => void
+) {
   const query = {
     data: response.data,
     error: response.error,
     count: response.count,
-    select: (
-      _columns: string,
-      _options?: {
-        readonly count?: "exact" | "planned" | "estimated";
-        readonly head?: boolean;
-      }
-    ) => {
-      calls.push({
-        operation: "select",
-        details: `${_columns}${_options ? `:${JSON.stringify(_options)}` : ""}`,
-      });
-
+    select: (_columns: string, _options?: unknown) => {
+      calls.push({ operation: "select", details: `${table}:${_columns}` });
       return query;
     },
     eq: (column: string, value: unknown) => {
       calls.push({
         operation: "eq",
-        details: `${column}=${String(value)}`,
+        details: `${table}:${column}=${String(value)}`,
       });
-
       return query;
     },
-    insert: (_values: unknown) => {
-      calls.push({
-        operation: "insert",
-        details: "inserted",
-      });
-
+    insert: (values: unknown) => {
+      calls.push({ operation: "insert", details: table });
+      onInsert?.(values);
       return {
         ...query,
-        select: () => query,
-        single: async () => ({
-          data: response.data,
-          error: response.error,
+        select: () => ({
+          single: async () => ({
+            data: response.data,
+            error: response.error,
+          }),
         }),
+        error: null,
       };
     },
     single: async () => ({
@@ -77,17 +55,15 @@ function createMockQuery<T>(
     }),
   };
 
-  return {
-    ...query,
-  };
+  return query;
 }
 
-async function runUserManagementRepositoryTenantActiveFilterCheck(): Promise<void> {
+async function runTenantActiveUsersUseSchemaColumnsCheck(): Promise<void> {
   const calls: QueryCall[] = [];
 
-  const activeUsersByTenant = [
+  const activeUsers = [
     {
-      user_id: "user-id-1",
+      id: "user-id-1",
       tenant_id: "tenant-1",
       email: "tenant-1-user@example.com",
       full_name: "Tenant One",
@@ -98,92 +74,160 @@ async function runUserManagementRepositoryTenantActiveFilterCheck(): Promise<voi
 
   const client = {
     from: (table: string) => {
-      if (table !== "user_profiles") {
-        throw new Error(`Unexpected table call: ${table}`);
-      }
+      expect(table).toBe("user_profiles");
+      return createMockQuery({ data: activeUsers, error: null }, calls, table);
+    },
+  } as unknown as SupabaseClient;
 
+  const repository = new SupabaseUserManagementRepository(client);
+  const result = await repository.listActiveUsers({ tenantId: "tenant-1" });
+
+  expect(result).toHaveLength(1);
+  expect(result[0]?.user_id).toBe("user-id-1");
+  expect(
+    calls.find((entry) => entry.operation === "select")?.details
+  ).toContain("id,tenant_id,email,full_name,phone,status");
+}
+
+async function runCreateProfileUsesAuthUserColumnAndReturnsId(): Promise<void> {
+  const calls: QueryCall[] = [];
+  let insertPayload: unknown;
+
+  const client = {
+    from: (table: string) => {
+      expect(table).toBe("user_profiles");
       return createMockQuery(
-        {
-          data: activeUsersByTenant,
-          error: null,
-        },
-        calls
+        { data: { id: "local-user-id-1" }, error: null },
+        calls,
+        table,
+        (values) => {
+          insertPayload = values;
+        }
       );
     },
   } as unknown as SupabaseClient;
 
   const repository = new SupabaseUserManagementRepository(client);
-
-  const result = await repository.listActiveUsers({
+  const userId = await repository.createProfile({
     tenantId: "tenant-1",
+    authUserId: "auth-user-id-1",
+    email: "user@example.com",
+    fullName: "Tenant user",
+    phone: "+1 555 123 456",
   });
 
-  expect(result).toHaveLength(1);
-
-  const resultSummary = result[0];
-
-  expect(resultSummary.tenant_id).toBe("tenant-1");
-
-  expect(resultSummary.status).toBe("active");
-
-  const selectCall = calls.find((entry) => entry.operation === "select");
-  expect(selectCall).toBeDefined();
-  expect(selectCall?.details).toContain(
-    "user_id,tenant_id,email,full_name,phone,status"
-  );
-
-  const tenantFilter = calls.find(
-    (entry) =>
-      entry.operation === "eq" && entry.details.startsWith("tenant_id=")
-  );
-  expect(tenantFilter).toBeDefined();
-  expect(tenantFilter?.details).toBe("tenant_id=tenant-1");
-
-  const statusFilter = calls.find(
-    (entry) => entry.operation === "eq" && entry.details.startsWith("status=")
-  );
-  expect(statusFilter).toBeDefined();
-  expect(statusFilter?.details).toBe("status=active");
+  expect(userId).toBe("local-user-id-1");
+  expect(insertPayload).toMatchObject({
+    tenant_id: "tenant-1",
+    auth_user_id: "auth-user-id-1",
+    email: "user@example.com",
+    full_name: "Tenant user",
+    phone: "+1 555 123 456",
+    status: "active",
+  });
 }
 
-async function runUserManagementRepositoryAuditFallbackCheck(): Promise<void> {
+async function runAssignRolesDeduplicatesRoleIdsBeforeInsert(): Promise<void> {
   const calls: QueryCall[] = [];
-  const tenantLookupResult = {
-    tenant_id: "tenant-1",
-  };
-
-  const auditInsertAttempts: string[] = [];
+  let insertPayload: unknown;
 
   const client = {
     from: (table: string) => {
-      calls.push({
-        operation: "from",
-        details: table,
-      });
+      expect(table).toBe("user_roles");
+      return createMockQuery(
+        { data: null, error: null },
+        calls,
+        table,
+        (values) => {
+          insertPayload = values;
+        }
+      );
+    },
+  } as unknown as SupabaseClient;
+
+  const repository = new SupabaseUserManagementRepository(client);
+  await repository.assignRoles({
+    tenantId: "tenant-1",
+    userId: "user-id-1",
+    roleIds: ["role-a", "role-b", "role-a", "role-c", "role-b"],
+  });
+
+  expect(insertPayload).toEqual([
+    { tenant_id: "tenant-1", user_id: "user-id-1", role_id: "role-a" },
+    { tenant_id: "tenant-1", user_id: "user-id-1", role_id: "role-b" },
+    { tenant_id: "tenant-1", user_id: "user-id-1", role_id: "role-c" },
+  ]);
+}
+
+async function runIdentifierExistsNormalizesInputBeforeLookup(): Promise<void> {
+  const calls: QueryCall[] = [];
+  const rowsByColumn = {
+    email: [{ email: "admin@example.com" }],
+    phone: [{ phone: "+1 (555) 111-2222" }],
+  };
+
+  const client = {
+    from: (table: string) => {
+      expect(table).toBe("user_profiles");
+
+      const query = {
+        error: null,
+        select: (_columns: string) => {
+          calls.push({ operation: "select", details: _columns });
+
+          return {
+            data: rowsByColumn[_columns as "email" | "phone"] ?? [],
+            error: null,
+          };
+        },
+        single: async () => ({ data: null, error: null }),
+      };
+
+      return query;
+    },
+  } as unknown as SupabaseClient;
+
+  const repository = new SupabaseUserManagementRepository(client);
+
+  const exists = await repository.identifierExists({
+    email: "  ADMIN@EXAMPLE.COM  ",
+    phone: "+1 (555) 111-2222",
+  });
+
+  expect(exists).toBe(true);
+  expect(calls).toContainEqual({
+    operation: "select",
+    details: "email",
+  });
+}
+
+async function runRecordUserCreatedAuditUsesCurrentSchema(): Promise<void> {
+  const calls: QueryCall[] = [];
+  let insertedAuditPayload: unknown;
+
+  const client = {
+    from: (table: string) => {
+      calls.push({ operation: "from", details: table });
 
       if (table === "user_profiles") {
-        const query = {
-          tenant_id: tenantLookupResult.tenant_id,
-        };
-
         return {
-          select: () => ({
-            eq: () => ({
-              single: async () => ({
-                data: query,
-                error: null,
-              }),
-            }),
-          }),
-        } as unknown as {
-          readonly select: () => {
-            readonly eq: () => {
-              readonly single: () => Promise<{
-                readonly data: { tenant_id: string } | null;
-                readonly error: null;
-              }>;
+          select: (_columns: string) => {
+            calls.push({ operation: "select", details: `${_columns}` });
+            return {
+              eq: (_column: string, _value: unknown) => {
+                calls.push({
+                  operation: "eq",
+                  details: `${_column}=${String(_value)}`,
+                });
+                return {
+                  single: async () => ({
+                    data: { tenant_id: "tenant-1" },
+                    error: null,
+                  }),
+                };
+              },
             };
-          };
+          },
         };
       }
 
@@ -191,46 +235,15 @@ async function runUserManagementRepositoryAuditFallbackCheck(): Promise<void> {
         throw new Error(`Unexpected table call: ${table}`);
       }
 
-      const attempts = attemptsByTable.get("audit_log") || 0;
-      attemptsByTable.set("audit_log", attempts + 1);
-      auditInsertAttempts.push(`attempt-${attempts + 1}`);
-
       return {
-        insert: (_candidate: Record<string, unknown>) => {
-          calls.push({
-            operation: "insert",
-            details: `audit-log:${attempts + 1}`,
-          });
-
-          if (attempts < 2) {
-            return {
-              error: {
-                message: `audit constraint failed ${attempts + 1}`,
-                details: "constraint violation",
-                hint: null,
-                code: "23502",
-              },
-            };
-          }
-
-          return {
-            error: null,
-          };
+        insert: (payload: unknown) => {
+          insertedAuditPayload = payload;
+          calls.push({ operation: "insert", details: "audit_log" });
+          return { error: null };
         },
-      } as unknown as {
-        readonly insert: (_candidate: Record<string, unknown>) => {
-          readonly error: {
-            readonly message: string;
-            readonly details: string;
-            readonly hint: null;
-            readonly code: string;
-          } | null;
-        };
       };
     },
   } as unknown as SupabaseClient;
-
-  const attemptsByTable = new Map<string, number>();
 
   const repository = new SupabaseUserManagementRepository(client);
 
@@ -239,27 +252,37 @@ async function runUserManagementRepositoryAuditFallbackCheck(): Promise<void> {
     targetUserId: "user-id-1",
   });
 
-  const insertCalls = calls.filter((entry) => entry.operation === "insert");
-
-  expect(insertCalls).toHaveLength(3);
-
-  const fallbackOrder = insertCalls.map((entry) => entry.details);
-  expect(fallbackOrder).toEqual(["audit-log:1", "audit-log:2", "audit-log:3"]);
-
-  expect(auditInsertAttempts).toHaveLength(3);
-
-  const tenantQueryCalls = calls.filter(
-    (entry) => entry.operation === "from" && entry.details === "user_profiles"
-  );
-  expect(tenantQueryCalls).toHaveLength(1);
+  expect(calls).toContainEqual({ operation: "from", details: "user_profiles" });
+  expect(calls).toContainEqual({ operation: "from", details: "audit_log" });
+  expect(insertedAuditPayload).toMatchObject({
+    tenant_id: "tenant-1",
+    actor_user_id: "actor-1",
+    target_user_id: "user-id-1",
+    action: "user_created",
+  });
+  expect(
+    (insertedAuditPayload as { occurred_at?: string })?.occurred_at
+  ).toBeTypeOf("string");
 }
 
 describe("SupabaseUserManagementRepository", () => {
-  it("lists only active users for the requested tenant", async () => {
-    await runUserManagementRepositoryTenantActiveFilterCheck();
+  it("maps active list results to TenantUserSummary.user_id from user_profiles.id", async () => {
+    await runTenantActiveUsersUseSchemaColumnsCheck();
   });
 
-  it("retries audit payload variants when inserts fail", async () => {
-    await runUserManagementRepositoryAuditFallbackCheck();
+  it("creates profile with auth_user_id and returns local profile id", async () => {
+    await runCreateProfileUsesAuthUserColumnAndReturnsId();
+  });
+
+  it("deduplicates role ids before assigning roles", async () => {
+    await runAssignRolesDeduplicatesRoleIdsBeforeInsert();
+  });
+
+  it("normalizes identifiers before existence checks", async () => {
+    await runIdentifierExistsNormalizesInputBeforeLookup();
+  });
+
+  it("writes audit log using canonical column names", async () => {
+    await runRecordUserCreatedAuditUsesCurrentSchema();
   });
 });

@@ -6,6 +6,7 @@ import { SupabaseAuthAdminAdapter } from "./SupabaseAuthAdminAdapter";
 interface CreateUserSpyPayload {
   readonly email: string;
   readonly password: string;
+  readonly email_confirm: boolean;
   readonly app_metadata: {
     readonly tenant_id: string;
   };
@@ -63,6 +64,7 @@ async function runAuthAdminAdapterContractChecks(): Promise<void> {
   });
 
   expect(capturedCreatePayload).toBeDefined();
+  expect(capturedCreatePayload?.email_confirm).toBe(true);
   expect(capturedCreatePayload?.app_metadata.tenant_id).toBe("tenant-1");
 
   await adapter.deleteUser("auth-user-id-1");

@@ -11,6 +11,7 @@ interface CreateUserInput {
 interface SupabaseCreateUserPayload {
   readonly email: string;
   readonly password: string;
+  readonly email_confirm: boolean;
   readonly app_metadata: {
     readonly tenant_id: string;
   };
@@ -66,6 +67,7 @@ export class SupabaseAuthAdminAdapter implements AuthAdminPort {
     const response = await this.client.auth.admin.createUser({
       email: input.email,
       password: input.temporaryPassword,
+      email_confirm: true,
       app_metadata: {
         tenant_id: input.app_metadata.tenant_id,
       },

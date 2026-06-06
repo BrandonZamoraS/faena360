@@ -14,7 +14,7 @@ interface TenantSessionScope {
   readonly user_id: string;
 }
 
-interface UserManagementServiceDependencies {
+export interface UserManagementServiceDependencies {
   readonly authAdmin: AuthAdminPort;
   readonly repository: UserManagementRepository;
   readonly capabilityChecker: {
@@ -25,12 +25,10 @@ interface UserManagementServiceDependencies {
   };
 }
 
-export type { UserManagementServiceDependencies };
-
 const USERS_CREATE_CAPABILITY = "users:create" as const;
 const USERS_READ_CAPABILITY = "users:read" as const;
 
-interface TenantUserManagementService {
+export interface TenantUserManagementService {
   createUser(
     session: TenantSessionScope,
     input: CreateTenantUserInput
