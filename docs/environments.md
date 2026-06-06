@@ -10,10 +10,12 @@
 
 The following variables MUST be configured for every environment. Build and deploy will fail explicitly if any are missing.
 
-| Variable                        | Scope  | Description                       |
-| ------------------------------- | ------ | --------------------------------- |
-| `NEXT_PUBLIC_SUPABASE_URL`      | Public | Supabase project URL              |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public | Supabase anonymous/public API key |
+| Variable                        | Scope  | Description                                      |
+| ------------------------------- | ------ | ------------------------------------------------ |
+| `NEXT_PUBLIC_SUPABASE_URL`      | Public | Supabase project URL                             |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public | Supabase anonymous/public API key                |
+| `APP_SESSION_SECRET`            | Secret | HMAC secret for signed app-session cookies       |
+| `SUPABASE_SERVICE_ROLE_KEY`     | Secret | Server-only key for auth/session state refreshes |
 
 ## File Locations
 
@@ -49,8 +51,10 @@ And these as **repository secrets**:
 - `VERCEL_TOKEN`
 - `VERCEL_ORG_ID`
 - `VERCEL_PROJECT_ID`
+- `APP_SESSION_SECRET`
+- `SUPABASE_SERVICE_ROLE_KEY`
 
-`SUPABASE_SERVICE_ROLE_KEY` is intentionally out of scope for this change. Add it only when server-side Supabase operations are implemented.
+`SUPABASE_SERVICE_ROLE_KEY` is required only on the server. Never expose it with a `NEXT_PUBLIC_` prefix.
 
 ## Health Endpoint
 

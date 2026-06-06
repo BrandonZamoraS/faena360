@@ -12,7 +12,9 @@
   "dependencies": {
     "@faena360/application": "workspace:*",
     "@faena360/domain": "workspace:*",
+    "@faena360/infrastructure": "workspace:*",
     "@faena360/shared": "workspace:*",
+    "@supabase/supabase-js": "^2.107.0",
     "next": "16.2.6",
     "react": "19.2.4",
     "react-dom": "19.2.4"

@@ -7,6 +7,17 @@ const baseInput: LoginInput = {
   password: "CorrectHorseBatteryStaple",
 };
 
+const baseSession: AppSession = {
+  user_id: "user-123",
+  auth_user_id: "supabase-auth-id",
+  tenant_id: "tenant-001",
+  email: "alice@example.com",
+  roles: ["operator", "finance"],
+  effective_capabilities: ["orders.read", "web.portal.access"],
+  status: "active",
+  can_access_web: true,
+};
+
 function createRepository(overrides: {
   tenantStatus?: string;
   tenantId?: string;
@@ -37,7 +48,7 @@ function createRepository(overrides: {
       };
     },
     getUserProfile: async () => overrides.userProfile ?? null,
-    listUserRoles: async () => overrides.userRoles ?? [],
+    listUserRoles: async () => overrides.userRoles ?? ["operator", "finance"],
     listTenantRoleCapabilities: async () =>
       overrides.tenantRoleCapabilities ?? [],
     hasWebAccessRole: async () => overrides.hasWebAccessRole ?? true,
@@ -45,16 +56,6 @@ function createRepository(overrides: {
       overrides.userCapabilityOverrides ?? [],
   };
 }
-
-const successSession: AppSession = {
-  user_id: "user-123",
-  auth_user_id: "supabase-auth-id",
-  tenant_id: "tenant-001",
-  email: "alice@example.com",
-  roles: ["operator", "finance"],
-  effective_capabilities: ["orders.read", "web.portal.access"],
-  status: "active",
-};
 
 describe("app-session login", () => {
   it("returns a valid app session when all authorization checks pass", async () => {
@@ -73,7 +74,6 @@ describe("app-session login", () => {
         status: "active",
         tenantId: "tenant-001",
       },
-      userRoles: ["operator", "finance"],
       tenantRoleCapabilities: ["orders.read", "web.portal.access"],
       userCapabilityOverrides: [],
       hasWebAccessRole: true,
@@ -86,39 +86,34 @@ describe("app-session login", () => {
 
     await expect(service.login(baseInput)).resolves.toEqual({
       ok: true,
-      session: successSession,
+      session: baseSession,
     });
   });
 
-  it("uses tenant from auth metadata and never requires external request parameters", async () => {
-    let capturedTenantId: string | undefined;
-
+  it("uses tenant from auth metadata and never external parameter", async () => {
     const identityPort = {
       signInWithPassword: async () => ({
         id: "supabase-auth-id",
         email: baseInput.email,
-        tenantId: "tenant-from-metadata-only",
+        tenantId: "tenant-from-metadata",
       }),
     };
 
     const repository = {
       ...createRepository({
-        tenantId: "tenant-from-metadata-only",
+        tenantId: "tenant-from-metadata",
         userProfile: {
           userId: "user-123",
           email: baseInput.email,
           status: "active",
-          tenantId: "tenant-from-metadata-only",
+          tenantId: "tenant-from-metadata",
         },
-        tenantRoleCapabilities: ["web.portal.access"],
+        tenantRoleCapabilities: ["orders.read", "web.portal.access"],
       }),
-      getTenant: async ({ tenantId }: { tenantId: string }) => {
-        capturedTenantId = tenantId;
-        return {
-          id: tenantId,
-          status: "active",
-        };
-      },
+      getTenant: async ({ tenantId }: { tenantId: string }) => ({
+        id: tenantId,
+        status: "active",
+      }),
     };
 
     const service = new LoginWithEmailPasswordServiceImpl(
@@ -127,8 +122,10 @@ describe("app-session login", () => {
     );
 
     await service.login(baseInput);
-
-    expect(capturedTenantId).toBe("tenant-from-metadata-only");
+    await expect(service.login(baseInput)).resolves.toMatchObject({
+      ok: true,
+      session: expect.objectContaining({ tenant_id: "tenant-from-metadata" }),
+    });
   });
 
   it("uses profile email before auth email and falls back when profile email is blank", async () => {
@@ -147,10 +144,10 @@ describe("app-session login", () => {
         status: "active",
         tenantId: "tenant-001",
       },
-      userRoles: ["operator", "finance"],
       tenantRoleCapabilities: ["orders.read", "web.portal.access"],
-      userCapabilityOverrides: [],
+      userRoles: ["operator", "finance"],
       hasWebAccessRole: true,
+      userCapabilityOverrides: [],
     });
 
     const serviceWithProfileEmail = new LoginWithEmailPasswordServiceImpl(
@@ -161,7 +158,7 @@ describe("app-session login", () => {
     await expect(serviceWithProfileEmail.login(baseInput)).resolves.toEqual({
       ok: true,
       session: {
-        ...successSession,
+        ...baseSession,
         email: "profile@example.com",
       },
     });
@@ -173,10 +170,10 @@ describe("app-session login", () => {
         status: "active",
         tenantId: "tenant-001",
       },
-      userRoles: ["operator", "finance"],
       tenantRoleCapabilities: ["orders.read", "web.portal.access"],
-      userCapabilityOverrides: [],
+      userRoles: ["operator", "finance"],
       hasWebAccessRole: true,
+      userCapabilityOverrides: [],
     });
 
     const serviceWithFallbackEmail = new LoginWithEmailPasswordServiceImpl(
@@ -187,13 +184,144 @@ describe("app-session login", () => {
     await expect(serviceWithFallbackEmail.login(baseInput)).resolves.toEqual({
       ok: true,
       session: {
-        ...successSession,
+        ...baseSession,
         email: "auth-fallback@example.com",
       },
     });
   });
 
-  it("rejects login when profile email and auth email are both missing", async () => {
+  it("rejects missing auth metadata tenant as missing_tenant", async () => {
+    const signOut = vi.fn(async () => {});
+
+    const identityPort = {
+      signInWithPassword: async () => ({
+        id: "supabase-auth-id",
+        email: baseInput.email,
+        tenantId: undefined,
+      }),
+      signOut,
+    };
+
+    const service = new LoginWithEmailPasswordServiceImpl(
+      identityPort,
+      createRepository({})
+    );
+
+    await expect(service.login(baseInput)).resolves.toEqual({
+      ok: false,
+      code: "missing_tenant" as AppAuthErrorCode,
+    });
+
+    expect(signOut).toHaveBeenCalledOnce();
+  });
+
+  it("rejects inactive tenant as inactive_tenant", async () => {
+    const identityPort = {
+      signInWithPassword: async () => ({
+        id: "supabase-auth-id",
+        email: baseInput.email,
+        tenantId: "tenant-001",
+      }),
+      signOut: vi.fn(async () => {}),
+    };
+
+    const repository = createRepository({ tenantStatus: "inactive" });
+
+    const service = new LoginWithEmailPasswordServiceImpl(
+      identityPort,
+      repository
+    );
+
+    await expect(service.login(baseInput)).resolves.toEqual({
+      ok: false,
+      code: "inactive_tenant" as AppAuthErrorCode,
+    });
+
+    expect(identityPort.signOut).toHaveBeenCalledOnce();
+  });
+
+  it("rejects missing tenant row as inactive_tenant", async () => {
+    const signOut = vi.fn(async () => {});
+    const identityPort = {
+      signInWithPassword: async () => ({
+        id: "supabase-auth-id",
+        email: baseInput.email,
+        tenantId: "tenant-001",
+      }),
+      signOut,
+    };
+
+    const repository = createRepository({ missingTenant: true });
+
+    const service = new LoginWithEmailPasswordServiceImpl(
+      identityPort,
+      repository
+    );
+
+    await expect(service.login(baseInput)).resolves.toEqual({
+      ok: false,
+      code: "inactive_tenant" as AppAuthErrorCode,
+    });
+
+    expect(signOut).toHaveBeenCalledOnce();
+  });
+
+  it("rejects missing profile as inactive_user", async () => {
+    const signOut = vi.fn(async () => {});
+    const identityPort = {
+      signInWithPassword: async () => ({
+        id: "supabase-auth-id",
+        email: baseInput.email,
+        tenantId: "tenant-001",
+      }),
+      signOut,
+    };
+
+    const service = new LoginWithEmailPasswordServiceImpl(
+      identityPort,
+      createRepository({ userProfile: null })
+    );
+
+    await expect(service.login(baseInput)).resolves.toEqual({
+      ok: false,
+      code: "inactive_user" as AppAuthErrorCode,
+    });
+
+    expect(signOut).toHaveBeenCalledOnce();
+  });
+
+  it("rejects inactive profile as inactive_user", async () => {
+    const signOut = vi.fn(async () => {});
+    const identityPort = {
+      signInWithPassword: async () => ({
+        id: "supabase-auth-id",
+        email: baseInput.email,
+        tenantId: "tenant-001",
+      }),
+      signOut,
+    };
+
+    const service = new LoginWithEmailPasswordServiceImpl(
+      identityPort,
+      createRepository({
+        userProfile: {
+          userId: "user-123",
+          email: baseInput.email,
+          status: "inactive",
+          tenantId: "tenant-001",
+        },
+      })
+    );
+
+    await expect(service.login(baseInput)).resolves.toEqual({
+      ok: false,
+      code: "inactive_user" as AppAuthErrorCode,
+    });
+
+    expect(signOut).toHaveBeenCalledOnce();
+  });
+
+  it("rejects profile or auth email missing", async () => {
     const signOut = vi.fn(async () => {});
 
     const identityPort = {
@@ -212,10 +340,6 @@ describe("app-session login", () => {
         status: "active",
         tenantId: "tenant-001",
       },
-      userRoles: ["operator", "finance"],
-      tenantRoleCapabilities: ["orders.read", "web.portal.access"],
-      userCapabilityOverrides: [],
-      hasWebAccessRole: true,
     });
 
     const service = new LoginWithEmailPasswordServiceImpl(
@@ -229,154 +353,6 @@ describe("app-session login", () => {
     });
 
     expect(signOut).toHaveBeenCalledOnce();
-  });
-
-  it("rejects missing auth metadata tenant as missing_tenant", async () => {
-    const identityPort = {
-      signInWithPassword: async () => ({
-        id: "supabase-auth-id",
-        email: baseInput.email,
-        tenantId: undefined,
-      }),
-    };
-
-    const repository = createRepository({});
-
-    const service = new LoginWithEmailPasswordServiceImpl(
-      identityPort,
-      repository
-    );
-
-    await expect(service.login(baseInput)).resolves.toEqual({
-      ok: false,
-      code: "missing_tenant" as AppAuthErrorCode,
-    });
-  });
-
-  it("rejects inactive tenant as inactive_tenant", async () => {
-    const identityPort = {
-      signInWithPassword: async () => ({
-        id: "supabase-auth-id",
-        email: baseInput.email,
-        tenantId: "tenant-001",
-      }),
-    };
-
-    const repository = createRepository({ tenantStatus: "inactive" });
-
-    const service = new LoginWithEmailPasswordServiceImpl(
-      identityPort,
-      repository
-    );
-
-    await expect(service.login(baseInput)).resolves.toEqual({
-      ok: false,
-      code: "inactive_tenant" as AppAuthErrorCode,
-    });
-  });
-
-  it("cleans up auth identity when tenant metadata is missing", async () => {
-    const signOut = vi.fn(async () => {});
-
-    const identityPort = {
-      signInWithPassword: async () => ({
-        id: "supabase-auth-id",
-        email: baseInput.email,
-        tenantId: undefined,
-      }),
-      signOut,
-    };
-
-    const repository = createRepository({});
-
-    const service = new LoginWithEmailPasswordServiceImpl(
-      identityPort,
-      repository
-    );
-
-    await expect(service.login(baseInput)).resolves.toEqual({
-      ok: false,
-      code: "missing_tenant" as AppAuthErrorCode,
-    });
-
-    expect(signOut).toHaveBeenCalledOnce();
-  });
-
-  it("rejects missing tenant as inactive_tenant", async () => {
-    const identityPort = {
-      signInWithPassword: async () => ({
-        id: "supabase-auth-id",
-        email: baseInput.email,
-        tenantId: "tenant-001",
-      }),
-    };
-
-    const repository = createRepository({
-      missingTenant: true,
-    });
-
-    const service = new LoginWithEmailPasswordServiceImpl(
-      identityPort,
-      repository
-    );
-
-    await expect(service.login(baseInput)).resolves.toEqual({
-      ok: false,
-      code: "inactive_tenant" as AppAuthErrorCode,
-    });
-  });
-
-  it("rejects missing profile as inactive_user", async () => {
-    const identityPort = {
-      signInWithPassword: async () => ({
-        id: "supabase-auth-id",
-        email: baseInput.email,
-        tenantId: "tenant-001",
-      }),
-    };
-
-    const repository = createRepository({
-      userProfile: null,
-    });
-
-    const service = new LoginWithEmailPasswordServiceImpl(
-      identityPort,
-      repository
-    );
-
-    await expect(service.login(baseInput)).resolves.toEqual({
-      ok: false,
-      code: "inactive_user" as AppAuthErrorCode,
-    });
-  });
-
-  it("rejects inactive profile as inactive_user", async () => {
-    const identityPort = {
-      signInWithPassword: async () => ({
-        id: "supabase-auth-id",
-        email: baseInput.email,
-        tenantId: "tenant-001",
-      }),
-    };
-
-    const repository = createRepository({
-      userProfile: {
-        userId: "user-123",
-        email: baseInput.email,
-        status: "inactive",
-        tenantId: "tenant-001",
-      },
-    });
-
-    const service = new LoginWithEmailPasswordServiceImpl(
-      identityPort,
-      repository
-    );
-
-    await expect(service.login(baseInput)).resolves.toEqual({
-      ok: false,
-      code: "inactive_user" as AppAuthErrorCode,
-    });
   });
 
   it("normalizes invalid credentials to invalid_credentials", async () => {
@@ -400,7 +376,7 @@ describe("app-session login", () => {
     expect(signOut).not.toHaveBeenCalled();
   });
 
-  it("cleans up auth identity when user has no active local profile", async () => {
+  it("denies users when web access role is false", async () => {
     const signOut = vi.fn(async () => {});
 
     const identityPort = {
@@ -411,38 +387,10 @@ describe("app-session login", () => {
       }),
       signOut,
     };
-
-    const repository = createRepository({
-      userProfile: null,
-    });
 
     const service = new LoginWithEmailPasswordServiceImpl(
       identityPort,
-      repository
-    );
-
-    await expect(service.login(baseInput)).resolves.toEqual({
-      ok: false,
-      code: "inactive_user" as AppAuthErrorCode,
-    });
-
-    expect(signOut).toHaveBeenCalledOnce();
-  });
-
-  it("cleans up auth identity when role based authorization is denied", async () => {
-    const signOut = vi.fn(async () => {});
-
-    const identityPort = {
-      signInWithPassword: async () => ({
-        id: "supabase-auth-id",
-        email: baseInput.email,
-        tenantId: "tenant-001",
-      }),
-      signOut,
-    };
-
-    const repository = {
-      ...createRepository({
+      createRepository({
         userProfile: {
           userId: "user-123",
           email: baseInput.email,
@@ -450,14 +398,8 @@ describe("app-session login", () => {
           tenantId: "tenant-001",
         },
         tenantRoleCapabilities: ["orders.read", "web.portal.access"],
-        userRoles: ["operator"],
-      }),
-      hasWebAccessRole: async () => false,
-    };
-
-    const service = new LoginWithEmailPasswordServiceImpl(
-      identityPort,
-      repository
+        hasWebAccessRole: false,
+      })
     );
 
     await expect(service.login(baseInput)).resolves.toEqual({
@@ -468,91 +410,50 @@ describe("app-session login", () => {
     expect(signOut).toHaveBeenCalledOnce();
   });
 
-  it("allows access when web role is granted even without web portal capability", async () => {
+  it("denies users when role capabilities do not include web portal access", async () => {
+    const signOut = vi.fn(async () => {});
+
     const identityPort = {
       signInWithPassword: async () => ({
         id: "supabase-auth-id",
         email: baseInput.email,
         tenantId: "tenant-001",
       }),
+      signOut,
     };
-
-    const repository = createRepository({
-      userProfile: {
-        userId: "user-123",
-        email: baseInput.email,
-        status: "active",
-        tenantId: "tenant-001",
-      },
-      tenantRoleCapabilities: ["orders.read"],
-      userRoles: ["operator"],
-      hasWebAccessRole: true,
-    });
 
     const service = new LoginWithEmailPasswordServiceImpl(
       identityPort,
-      repository
-    );
-
-    await expect(service.login(baseInput)).resolves.toEqual({
-      ok: true,
-      session: {
-        user_id: "user-123",
-        auth_user_id: "supabase-auth-id",
-        tenant_id: "tenant-001",
-        email: baseInput.email,
-        roles: ["operator"],
-        effective_capabilities: ["orders.read"],
-        status: "active",
-      },
-    });
-  });
-
-  it("denies users without web access with web_access_denied", async () => {
-    const identityPort = {
-      signInWithPassword: async () => ({
-        id: "supabase-auth-id",
-        email: baseInput.email,
-        tenantId: "tenant-001",
-      }),
-    };
-
-    const repository = createRepository({
-      userProfile: {
-        userId: "user-123",
-        email: baseInput.email,
-        status: "active",
-        tenantId: "tenant-001",
-      },
-      tenantRoleCapabilities: ["orders.read"],
-      userRoles: ["operator"],
-      userCapabilityOverrides: [
-        {
-          capabilityCode: "web.portal.access",
-          effect: "allow",
+      createRepository({
+        userProfile: {
+          userId: "user-123",
+          email: baseInput.email,
+          status: "active",
+          tenantId: "tenant-001",
         },
-      ],
-      hasWebAccessRole: false,
-    });
-
-    const service = new LoginWithEmailPasswordServiceImpl(
-      identityPort,
-      repository
+        tenantRoleCapabilities: ["orders.read"],
+        hasWebAccessRole: true,
+      })
     );
 
     await expect(service.login(baseInput)).resolves.toEqual({
       ok: false,
       code: "web_access_denied" as AppAuthErrorCode,
     });
+
+    expect(signOut).toHaveBeenCalledOnce();
   });
 
   it("denies users when role lookup fails", async () => {
+    const signOut = vi.fn(async () => {});
+
     const identityPort = {
       signInWithPassword: async () => ({
         id: "supabase-auth-id",
         email: baseInput.email,
         tenantId: "tenant-001",
       }),
+      signOut,
     };
 
     const repository = {
@@ -563,10 +464,9 @@ describe("app-session login", () => {
           status: "active",
           tenantId: "tenant-001",
         },
-        tenantRoleCapabilities: ["orders.read", "web.portal.access"],
       }),
       listUserRoles: async () => {
-        throw new Error("roles-unavailable");
+        throw new Error("role lookup failed");
       },
     };
 
@@ -579,15 +479,59 @@ describe("app-session login", () => {
       ok: false,
       code: "web_access_denied" as AppAuthErrorCode,
     });
+
+    expect(signOut).toHaveBeenCalledOnce();
   });
 
-  it("denies users when web-access-role lookup fails", async () => {
+  it("denies users when capability lookup fails", async () => {
+    const signOut = vi.fn(async () => {});
+
     const identityPort = {
       signInWithPassword: async () => ({
         id: "supabase-auth-id",
         email: baseInput.email,
         tenantId: "tenant-001",
       }),
+      signOut,
+    };
+
+    const repository = {
+      ...createRepository({
+        userProfile: {
+          userId: "user-123",
+          email: baseInput.email,
+          status: "active",
+          tenantId: "tenant-001",
+        },
+      }),
+      listTenantRoleCapabilities: async () => {
+        throw new Error("capability lookup failed");
+      },
+    };
+
+    const service = new LoginWithEmailPasswordServiceImpl(
+      identityPort,
+      repository
+    );
+
+    await expect(service.login(baseInput)).resolves.toEqual({
+      ok: false,
+      code: "web_access_denied" as AppAuthErrorCode,
+    });
+
+    expect(signOut).toHaveBeenCalledOnce();
+  });
+
+  it("denies users when web access lookup fails", async () => {
+    const signOut = vi.fn(async () => {});
+
+    const identityPort = {
+      signInWithPassword: async () => ({
+        id: "supabase-auth-id",
+        email: baseInput.email,
+        tenantId: "tenant-001",
+      }),
+      signOut,
     };
 
     const repository = {
@@ -599,10 +543,9 @@ describe("app-session login", () => {
           tenantId: "tenant-001",
         },
         tenantRoleCapabilities: ["orders.read", "web.portal.access"],
-        userRoles: ["operator", "finance"],
       }),
       hasWebAccessRole: async () => {
-        throw new Error("web access lookup unavailable");
+        throw new Error("web access lookup failed");
       },
     };
 
@@ -615,40 +558,7 @@ describe("app-session login", () => {
       ok: false,
       code: "web_access_denied" as AppAuthErrorCode,
     });
-  });
 
-  it("denies if effective capability lookup fails", async () => {
-    const identityPort = {
-      signInWithPassword: async () => ({
-        id: "supabase-auth-id",
-        email: baseInput.email,
-        tenantId: "tenant-001",
-      }),
-    };
-
-    const repository = {
-      ...createRepository({
-        userProfile: {
-          userId: "user-123",
-          email: baseInput.email,
-          status: "active",
-          tenantId: "tenant-001",
-        },
-        userRoles: ["operator"],
-      }),
-      listTenantRoleCapabilities: async () => {
-        throw new Error("capabilities-unavailable");
-      },
-    };
-
-    const service = new LoginWithEmailPasswordServiceImpl(
-      identityPort,
-      repository
-    );
-
-    await expect(service.login(baseInput)).resolves.toEqual({
-      ok: false,
-      code: "web_access_denied" as AppAuthErrorCode,
-    });
+    expect(signOut).toHaveBeenCalledOnce();
   });
 });

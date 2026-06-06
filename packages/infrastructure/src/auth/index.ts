@@ -1,3 +1,7 @@
+/**
+ * Barrel de exports de infraestructura de autenticación.
+ */
+
 export { SupabaseAuthAdminAdapter } from "./SupabaseAuthAdminAdapter";
 export type { SupabaseAuthAdminAdapterDependencies } from "./SupabaseAuthAdminAdapter";
 

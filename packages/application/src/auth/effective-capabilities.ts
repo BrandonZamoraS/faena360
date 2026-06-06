@@ -1,5 +1,9 @@
 /**
- * Types and resolver used to compute effective capabilities for a tenant-scoped user.
+ * Tipos y resolver para calcular capacidades efectivas por tenant/usuario.
+ *
+ * Mantiene separadas las capacidades heredadas por roles de los overrides
+ * explícitos, y cachea opcionalmente el resultado para no recalcular en cada
+ * acceso de sesión.
  */
 
 export type UserId = string;
@@ -114,6 +118,7 @@ export function createEffectiveCapabilitiesCacheKey({
   tenantId,
   userId,
 }: TenantUserScope): string {
+  // Llave determinística para memoizar por par tenant/usuario.
   return `${tenantId}:${userId}`;
 }
 
@@ -121,6 +126,8 @@ export function createEffectiveCapabilitiesResolver({
   cache,
   repository,
 }: EffectiveCapabilitiesResolverOptions) {
+  // Punto único de entrada para resolver, invalidar y exigir una capacidad
+  // antes de ejecutar acciones protegidas.
   async function getEffectiveCapabilities(
     scope: TenantUserScope
   ): Promise<EffectiveCapabilities> {
@@ -179,6 +186,8 @@ export function applyCapabilityOverrides(
   roleCapabilities: readonly CapabilityCode[],
   overrides: readonly UserCapabilityOverrideInput[]
 ): ReadonlySet<CapabilityCode> {
+  // El orden importa por diseño: primero "allow", luego "deny" para que un
+  // override de denegación siempre prevalezca dentro de excepciones de roles.
   const capabilities = new Set(roleCapabilities);
 
   for (const override of overrides) {

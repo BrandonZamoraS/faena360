@@ -8,13 +8,13 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 const WEB_TENANT_META_KEY = "tenant_id";
 
 /**
- * Adapter around Supabase Auth for the application's identity contract.
+ * Adapter de Supabase Auth para el puerto de identidad de la capa Application.
  */
 export class SupabaseAuthAdapter implements AuthIdentityPort {
   constructor(private readonly client: SupabaseClient) {}
 
   /**
-   * Signs in with credentials and extracts tenant binding from app metadata.
+   * Realiza login con email/password y extrae tenant desde app metadata.
    */
   async signInWithPassword(input: LoginInput): Promise<AuthUser> {
     const { data, error } = await this.client.auth.signInWithPassword({
@@ -41,7 +41,7 @@ export class SupabaseAuthAdapter implements AuthIdentityPort {
   }
 
   /**
-   * Clears any signed-in Supabase auth session.
+   * Cierra la sesión de Supabase para limpiar estado local de identidad.
    */
   async signOut(): Promise<void> {
     const { error } = await this.client.auth.signOut({
@@ -54,6 +54,8 @@ export class SupabaseAuthAdapter implements AuthIdentityPort {
   }
 
   private extractTenantId(appMetadata: unknown): string | undefined {
+    // Validamos estrictamente la metadata porque tenantId es la raíz del contexto
+    // de sesión; si no existe de forma confiable, abortamos el login.
     if (!appMetadata || typeof appMetadata !== "object") {
       return undefined;
     }

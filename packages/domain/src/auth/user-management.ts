@@ -1,3 +1,6 @@
+/**
+ * DTO de entrada para crear usuarios de un tenant.
+ */
 export interface CreateTenantUserInput {
   readonly email: string;
   readonly temporaryPassword: string;
@@ -6,6 +9,9 @@ export interface CreateTenantUserInput {
   readonly roleIds: readonly string[];
 }
 
+/**
+ * Resumen de usuario retornado en listados administrados por tenant.
+ */
 export interface TenantUserSummary {
   readonly user_id: string;
   readonly tenant_id: string;
@@ -15,6 +21,10 @@ export interface TenantUserSummary {
   readonly status: "active" | "inactive";
 }
 
+/**
+ * Errores de aplicación para crear usuario; cada código representa una rama
+ * de recuperación/conversión esperable en Application.
+ */
 export type CreateTenantUserErrorCode =
   | "missing_tenant"
   | "duplicate_identifier"
@@ -25,6 +35,10 @@ export type CreateTenantUserErrorCode =
   | "audit_failed"
   | "compensation_failed";
 
+/**
+ * Puerto de administración del proveedor de identidad (operaciones irreversibles
+ * en Auth) que debe implementar Infraestructure.
+ */
 export interface AuthAdminPort {
   createUser(input: {
     readonly email: string;
@@ -37,6 +51,9 @@ export interface AuthAdminPort {
   deleteUser(authUserId: string): Promise<void>;
 }
 
+/**
+ * Puerto de persistencia local para perfiles/roles de usuario.
+ */
 export interface UserManagementRepository {
   identifierExists(input: {
     readonly email: string;
@@ -67,6 +84,9 @@ export interface UserManagementRepository {
   }): Promise<void>;
 }
 
+/**
+ * Resultado canónico del caso de uso de alta de usuario.
+ */
 export interface CreateTenantUserOutcome {
   readonly ok: boolean;
   readonly authUserId?: string;

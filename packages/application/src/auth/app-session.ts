@@ -11,6 +11,16 @@ import {
   type EffectiveCapabilitiesRepository,
 } from "./effective-capabilities";
 
+const WEB_ACCESS_CAPABILITY = "web.portal.access";
+
+/**
+ * Capa Application: caso de uso de login web.
+ *
+ * Orquesta puertos, no detalles de infraestructura: `AuthIdentityPort` autentica
+ * contra el proveedor externo y `AppSessionRepository` lee el estado propio de
+ * Faena360. Así el caso de uso expresa la política del negocio sin depender de
+ * Supabase, tablas concretas ni rutas HTTP.
+ */
 export class LoginWithEmailPasswordServiceImpl implements LoginWithEmailPasswordService {
   private readonly capabilityResolver: ReturnType<
     typeof createEffectiveCapabilitiesResolver
@@ -20,6 +30,8 @@ export class LoginWithEmailPasswordServiceImpl implements LoginWithEmailPassword
     private readonly authIdentityPort: AuthIdentityPort,
     private readonly appSessionRepository: AppSessionRepository
   ) {
+    // Infraestructura y dominio se mantienen desacoplados: aquí adaptamos el
+    // repositorio de sesión a la forma que el resolver de capacidades espera.
     const repositoryAdapter: EffectiveCapabilitiesRepository = {
       listUserRoleIds: ({ tenantId, userId }) =>
         appSessionRepository.listUserRoles({ tenantId, userId }),
@@ -38,6 +50,8 @@ export class LoginWithEmailPasswordServiceImpl implements LoginWithEmailPassword
     let authUser: AuthUser;
 
     try {
+      // Primero validamos identidad externa. Todavía no hay sesión de Faena360:
+      // Supabase solo prueba credenciales y entrega el `tenantId` desde metadata.
       authUser = await this.authIdentityPort.signInWithPassword(input);
     } catch {
       return { ok: false, code: "invalid_credentials" };
@@ -45,15 +59,16 @@ export class LoginWithEmailPasswordServiceImpl implements LoginWithEmailPassword
 
     const tenantId = authUser.tenantId?.trim();
     if (!tenantId) {
+      // El tenant no viene del cliente porque sería falsificable. Si el proveedor
+      // de identidad no lo trae en metadata confiable, no existe contexto seguro.
       await this.cleanupAuthIdentity();
-      return {
-        ok: false,
-        code: "missing_tenant",
-      };
+      return { ok: false, code: "missing_tenant" };
     }
 
     let tenant: { readonly id: string; readonly status: string };
     try {
+      // A partir de acá empieza la autorización propia de Faena360: tenant,
+      // perfil, roles y capacidades viven en nuestra base, no en el formulario.
       tenant = await this.appSessionRepository.getTenant({ tenantId });
     } catch {
       await this.cleanupAuthIdentity();
@@ -154,7 +169,13 @@ export class LoginWithEmailPasswordServiceImpl implements LoginWithEmailPassword
       };
     }
 
-    if (!hasWebAccessRole) {
+    const canAccessWeb =
+      hasWebAccessRole && effectiveCapabilities.includes(WEB_ACCESS_CAPABILITY);
+
+    if (!canAccessWeb) {
+      // Doble condición intencional: `is_web_access` habilita la familia de rol,
+      // y `web.portal.access` permite revocar/otorgar acceso vía capacidades.
+      // Una sin la otra no alcanza para entrar a la web.
       await this.cleanupAuthIdentity();
       return {
         ok: false,
@@ -172,6 +193,7 @@ export class LoginWithEmailPasswordServiceImpl implements LoginWithEmailPassword
         roles,
         effective_capabilities: effectiveCapabilities,
         status: userProfile.status,
+        can_access_web: canAccessWeb,
       },
     };
   }
@@ -182,6 +204,8 @@ export class LoginWithEmailPasswordServiceImpl implements LoginWithEmailPassword
     }
 
     try {
+      // Si la identidad externa fue válida pero la autorización local falla,
+      // cerramos la sesión del proveedor para no dejar un login parcial vivo.
       await this.authIdentityPort.signOut();
     } catch {
       return;

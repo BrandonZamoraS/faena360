@@ -39,9 +39,15 @@ importers:
       '@faena360/domain':
         specifier: workspace:*
         version: link:../../packages/domain
+      '@faena360/infrastructure':
+        specifier: workspace:*
+        version: link:../../packages/infrastructure
       '@faena360/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@supabase/supabase-js':
+        specifier: ^2.107.0
+        version: 2.107.0
       next:
         specifier: 16.2.6
         version: 16.2.6(@babel/core@7.29.7)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)

@@ -77,7 +77,7 @@ describe("SupabaseAppSessionRepository", () => {
     ).resolves.toEqual({ id: "tenant-001", status: "active" });
 
     expect(tenantQuery.select).toHaveBeenCalledWith("id, status");
-    expect(tenantQuery.eq).toHaveBeenNthCalledWith(1, "id", "tenant-001");
+    expect(tenantQuery.eq).toHaveBeenCalledWith("id", "tenant-001");
     expect(tenantQuery.maybeSingle).toHaveBeenCalledOnce();
   });
 
@@ -202,7 +202,7 @@ describe("SupabaseAppSessionRepository", () => {
     const roleQuery = createQueryBuilder({
       data: [
         { id: "r-admin", tenant_id: "tenant-001", is_web_access: true },
-        { id: "r-reader", is_web_access: false },
+        { id: "r-reader", tenant_id: "tenant-001", is_web_access: false },
       ],
       error: null,
     });

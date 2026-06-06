@@ -33,9 +33,15 @@ interface RecordAuditInput {
   readonly targetUserId: string;
 }
 
+/**
+ * Adapta operaciones de gestión de usuarios a la capa de repositorio de dominio.
+ */
 export class SupabaseUserManagementRepository implements UserManagementRepository {
   public constructor(private readonly client: SupabaseClient) {}
 
+  /**
+   * Verifica unicidad de identificadores de negocio antes de crear usuario.
+   */
   public async identifierExists(input: {
     readonly email: string;
     readonly phone?: string;
@@ -62,6 +68,7 @@ export class SupabaseUserManagementRepository implements UserManagementRepositor
   }
 
   public async createProfile(input: CreateProfileInput): Promise<string> {
+    // El perfil local enlaza al auth_user con el tenant y habilita permisos.
     const profilePayload = {
       tenant_id: input.tenantId,
       auth_user_id: input.authUserId,
@@ -91,6 +98,7 @@ export class SupabaseUserManagementRepository implements UserManagementRepositor
   }
 
   public async assignRoles(input: AssignRolesInput): Promise<void> {
+    // Normaliza la lista para evitar inserts duplicados por repetición del cliente.
     const uniqueRoleIds = Array.from(new Set(input.roleIds));
 
     if (uniqueRoleIds.length === 0) {
@@ -134,6 +142,7 @@ export class SupabaseUserManagementRepository implements UserManagementRepositor
   }
 
   public async recordUserCreatedAudit(input: RecordAuditInput): Promise<void> {
+    // Escribimos auditoría operativa para poder rastrear creación por actor.
     const response = await this.client.from("audit_log").insert({
       tenant_id: await this.resolveTenantIdForProfile(input.targetUserId),
       actor_user_id: input.actorUserId,
@@ -150,6 +159,8 @@ export class SupabaseUserManagementRepository implements UserManagementRepositor
   private async resolveTenantIdForProfile(
     userId: string
   ): Promise<string | undefined> {
+    // Si el perfil se cae entre queries, devolvemos undefined y dejamos que el
+    // repositorio de DB decida si aborta o no la operación de auditoría.
     const response = await this.client
       .from("user_profiles")
       .select("tenant_id")
