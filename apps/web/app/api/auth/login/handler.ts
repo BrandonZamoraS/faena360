@@ -6,11 +6,11 @@ import {
 import {
   SupabaseAuthAdapter,
   SupabaseAppSessionRepository,
-} from "../../../../../../packages/infrastructure/src/auth";
+} from "@faena360/infrastructure";
 import {
   type LoginWithEmailPasswordService,
   LoginWithEmailPasswordServiceImpl,
-} from "../../../../../../packages/application/src/auth";
+} from "@faena360/application";
 import { createWebSupabaseClient } from "../../../../lib/supabase";
 
 export type LoginRouteDependencies = {

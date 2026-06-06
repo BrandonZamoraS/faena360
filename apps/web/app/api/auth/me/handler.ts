@@ -5,7 +5,7 @@ import {
   type AppSessionRefresher,
   type CookieContainer,
 } from "../../../../lib/auth/session";
-import { SupabaseAppSessionRepository } from "../../../../../../packages/infrastructure/src/auth";
+import { SupabaseAppSessionRepository } from "@faena360/infrastructure";
 import { createWebSupabaseServiceClient } from "../../../../lib/supabase";
 
 export type MeRouteDependencies = {

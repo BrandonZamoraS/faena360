@@ -4,7 +4,8 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./*"],
-      "@faena360/application": ["../application/src", "../application"]
+      "@faena360/application": ["../application/src", "../application"],
+      "@faena360/domain": ["../domain/src", "../domain"]
     }
   },
   "include": ["**/*.ts"],
