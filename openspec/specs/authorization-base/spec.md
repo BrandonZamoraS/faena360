@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Define the minimum authorization persistence Faena360 MUST provide for tenant-bound roles, effective capabilities, local user profiles, and minimal audit history.
+Define the minimum authorization persistence Faena360 MUST provide for tenant-bound roles, effective capabilities, local user profiles, and audit history.
 
 ## Requirements
 
@@ -48,19 +48,26 @@ The system MUST persist a global capability catalog, role-to-capability grants, 
 - WHEN a user-specific override is stored
 - THEN the override is persisted separately from the role grants
 
-### Requirement: Minimal authorization audit history
+### Requirement: Authorization audit history
 
-The system MUST persist minimal audit records for authorization changes with actor, target, action, and event timestamp data. The system MUST NOT require richer audit detail fields beyond this MVP scope.
+The system MUST persist audit records for authorization changes with actor, target, action, and event timestamp data. Authorization audit behavior is delegated to the `audit-log-system` capability, which provides source tracing, before/after JSONB diffs, and sensitive field sanitization.
+
+(Previously: Required minimal audit records and explicitly disallowed richer detail fields beyond MVP scope.)
 
 #### Scenario: Authorization change creates a minimal audit record
 - GIVEN a role, assignment, or override change
 - WHEN the change is stored
 - THEN a minimal audit record can capture who acted, what changed, and when
 
-#### Scenario: MVP audit scope stays minimal
-- GIVEN the authorization base schema is reviewed
-- WHEN audit requirements are validated
-- THEN richer vault-only audit columns are not required in this phase
+#### Scenario: Authorization audit uses full audit-log-system
+- GIVEN the audit-log-system capability is active
+- WHEN an authorization mutation is audited
+- THEN source, old_value, and new_value JSONB diffs are captured per audit-log-system spec
+
+#### Scenario: Sensitive authorization changes are audited
+- GIVEN a supervisor modifies role permissions or creates capability overrides
+- WHEN the change is stored
+- THEN an audit entry records the actor, target, source, and mutation details per audit-log-system
 
 ### Requirement: Authorization schema integrity
 
