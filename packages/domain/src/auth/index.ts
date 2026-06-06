@@ -9,6 +9,14 @@ export type {
   UserId,
 } from "./capabilities";
 export type {
+  AuthAdminPort,
+  CreateTenantUserErrorCode,
+  CreateTenantUserInput,
+  CreateTenantUserOutcome,
+  TenantUserSummary,
+  UserManagementRepository,
+} from "./user-management";
+export type {
   AppAuthErrorCode,
   AppAuthFailure,
   AppAuthResult,

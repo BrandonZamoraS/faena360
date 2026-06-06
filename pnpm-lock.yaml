@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@faena360/application':
+        specifier: workspace:*
+        version: link:packages/application
       '@supabase/supabase-js':
         specifier: ^2
         version: 2.107.0

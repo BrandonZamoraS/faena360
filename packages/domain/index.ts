@@ -1,3 +1,5 @@
+export { StorageError } from "./src/storage";
+
 export type {
   FileMetadata,
   UploadParams,
@@ -5,16 +7,7 @@ export type {
   FileStoragePort,
   StorageErrorCode,
 } from "./src/storage";
-export type {
-  AppAuthErrorCode,
-  AppAuthFailure,
-  AppAuthResult,
-  AppAuthSuccess,
-  AppSession,
-  AuthUser,
-  UserProfileStatus,
-} from "./src/auth";
-export { StorageError } from "./src/storage";
+
 export type {
   CapabilityCode,
   CapabilityOverrideEffect,
@@ -24,4 +17,17 @@ export type {
   TenantUserScope,
   UserCapabilityOverride,
   UserId,
+  AppAuthErrorCode,
+  AppAuthFailure,
+  AppAuthResult,
+  AppAuthSuccess,
+  AppSession,
+  AuthUser,
+  UserProfileStatus,
+  AuthAdminPort,
+  CreateTenantUserErrorCode,
+  CreateTenantUserInput,
+  CreateTenantUserOutcome,
+  TenantUserSummary,
+  UserManagementRepository,
 } from "./src/auth";
