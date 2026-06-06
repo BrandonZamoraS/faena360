@@ -1,4 +1,3 @@
-
 import type { AuthAdminPort } from "@faena360/domain";
 
 interface CreateUserInput {
@@ -36,8 +35,12 @@ interface SupabaseAuthAdminResponse {
 }
 
 interface SupabaseAuthAdminApi {
-  readonly createUser: (input: SupabaseCreateUserPayload) => Promise<SupabaseAuthAdminResponse>;
-  readonly deleteUser: (authUserId: string) => Promise<{ readonly error: SupabaseAuthError | null }>;
+  readonly createUser: (
+    input: SupabaseCreateUserPayload
+  ) => Promise<SupabaseAuthAdminResponse>;
+  readonly deleteUser: (
+    authUserId: string
+  ) => Promise<{ readonly error: SupabaseAuthError | null }>;
 }
 
 interface SupabaseAuthAdminClient {
@@ -57,7 +60,9 @@ export class SupabaseAuthAdminAdapter implements AuthAdminPort {
     this.client = dependencies.client;
   }
 
-  public async createUser(input: CreateUserInput): Promise<{ readonly authUserId: string }> {
+  public async createUser(
+    input: CreateUserInput
+  ): Promise<{ readonly authUserId: string }> {
     const response = await this.client.auth.admin.createUser({
       email: input.email,
       password: input.temporaryPassword,
@@ -72,14 +77,19 @@ export class SupabaseAuthAdminAdapter implements AuthAdminPort {
       throw new Error(formatSupabaseError(error));
     }
 
-    const createdUser = response.data?.user as SupabaseAuthUser | null | undefined;
+    const createdUser = response.data?.user as
+      | SupabaseAuthUser
+      | null
+      | undefined;
 
     if (!createdUser?.id) {
       throw new Error("Auth identity creation did not return a user id.");
     }
 
     if (createdUser.app_metadata?.tenant_id !== input.app_metadata.tenant_id) {
-      throw new Error("Auth identity creation did not persist tenant metadata.");
+      throw new Error(
+        "Auth identity creation did not persist tenant metadata."
+      );
     }
 
     return {
@@ -96,7 +106,5 @@ export class SupabaseAuthAdminAdapter implements AuthAdminPort {
 }
 
 function formatSupabaseError(error: SupabaseAuthError): string {
-  return "message" in error
-    ? error.message
-    : "Supabase auth request failed.";
+  return "message" in error ? error.message : "Supabase auth request failed.";
 }

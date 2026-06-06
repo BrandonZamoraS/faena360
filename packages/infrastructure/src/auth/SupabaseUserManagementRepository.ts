@@ -48,7 +48,9 @@ export class SupabaseUserManagementRepository implements UserManagementRepositor
     readonly email: string;
     readonly phone?: string;
   }): Promise<boolean> {
-    if (await existsByField(this.client, "user_profiles", "email", input.email)) {
+    if (
+      await existsByField(this.client, "user_profiles", "email", input.email)
+    ) {
       return true;
     }
 
@@ -98,9 +100,7 @@ export class SupabaseUserManagementRepository implements UserManagementRepositor
       role_id: roleId,
     }));
 
-    const response = await this.client
-      .from("user_roles")
-      .insert(roleRows);
+    const response = await this.client.from("user_roles").insert(roleRows);
 
     if (response.error) {
       throw new Error(formatSupabaseError(response.error));
@@ -127,7 +127,9 @@ export class SupabaseUserManagementRepository implements UserManagementRepositor
   }
 
   public async recordUserCreatedAudit(input: RecordAuditInput): Promise<void> {
-    const targetTenantId = await this.resolveTenantIdForProfile(input.targetUserId);
+    const targetTenantId = await this.resolveTenantIdForProfile(
+      input.targetUserId
+    );
     const createdAt = new Date().toISOString();
 
     const candidates: readonly AuditCandidate[] = [
@@ -156,7 +158,9 @@ export class SupabaseUserManagementRepository implements UserManagementRepositor
     await insertAuditRecordWithFallback(this.client, candidates);
   }
 
-  private async resolveTenantIdForProfile(userId: string): Promise<string | undefined> {
+  private async resolveTenantIdForProfile(
+    userId: string
+  ): Promise<string | undefined> {
     const response = await this.client
       .from("user_profiles")
       .select("tenant_id")

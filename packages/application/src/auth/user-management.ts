@@ -25,9 +25,7 @@ interface UserManagementServiceDependencies {
   };
 }
 
-export type {
-  UserManagementServiceDependencies,
-};
+export type { UserManagementServiceDependencies };
 
 const USERS_CREATE_CAPABILITY = "users:create" as const;
 const USERS_READ_CAPABILITY = "users:read" as const;
@@ -55,10 +53,7 @@ export function createUserManagementService(
   const { authAdmin, repository, capabilityChecker } = dependencies;
 
   return {
-    async createUser(
-      session,
-      input
-    ): Promise<CreateTenantUserOutcome> {
+    async createUser(session, input): Promise<CreateTenantUserOutcome> {
       const tenantId = resolveTenantId(session.tenant_id);
 
       if (!tenantId) {
@@ -110,8 +105,7 @@ export function createUserManagementService(
 
       let authUserId: string | undefined;
       let userId: string | undefined;
-      let localFailureCode: CreateTenantUserErrorCode =
-        "profile_create_failed";
+      let localFailureCode: CreateTenantUserErrorCode = "profile_create_failed";
 
       try {
         const createdAuthUser = await authAdmin.createUser({
@@ -159,7 +153,10 @@ export function createUserManagementService(
           };
         }
 
-        const didCompensate = await compensateAuthCreation(authAdmin, authUserId);
+        const didCompensate = await compensateAuthCreation(
+          authAdmin,
+          authUserId
+        );
 
         return {
           ok: false,
@@ -200,9 +197,7 @@ function resolveTenantId(tenantId?: string | null): string {
   return tenantId.trim();
 }
 
-function containsTenantOverride(
-  input: CreateTenantUserInput
-): boolean {
+function containsTenantOverride(input: CreateTenantUserInput): boolean {
   const candidate = input as unknown as Record<string, unknown>;
 
   return (

@@ -7,15 +7,21 @@ interface QueryCall {
   readonly details: string;
 }
 
-function createMockQuery<T>(response: {
-  data: T;
-  error: null;
-  count?: number;
-}, calls: QueryCall[]): {
-  readonly select: (columns: string, options?: {
-    count?: "exact" | "planned" | "estimated";
-    head?: boolean;
-  }) => unknown;
+function createMockQuery<T>(
+  response: {
+    data: T;
+    error: null;
+    count?: number;
+  },
+  calls: QueryCall[]
+): {
+  readonly select: (
+    columns: string,
+    options?: {
+      count?: "exact" | "planned" | "estimated";
+      head?: boolean;
+    }
+  ) => unknown;
   readonly eq: (column: string, value: unknown) => unknown;
   readonly insert: (_values: unknown) => unknown;
   readonly single: () => Promise<{ readonly data: T; readonly error: null }>;
@@ -30,10 +36,13 @@ function createMockQuery<T>(response: {
   };
 
   return {
-    select: (columns: string, options?: {
-      readonly count?: "exact" | "planned" | "estimated";
-      readonly head?: boolean;
-    }): unknown => {
+    select: (
+      columns: string,
+      options?: {
+        readonly count?: "exact" | "planned" | "estimated";
+        readonly head?: boolean;
+      }
+    ): unknown => {
       calls.push({
         operation: "select",
         details: `${columns}${options ? `:${JSON.stringify(options)}` : ""}`,
@@ -127,13 +136,18 @@ export async function runUserManagementRepositoryTenantActiveFilterCheck(): Prom
   const selectCall = calls.find((entry) => entry.operation === "select");
   if (
     !selectCall ||
-    !selectCall.details.includes("user_id,tenant_id,email,full_name,phone,status")
+    !selectCall.details.includes(
+      "user_id,tenant_id,email,full_name,phone,status"
+    )
   ) {
-    throw new Error("Expected listActiveUsers to read tenant and profile summary columns.");
+    throw new Error(
+      "Expected listActiveUsers to read tenant and profile summary columns."
+    );
   }
 
   const tenantFilter = calls.find(
-    (entry) => entry.operation === "eq" && entry.details.startsWith("tenant_id=")
+    (entry) =>
+      entry.operation === "eq" && entry.details.startsWith("tenant_id=")
   );
   if (!tenantFilter || tenantFilter.details !== "tenant_id=tenant-1") {
     throw new Error("Expected active listing to filter by tenant_id.");
@@ -179,7 +193,10 @@ export async function runUserManagementRepositoryAuditFallbackCheck(): Promise<v
         } as unknown as {
           readonly select: () => {
             readonly eq: () => {
-              readonly single: () => Promise<{ readonly data: { tenant_id: string } | null; readonly error: null }>;
+              readonly single: () => Promise<{
+                readonly data: { tenant_id: string } | null;
+                readonly error: null;
+              }>;
             };
           };
         };
@@ -215,7 +232,16 @@ export async function runUserManagementRepositoryAuditFallbackCheck(): Promise<v
             error: null,
           };
         },
-      } as unknown as { readonly insert: (_candidate: Record<string, unknown>) => { readonly error: { readonly message: string; readonly details: string; readonly hint: null; readonly code: string } | null } };
+      } as unknown as {
+        readonly insert: (_candidate: Record<string, unknown>) => {
+          readonly error: {
+            readonly message: string;
+            readonly details: string;
+            readonly hint: null;
+            readonly code: string;
+          } | null;
+        };
+      };
     },
   } as unknown as SupabaseClient;
 
@@ -231,20 +257,34 @@ export async function runUserManagementRepositoryAuditFallbackCheck(): Promise<v
   const insertCalls = calls.filter((entry) => entry.operation === "insert");
 
   if (insertCalls.length !== 3) {
-    throw new Error("Expected audit insert fallback to try multiple candidate payloads.");
+    throw new Error(
+      "Expected audit insert fallback to try multiple candidate payloads."
+    );
   }
 
   const fallbackOrder = insertCalls.map((entry) => entry.details);
-  if (fallbackOrder[0] !== "audit-log:1" || fallbackOrder[1] !== "audit-log:2" || fallbackOrder[2] !== "audit-log:3") {
-    throw new Error("Expected audit fallback to attempt three payload variants in order.");
+  if (
+    fallbackOrder[0] !== "audit-log:1" ||
+    fallbackOrder[1] !== "audit-log:2" ||
+    fallbackOrder[2] !== "audit-log:3"
+  ) {
+    throw new Error(
+      "Expected audit fallback to attempt three payload variants in order."
+    );
   }
 
   if (auditInsertAttempts.length !== 3) {
-    throw new Error("Expected three insert attempts while exercising fallback behavior.");
+    throw new Error(
+      "Expected three insert attempts while exercising fallback behavior."
+    );
   }
 
-  const tenantQueryCalls = calls.filter((entry) => entry.operation === "from" && entry.details === "user_profiles");
+  const tenantQueryCalls = calls.filter(
+    (entry) => entry.operation === "from" && entry.details === "user_profiles"
+  );
   if (tenantQueryCalls.length !== 1) {
-    throw new Error("Expected user profile lookup before audit insert fallback.");
+    throw new Error(
+      "Expected user profile lookup before audit insert fallback."
+    );
   }
 }

@@ -1,6 +1,14 @@
-import type { AuthAdminPort, CreateTenantUserInput, TenantUserSummary, UserManagementRepository } from "@faena360/domain";
+import type {
+  AuthAdminPort,
+  CreateTenantUserInput,
+  TenantUserSummary,
+  UserManagementRepository,
+} from "@faena360/domain";
 
-import { createUserManagementService, type UserManagementServiceDependencies } from "./user-management";
+import {
+  createUserManagementService,
+  type UserManagementServiceDependencies,
+} from "./user-management";
 import { CapabilityDeniedError } from "./effective-capabilities";
 
 interface MockCalls {
@@ -54,19 +62,23 @@ function createCallsTracker(): MockCalls {
 function createUserManagementServiceWithMocks(
   overrides?: UserManagementDependenciesOverrides & {
     readonly calls?: MockCalls;
-  },
+  }
 ) {
   const calls: MockCalls = overrides?.calls ?? createCallsTracker();
 
   const service = createUserManagementService({
     authAdmin: {
-      createUser: async (_input: Parameters<AuthAdminPort["createUser"]>[0]) => {
+      createUser: async (
+        _input: Parameters<AuthAdminPort["createUser"]>[0]
+      ) => {
         calls.createAuthCalls.push("called");
         return {
           authUserId: "auth-user-id-1",
         };
       },
-      deleteUser: async (authUserId: Parameters<AuthAdminPort["deleteUser"]>[0]) => {
+      deleteUser: async (
+        authUserId: Parameters<AuthAdminPort["deleteUser"]>[0]
+      ) => {
         calls.deleteAuthCalls.push(authUserId);
       },
       ...overrides?.authAdmin,
@@ -130,7 +142,7 @@ function createUserManagementServiceWithMocks(
         calls.auditCalls.push({ actorUserId, targetUserId });
       },
       ...overrides?.repository,
-      },
+    },
     capabilityChecker: {
       requireCapability: async (_scope, capabilityCode) => {
         calls.requireCapability.push(capabilityCode);
@@ -154,7 +166,9 @@ function assert(condition: boolean, message: string): void {
 
 function assertEquals<T>(actual: T, expected: T, message: string): void {
   if (actual !== expected) {
-    throw new Error(`${message} (got ${String(actual)} expected ${String(expected)})`);
+    throw new Error(
+      `${message} (got ${String(actual)} expected ${String(expected)})`
+    );
   }
 }
 
@@ -191,21 +205,28 @@ async function runCapabilityRejectionPreventsCreation(): Promise<void> {
       tenant_id: "tenant-1",
       user_id: "actor-1",
     },
-    input,
+    input
   );
 
-  assert(result.ok === false, "Expected createUser to fail with capability denial.");
+  assert(
+    result.ok === false,
+    "Expected createUser to fail with capability denial."
+  );
   assertEquals(
     result.code,
     "capability_denied",
-    "Expected capability_denied result for rejected capability",
+    "Expected capability_denied result for rejected capability"
   );
 
-  assertEquals(calls.requireCapability.length, 1, "Expected one capability check call");
+  assertEquals(
+    calls.requireCapability.length,
+    1,
+    "Expected one capability check call"
+  );
   assertEquals(
     calls.createAuthCalls.length,
     0,
-    "Expected createUser to skip auth creation when capability is denied",
+    "Expected createUser to skip auth creation when capability is denied"
   );
 }
 
@@ -239,24 +260,39 @@ async function runDuplicatePreflightRejectsWithoutAuthWrite(): Promise<void> {
       tenant_id: "tenant-1",
       user_id: "actor-1",
     },
-    input,
+    input
   );
 
-  assert(result.ok === false, "Expected createUser to reject duplicated identifiers.");
-  assertEquals(result.code, "duplicate_identifier", "Expected duplicate_identifier on preflight hit");
+  assert(
+    result.ok === false,
+    "Expected createUser to reject duplicated identifiers."
+  );
+  assertEquals(
+    result.code,
+    "duplicate_identifier",
+    "Expected duplicate_identifier on preflight hit"
+  );
 
-  assertEquals(calls.identifierExistsCalls.length, 1, "Expected one preflight duplicate check call");
+  assertEquals(
+    calls.identifierExistsCalls.length,
+    1,
+    "Expected one preflight duplicate check call"
+  );
   assertEquals(
     calls.identifierExistsCalls[0]!.email,
     "admin@example.com",
-    "Expected email normalization before preflight",
+    "Expected email normalization before preflight"
   );
   assertEquals(
     calls.identifierExistsCalls[0]!.phone,
     "15551234567",
-    "Expected phone normalization before preflight",
+    "Expected phone normalization before preflight"
   );
-  assertEquals(calls.createAuthCalls.length, 0, "Expected no Auth write after duplicate preflight");
+  assertEquals(
+    calls.createAuthCalls.length,
+    0,
+    "Expected no Auth write after duplicate preflight"
+  );
 }
 
 async function runCompensationRunsOnLocalFailureAfterAuthCreated(): Promise<void> {
@@ -284,29 +320,32 @@ async function runCompensationRunsOnLocalFailureAfterAuthCreated(): Promise<void
       tenant_id: "tenant-2",
       user_id: "actor-2",
     },
-    input,
+    input
   );
 
-  assert(result.ok === false, "Expected failure path to return a failed outcome.");
+  assert(
+    result.ok === false,
+    "Expected failure path to return a failed outcome."
+  );
   assertEquals(
     result.code,
     "role_assignment_failed",
-    "Expected role assignment failure to map to role_assignment_failed",
+    "Expected role assignment failure to map to role_assignment_failed"
   );
   assertEquals(
     calls.createAuthCalls.length,
     1,
-    "Expected one Auth create call before local failure",
+    "Expected one Auth create call before local failure"
   );
   assertEquals(
     calls.deleteAuthCalls.length,
     1,
-    "Expected Auth compensation call after local failure",
+    "Expected Auth compensation call after local failure"
   );
   assertEquals(
     calls.deleteAuthCalls[0],
     "auth-user-id-1",
-    "Expected compensation to target created Auth user",
+    "Expected compensation to target created Auth user"
   );
 }
 
@@ -322,11 +361,35 @@ async function runListUsersFiltersToActiveTenantOnly(): Promise<void> {
     user_id: "actor-3",
   });
 
-  assertEquals(calls.requireCapability.length, 1, "Expected one capability check for listUsers");
-  assertEquals(calls.requireCapability[0], "users:read", "Expected users:read capability check");
-  assertEquals(calls.listActiveCalls[0], "tenant-3", "Expected tenant id trimming before repository call");
+  assertEquals(
+    calls.requireCapability.length,
+    1,
+    "Expected one capability check for listUsers"
+  );
+  assertEquals(
+    calls.requireCapability[0],
+    "users:read",
+    "Expected users:read capability check"
+  );
+  assertEquals(
+    calls.listActiveCalls[0],
+    "tenant-3",
+    "Expected tenant id trimming before repository call"
+  );
 
-  assertEquals(result.length, 1, "Expected one user result in listUsers default");
-  assertEquals(result[0]?.tenant_id, "tenant-3", "Expected active listing scoped to requesting tenant");
-  assertEquals(result[0]?.status, "active", "Expected repository result to remain active in service defaults");
+  assertEquals(
+    result.length,
+    1,
+    "Expected one user result in listUsers default"
+  );
+  assertEquals(
+    result[0]?.tenant_id,
+    "tenant-3",
+    "Expected active listing scoped to requesting tenant"
+  );
+  assertEquals(
+    result[0]?.status,
+    "active",
+    "Expected repository result to remain active in service defaults"
+  );
 }

@@ -43,7 +43,9 @@ export async function runAuthAdminAdapterContractChecks(): Promise<void> {
       },
     },
     from: () => {
-      throw new Error("Auth admin contract checks should not hit database queries.");
+      throw new Error(
+        "Auth admin contract checks should not hit database queries."
+      );
     },
   } as unknown as SupabaseClient;
 
@@ -82,7 +84,8 @@ export async function runAuthAdminAdapterSqlFailureBehavior(): Promise<void> {
           return {
             data: null,
             error: {
-              message: "duplicate key value violates unique constraint \"users_email_key\"",
+              message:
+                'duplicate key value violates unique constraint "users_email_key"',
               details: "Key (email)=(tenant-user@example.com) already exists.",
               hint: "Remove duplicate email",
               code: "23505",
@@ -90,12 +93,16 @@ export async function runAuthAdminAdapterSqlFailureBehavior(): Promise<void> {
           } as const;
         },
         deleteUser: async () => {
-          throw new Error("deleteUser should not be called when auth creation fails.");
+          throw new Error(
+            "deleteUser should not be called when auth creation fails."
+          );
         },
       },
     },
     from: () => {
-      throw new Error("Auth admin SQL failure path should not hit database queries.");
+      throw new Error(
+        "Auth admin SQL failure path should not hit database queries."
+      );
     },
   } as unknown as SupabaseClient;
 
@@ -123,7 +130,13 @@ export async function runAuthAdminAdapterSqlFailureBehavior(): Promise<void> {
     throw new Error("Expected createUser to fail when SQL returns an error.");
   }
 
-  if (!failedWithMessage.includes("duplicate key value violates unique constraint")) {
-    throw new Error(`Expected SQL-style error message to be propagated, got ${failedWithMessage}`);
+  if (
+    !failedWithMessage.includes(
+      "duplicate key value violates unique constraint"
+    )
+  ) {
+    throw new Error(
+      `Expected SQL-style error message to be propagated, got ${failedWithMessage}`
+    );
   }
 }
