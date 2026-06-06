@@ -113,7 +113,9 @@ export class SupabaseAppSessionRepository implements AppSessionRepository {
     }
 
     const roles =
-      data?.map((item: UserRoleRow) => item.role_id).filter((value) => !!value) ?? [];
+      data
+        ?.map((item: UserRoleRow) => item.role_id)
+        .filter((value) => !!value) ?? [];
 
     return [...new Set(roles)];
   }
@@ -124,7 +126,9 @@ export class SupabaseAppSessionRepository implements AppSessionRepository {
     roleIds?: readonly string[];
   }): Promise<boolean> {
     const explicitRoleIds = input.roleIds
-      ? Array.from(new Set(input.roleIds)).filter((roleId) => roleId.trim().length > 0)
+      ? Array.from(new Set(input.roleIds)).filter(
+          (roleId) => roleId.trim().length > 0
+        )
       : null;
 
     if (explicitRoleIds && explicitRoleIds.length === 0) {
@@ -174,7 +178,10 @@ export class SupabaseAppSessionRepository implements AppSessionRepository {
         .in("role_id", normalizedRoleIds)
         .then((result) =>
           this.ensureRows<RoleCapabilityRow>(
-            result as { data: RoleCapabilityRow[] | null; error: { message: string } | null },
+            result as {
+              data: RoleCapabilityRow[] | null;
+              error: { message: string } | null;
+            },
             "Role capability lookup failed"
           )
         ),
@@ -185,7 +192,10 @@ export class SupabaseAppSessionRepository implements AppSessionRepository {
         .in("id", normalizedRoleIds)
         .then((result) =>
           this.ensureRows<RoleRow>(
-            result as { data: RoleRow[] | null; error: { message: string } | null },
+            result as {
+              data: RoleRow[] | null;
+              error: { message: string } | null;
+            },
             "Role lookup for web access failed"
           )
         ),

@@ -121,7 +121,10 @@ describe("SupabaseAppSessionRepository", () => {
     const repository = new SupabaseAppSessionRepository(client);
 
     await expect(
-      repository.getUserProfile({ tenantId: "tenant-001", authUserId: "auth-001" })
+      repository.getUserProfile({
+        tenantId: "tenant-001",
+        authUserId: "auth-001",
+      })
     ).resolves.toEqual({
       userId: "user-001",
       email: "alice@example.com",
@@ -130,7 +133,10 @@ describe("SupabaseAppSessionRepository", () => {
     });
 
     await expect(
-      repository.getUserProfile({ tenantId: "tenant-001", authUserId: "auth-404" })
+      repository.getUserProfile({
+        tenantId: "tenant-001",
+        authUserId: "auth-404",
+      })
     ).resolves.toBeNull();
   });
 
@@ -147,13 +153,20 @@ describe("SupabaseAppSessionRepository", () => {
     const repository = new SupabaseAppSessionRepository(client);
 
     await expect(
-      repository.getUserProfile({ tenantId: "tenant-001", authUserId: "auth-001" })
+      repository.getUserProfile({
+        tenantId: "tenant-001",
+        authUserId: "auth-001",
+      })
     ).rejects.toThrow("query failed");
   });
 
   it("listUserRoles: deduplicates role ids", async () => {
     const query = createQueryBuilder({
-      data: [{ role_id: "r-admin" }, { role_id: "r-reader" }, { role_id: "r-admin" }],
+      data: [
+        { role_id: "r-admin" },
+        { role_id: "r-reader" },
+        { role_id: "r-admin" },
+      ],
       error: null,
     });
 
@@ -217,7 +230,10 @@ describe("SupabaseAppSessionRepository", () => {
       "r-reader",
       "r-unauthorized",
     ]);
-    expect(capabilityKeyQuery.in).toHaveBeenCalledWith("id", ["cap-read", "cap-write"]);
+    expect(capabilityKeyQuery.in).toHaveBeenCalledWith("id", [
+      "cap-read",
+      "cap-write",
+    ]);
     expect(capabilities).toEqual(
       expect.arrayContaining(["orders.read", "orders.write"])
     );
@@ -255,7 +271,9 @@ describe("SupabaseAppSessionRepository", () => {
       roleIds: ["r-admin", "r-other"],
     });
 
-    expect(capabilityKeyQuery.in).toHaveBeenCalledWith("id", ["cap-admin-read"]);
+    expect(capabilityKeyQuery.in).toHaveBeenCalledWith("id", [
+      "cap-admin-read",
+    ]);
     expect(capabilities).toEqual(expect.arrayContaining(["admin.read"]));
   });
 

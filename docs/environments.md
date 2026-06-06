@@ -10,12 +10,12 @@
 
 The following variables MUST be configured for every environment. Build and deploy will fail explicitly if any are missing.
 
-| Variable                        | Scope  | Description                                       |
-| ------------------------------- | ------ | ------------------------------------------------- |
-| `NEXT_PUBLIC_SUPABASE_URL`      | Public | Supabase project URL                              |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public | Supabase anonymous/public API key                 |
-| `APP_SESSION_SECRET`            | Secret | HMAC secret for signed app-session cookies        |
-| `SUPABASE_SERVICE_ROLE_KEY`     | Secret | Server-only key for auth/session state refreshes  |
+| Variable                        | Scope  | Description                                      |
+| ------------------------------- | ------ | ------------------------------------------------ |
+| `NEXT_PUBLIC_SUPABASE_URL`      | Public | Supabase project URL                             |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public | Supabase anonymous/public API key                |
+| `APP_SESSION_SECRET`            | Secret | HMAC secret for signed app-session cookies       |
+| `SUPABASE_SERVICE_ROLE_KEY`     | Secret | Server-only key for auth/session state refreshes |
 
 ## File Locations
 

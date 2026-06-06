@@ -69,10 +69,7 @@ export interface AppSessionRepository {
    * Loads a local user profile for a tenant-scoped user.
    * Returns `null` when profile does not exist.
    */
-  getUserProfile(input: {
-    tenantId: string;
-    authUserId: string;
-  }): Promise<{
+  getUserProfile(input: { tenantId: string; authUserId: string }): Promise<{
     readonly userId: string;
     readonly email?: string | null;
     readonly status: "active" | "inactive";
@@ -118,7 +115,10 @@ export interface LoginWithEmailPasswordService {
   login(input: LoginInput): Promise<LoginWithEmailPasswordOutcome>;
 }
 
-export type { TenantUserManagementService, UserManagementServiceDependencies } from "./user-management";
+export type {
+  TenantUserManagementService,
+  UserManagementServiceDependencies,
+} from "./user-management";
 
 export { LoginWithEmailPasswordServiceImpl } from "./app-session";
 export { createUserManagementService } from "./user-management";

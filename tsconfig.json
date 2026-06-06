@@ -16,10 +16,7 @@
     "forceConsistentCasingInFileNames": true,
     "baseUrl": ".",
     "paths": {
-      "@faena360/domain": [
-        "packages/domain/src",
-        "packages/domain"
-      ],
+      "@faena360/domain": ["packages/domain/src", "packages/domain"],
       "@faena360/application": [
         "packages/application/src",
         "packages/application"
@@ -28,10 +25,7 @@
         "packages/infrastructure/src",
         "packages/infrastructure"
       ],
-      "@faena360/shared": [
-        "packages/shared/index.ts",
-        "packages/shared"
-      ]
+      "@faena360/shared": ["packages/shared/index.ts", "packages/shared"]
     }
   },
   "exclude": ["node_modules", "dist", "build", ".next"]

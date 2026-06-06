@@ -20,7 +20,9 @@ function buildSignedSessionCookie(session: AppSession): string {
   return response.cookies.get(APP_SESSION_COOKIE_NAME)?.value ?? "";
 }
 
-function buildRequestWithCookie(cookie: string): { get(name: string): { value: string } | undefined } {
+function buildRequestWithCookie(cookie: string): {
+  get(name: string): { value: string } | undefined;
+} {
   return {
     get(name: string) {
       if (name === APP_SESSION_COOKIE_NAME) {
@@ -46,7 +48,10 @@ function buildRepository(
     };
     roles?: readonly string[];
     roleCapabilities?: readonly string[];
-    userOverrides?: readonly { capabilityCode: string; effect: "allow" | "deny" }[];
+    userOverrides?: readonly {
+      capabilityCode: string;
+      effect: "allow" | "deny";
+    }[];
     webAccess?: boolean;
   } = {}
 ): AppSessionRepository {
@@ -219,18 +224,15 @@ describe("requireWebAccess", () => {
     } satisfies AppSession;
 
     const cookie = buildSignedSessionCookie(userSession);
-    const response = await requireWebAccess(
-      buildRequestWithCookie(cookie),
-      {
-        sessionRefresher: createServerStateSessionRefresher(
-          buildRepository({
-            roles: ["admin"],
-            roleCapabilities: ["orders.read"],
-            webAccess: true,
-          })
-        ),
-      }
-    );
+    const response = await requireWebAccess(buildRequestWithCookie(cookie), {
+      sessionRefresher: createServerStateSessionRefresher(
+        buildRepository({
+          roles: ["admin"],
+          roleCapabilities: ["orders.read"],
+          webAccess: true,
+        })
+      ),
+    });
 
     expect(response.ok).toBe(false);
     if (response.ok) {

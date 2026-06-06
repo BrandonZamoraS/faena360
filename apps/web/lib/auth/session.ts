@@ -5,7 +5,8 @@ import type { AppSessionRepository } from "@faena360/application";
 
 export const APP_SESSION_COOKIE_NAME = "faena360.app-session";
 const APP_SESSION_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 8;
-const APP_SESSION_COOKIE_TTL_MILLISECONDS = APP_SESSION_COOKIE_MAX_AGE_SECONDS * 1000;
+const APP_SESSION_COOKIE_TTL_MILLISECONDS =
+  APP_SESSION_COOKIE_MAX_AGE_SECONDS * 1000;
 const APP_SESSION_COOKIE_VERSION = "v1";
 const WEB_ACCESS_CAPABILITY = "web.portal.access";
 
@@ -20,7 +21,9 @@ export interface CookieContainer {
   get(name: string): { value: string } | undefined;
 }
 
-export type AppSessionRefresher = (session: AppSession) => Promise<AppSession | null>;
+export type AppSessionRefresher = (
+  session: AppSession
+) => Promise<AppSession | null>;
 
 export interface GetAppSessionOptions {
   readonly sessionRefresher?: AppSessionRefresher;
@@ -31,7 +34,9 @@ export function createServerStateSessionRefresher(
 ): AppSessionRefresher {
   return async (session) => {
     try {
-      const tenant = await repository.getTenant({ tenantId: session.tenant_id });
+      const tenant = await repository.getTenant({
+        tenantId: session.tenant_id,
+      });
       if (tenant.status !== "active") {
         return null;
       }
@@ -106,7 +111,9 @@ export async function getAppSession(
   }
 
   try {
-    const decodedPayload = Buffer.from(parsed.payload, "base64url").toString("utf8");
+    const decodedPayload = Buffer.from(parsed.payload, "base64url").toString(
+      "utf8"
+    );
     const parsedSession = JSON.parse(decodedPayload);
     const session = normalizeAppSession(parsedSession);
     if (!session) {
@@ -300,7 +307,9 @@ function createSerializedSessionPayload(session: AppSession): string {
   return Buffer.from(JSON.stringify(session), "utf8").toString("base64url");
 }
 
-function parseSignedSessionToken(rawCookie: string): SignedAppSessionToken | null {
+function parseSignedSessionToken(
+  rawCookie: string
+): SignedAppSessionToken | null {
   const parts = rawCookie.split(".");
   if (parts.length !== 4) {
     return null;

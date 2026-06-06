@@ -79,7 +79,10 @@ function buildWebAccessRemovedSessionRefresher(): AppSessionRefresher {
 describe("GET /api/auth/me", () => {
   it("returns unauthorized when no session exists", async () => {
     const request = buildRequest();
-    const response = await handleMeGet(request, buildContext(allowFreshSession));
+    const response = await handleMeGet(
+      request,
+      buildContext(allowFreshSession)
+    );
     const payload = await response.json();
 
     expect(response.status).toBe(401);
@@ -88,7 +91,10 @@ describe("GET /api/auth/me", () => {
 
   it("rejects forged client JSON cookies", async () => {
     const request = buildRequest(JSON.stringify(baseSession));
-    const response = await handleMeGet(request, buildContext(allowFreshSession));
+    const response = await handleMeGet(
+      request,
+      buildContext(allowFreshSession)
+    );
     const payload = await response.json();
 
     expect(response.status).toBe(401);
@@ -96,8 +102,13 @@ describe("GET /api/auth/me", () => {
   });
 
   it("rejects tampered session cookies", async () => {
-    const request = buildRequest(buildTamperedCookie(buildSignedSessionCookie(baseSession)));
-    const response = await handleMeGet(request, buildContext(allowFreshSession));
+    const request = buildRequest(
+      buildTamperedCookie(buildSignedSessionCookie(baseSession))
+    );
+    const response = await handleMeGet(
+      request,
+      buildContext(allowFreshSession)
+    );
     const payload = await response.json();
 
     expect(response.status).toBe(401);
@@ -106,7 +117,10 @@ describe("GET /api/auth/me", () => {
 
   it("returns public session information", async () => {
     const request = buildRequest(buildSignedSessionCookie(baseSession));
-    const response = await handleMeGet(request, buildContext(allowFreshSession));
+    const response = await handleMeGet(
+      request,
+      buildContext(allowFreshSession)
+    );
     const payload = await response.json();
 
     expect(response.status).toBe(200);
@@ -130,7 +144,10 @@ describe("GET /api/auth/me", () => {
   it("denies access when user is no longer active", async () => {
     const request = buildRequest(buildSignedSessionCookie(baseSession));
 
-    const response = await handleMeGet(request, buildContext(buildInactiveUserSessionRefresher()));
+    const response = await handleMeGet(
+      request,
+      buildContext(buildInactiveUserSessionRefresher())
+    );
     const payload = await response.json();
 
     expect(response.status).toBe(401);
@@ -159,7 +176,10 @@ describe("POST /api/auth/me", () => {
       },
     });
 
-    const response = await handleMePost(request, buildContext(allowFreshSession));
+    const response = await handleMePost(
+      request,
+      buildContext(allowFreshSession)
+    );
     const payload = await response.json();
 
     expect(response.status).toBe(200);
@@ -180,7 +200,10 @@ describe("POST /api/auth/me", () => {
       },
     });
 
-    const response = await handleMePost(request, buildContext(allowFreshSession));
+    const response = await handleMePost(
+      request,
+      buildContext(allowFreshSession)
+    );
     const payload = await response.json();
 
     expect(response.status).toBe(200);
@@ -201,7 +224,10 @@ describe("POST /api/auth/me", () => {
       },
     });
 
-    const response = await handleMePost(request, buildContext(allowFreshSession));
+    const response = await handleMePost(
+      request,
+      buildContext(allowFreshSession)
+    );
     const payload = await response.json();
 
     expect(response.status).toBe(403);

@@ -13,9 +13,7 @@ import {
 
 const WEB_ACCESS_CAPABILITY = "web.portal.access";
 
-export class LoginWithEmailPasswordServiceImpl
-  implements LoginWithEmailPasswordService
-{
+export class LoginWithEmailPasswordServiceImpl implements LoginWithEmailPasswordService {
   private readonly capabilityResolver: ReturnType<
     typeof createEffectiveCapabilitiesResolver
   >;
@@ -72,14 +70,12 @@ export class LoginWithEmailPasswordServiceImpl
       };
     }
 
-    let userProfile:
-      | {
-          readonly userId: string;
-          readonly email?: string | null;
-          readonly status: "active" | "inactive";
-          readonly tenantId: string;
-        }
-      | null;
+    let userProfile: {
+      readonly userId: string;
+      readonly email?: string | null;
+      readonly status: "active" | "inactive";
+      readonly tenantId: string;
+    } | null;
     try {
       userProfile = await this.appSessionRepository.getUserProfile({
         tenantId,

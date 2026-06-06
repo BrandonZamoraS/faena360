@@ -52,7 +52,8 @@ function createRepository(overrides: {
     listTenantRoleCapabilities: async () =>
       overrides.tenantRoleCapabilities ?? [],
     hasWebAccessRole: async () => overrides.hasWebAccessRole ?? true,
-    listUserCapabilityOverrides: async () => overrides.userCapabilityOverrides ?? [],
+    listUserCapabilityOverrides: async () =>
+      overrides.userCapabilityOverrides ?? [],
   };
 }
 
@@ -121,9 +122,10 @@ describe("app-session login", () => {
     );
 
     await service.login(baseInput);
-    await expect(
-      service.login(baseInput)
-    ).resolves.toMatchObject({ ok: true, session: expect.objectContaining({ tenant_id: "tenant-from-metadata" }) });
+    await expect(service.login(baseInput)).resolves.toMatchObject({
+      ok: true,
+      session: expect.objectContaining({ tenant_id: "tenant-from-metadata" }),
+    });
   });
 
   it("uses profile email before auth email and falls back when profile email is blank", async () => {
@@ -468,7 +470,10 @@ describe("app-session login", () => {
       },
     };
 
-    const service = new LoginWithEmailPasswordServiceImpl(identityPort, repository);
+    const service = new LoginWithEmailPasswordServiceImpl(
+      identityPort,
+      repository
+    );
 
     await expect(service.login(baseInput)).resolves.toEqual({
       ok: false,
@@ -504,7 +509,10 @@ describe("app-session login", () => {
       },
     };
 
-    const service = new LoginWithEmailPasswordServiceImpl(identityPort, repository);
+    const service = new LoginWithEmailPasswordServiceImpl(
+      identityPort,
+      repository
+    );
 
     await expect(service.login(baseInput)).resolves.toEqual({
       ok: false,
@@ -541,7 +549,10 @@ describe("app-session login", () => {
       },
     };
 
-    const service = new LoginWithEmailPasswordServiceImpl(identityPort, repository);
+    const service = new LoginWithEmailPasswordServiceImpl(
+      identityPort,
+      repository
+    );
 
     await expect(service.login(baseInput)).resolves.toEqual({
       ok: false,

@@ -79,8 +79,10 @@ export async function handleLoginPost(
   }
 
   const credentials = payload as { email?: unknown; password?: unknown };
-  const email = typeof credentials.email === "string" ? credentials.email.trim() : "";
-  const password = typeof credentials.password === "string" ? credentials.password : "";
+  const email =
+    typeof credentials.email === "string" ? credentials.email.trim() : "";
+  const password =
+    typeof credentials.password === "string" ? credentials.password : "";
 
   if (!email || !password) {
     return NextResponse.json(

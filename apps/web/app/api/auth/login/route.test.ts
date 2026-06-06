@@ -1,9 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { AppAuthErrorCode } from "@faena360/domain";
-import {
-  LoginWithEmailPasswordServiceImpl,
-} from "../../../../../../packages/application/src/auth/app-session";
+import { LoginWithEmailPasswordServiceImpl } from "../../../../../../packages/application/src/auth/app-session";
 import type { AppSessionRepository } from "../../../../../../packages/application/src/auth/index";
 import { APP_SESSION_COOKIE_NAME } from "../../../../lib/auth/session";
 import { handleLoginDelete, handleLoginPost } from "./handler";
@@ -123,11 +121,16 @@ process.env.APP_SESSION_SECRET = "test-session-secret";
 
 describe("POST /api/auth/login", () => {
   it("writes app session cookie on success", async () => {
-    const login = vi.fn().mockResolvedValue({ ok: true, session: successfulSession });
+    const login = vi
+      .fn()
+      .mockResolvedValue({ ok: true, session: successfulSession });
 
     const request = new NextRequest("http://localhost/api/auth/login", {
       method: "POST",
-      body: JSON.stringify({ email: "admin@faena360.com", password: "password" }),
+      body: JSON.stringify({
+        email: "admin@faena360.com",
+        password: "password",
+      }),
     });
 
     const response = await handleLoginPost(request, { service: { login } });
@@ -155,7 +158,10 @@ describe("POST /api/auth/login", () => {
 
       const request = new NextRequest("http://localhost/api/auth/login", {
         method: "POST",
-        body: JSON.stringify({ email: "admin@faena360.com", password: "password" }),
+        body: JSON.stringify({
+          email: "admin@faena360.com",
+          password: "password",
+        }),
       });
 
       const response = await handleLoginPost(request, { service: { login } });
@@ -168,11 +174,16 @@ describe("POST /api/auth/login", () => {
   });
 
   it("accepts Supervisor users when web access is allowed", async () => {
-    const login = vi.fn().mockResolvedValue({ ok: true, session: supervisorSuccessfulSession });
+    const login = vi
+      .fn()
+      .mockResolvedValue({ ok: true, session: supervisorSuccessfulSession });
 
     const request = new NextRequest("http://localhost/api/auth/login", {
       method: "POST",
-      body: JSON.stringify({ email: "supervisor@faena360.com", password: "password" }),
+      body: JSON.stringify({
+        email: "supervisor@faena360.com",
+        password: "password",
+      }),
     });
 
     const response = await handleLoginPost(request, { service: { login } });
