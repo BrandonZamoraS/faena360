@@ -8,3 +8,11 @@ export type {
   UserCapabilityOverride,
   UserId,
 } from "./capabilities";
+export type {
+  AuthAdminPort,
+  CreateTenantUserErrorCode,
+  CreateTenantUserInput,
+  CreateTenantUserOutcome,
+  TenantUserSummary,
+  UserManagementRepository,
+} from "./user-management";
