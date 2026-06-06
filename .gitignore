@@ -1,5 +1,6 @@
 # Local AI runtime state
 .atl/
+.worktrees/
 
 # Obsidian Vault
 obsidian-vault/
