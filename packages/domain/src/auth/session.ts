@@ -1,18 +1,21 @@
-/**
- * Domain contracts for web app session authentication.
- */
+/** Domain contracts for app-session authentication. */
 
 /** Supported user profile states in the local authorization layer. */
 export type UserProfileStatus = "active" | "inactive";
 
-/** Canonical error vocabulary for app-session login outcomes. */
+/**
+ * Canonical error vocabulary for app-session login outcomes.
+ */
 export type AppAuthErrorCode =
   | "invalid_credentials"
+  | "missing_tenant"
   | "inactive_tenant"
   | "inactive_user"
   | "web_access_denied";
 
-/** Authenticated identity as returned by the identity provider. */
+/**
+ * Authenticated identity as returned by the Identity provider.
+ */
 export interface AuthUser {
   /** Auth provider user identifier. */
   readonly id: string;
@@ -22,7 +25,9 @@ export interface AuthUser {
   readonly tenantId?: string | null;
 }
 
-/** App session issued by the backend login use case. */
+/**
+ * App session issued by the backend login use case.
+ */
 export interface AppSession {
   readonly user_id: string;
   readonly auth_user_id: string;
@@ -44,5 +49,7 @@ export type AppAuthFailure = {
   readonly code: AppAuthErrorCode;
 };
 
-/** Result of app-session login attempts. */
+/**
+ * Result of app session login attempts.
+ */
 export type AppAuthResult = AppAuthSuccess | AppAuthFailure;

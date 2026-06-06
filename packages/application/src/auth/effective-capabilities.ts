@@ -24,9 +24,7 @@ export type UserCapabilityOverrideInput = Omit<
   keyof TenantUserScope
 >;
 
-export interface EffectiveCapabilities {
-  readonly userId: UserId;
-  readonly tenantId: TenantId;
+export interface EffectiveCapabilities extends TenantUserScope {
   readonly capabilities: ReadonlySet<CapabilityCode>;
 }
 

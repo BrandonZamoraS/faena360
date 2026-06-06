@@ -27,12 +27,18 @@ function buildLoginService(): LoginWithEmailPasswordService {
 }
 
 function mapCodeToStatus(
-  code: "invalid_credentials" | "inactive_tenant" | "inactive_user" | "web_access_denied"
+  code:
+    | "invalid_credentials"
+    | "missing_tenant"
+    | "inactive_tenant"
+    | "inactive_user"
+    | "web_access_denied"
 ): number {
   switch (code) {
     case "invalid_credentials":
       return 401;
     case "inactive_tenant":
+    case "missing_tenant":
     case "inactive_user":
     case "web_access_denied":
       return 403;
@@ -61,9 +67,20 @@ export async function handleLoginPost(
     );
   }
 
-  const credentials = payload as { email?: string; password?: string };
-  const email = credentials.email?.trim();
-  const password = credentials.password;
+  if (!payload || typeof payload !== "object") {
+    return NextResponse.json(
+      {
+        ok: false,
+        code: "invalid_credentials",
+        message: "Email and password are required.",
+      },
+      { status: 400 }
+    );
+  }
+
+  const credentials = payload as { email?: unknown; password?: unknown };
+  const email = typeof credentials.email === "string" ? credentials.email.trim() : "";
+  const password = typeof credentials.password === "string" ? credentials.password : "";
 
   if (!email || !password) {
     return NextResponse.json(

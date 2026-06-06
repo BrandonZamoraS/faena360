@@ -1,3 +1,17 @@
+export {
+  applyCapabilityOverrides,
+  CapabilityDeniedError,
+  createEffectiveCapabilitiesCacheKey,
+  createEffectiveCapabilitiesResolver,
+  InMemoryEffectiveCapabilitiesCache,
+} from "./effective-capabilities";
+
+export type {
+  EffectiveCapabilitiesCache,
+  EffectiveCapabilitiesRepository,
+  EffectiveCapabilitiesResolverOptions,
+} from "./effective-capabilities";
+
 import type {
   AppAuthErrorCode,
   AppAuthFailure,
@@ -5,7 +19,7 @@ import type {
   AppAuthSuccess,
   AppSession,
   AuthUser,
-} from "../../../domain/src";
+} from "@faena360/domain";
 
 export type {
   AppAuthErrorCode,
@@ -14,23 +28,36 @@ export type {
   AppAuthSuccess,
   AppSession,
   AuthUser,
-};
+  UserProfileStatus,
+  AppAuthResult as LoginResult,
+} from "@faena360/domain";
 
-/** Input accepted by app-session login flow. */
+/**
+ * Input accepted by app-session login flow.
+ */
 export interface LoginInput {
   readonly email: string;
   readonly password: string;
 }
 
-/** Effective result of app-session login. */
+/**
+ * Effective result of app-session login.
+ */
 export type LoginWithEmailPasswordOutcome = AppAuthResult;
 
-/** Input credential identity provider contract. */
+/**
+ * Input credential identity provider contract.
+ */
 export interface AuthIdentityPort {
   signInWithPassword(input: LoginInput): Promise<AuthUser>;
+
+  /** Optional cleanup hook to clear the local auth session after app authorization failures. */
+  signOut?(): Promise<void>;
 }
 
-/** Local authorization data required to build a session. */
+/**
+ * Local authorization data required to build a session.
+ */
 export interface AppSessionRepository {
   /** Resolves a tenant row by identifier. */
   getTenant(input: { tenantId: string }): Promise<{
@@ -47,7 +74,7 @@ export interface AppSessionRepository {
     authUserId: string;
   }): Promise<{
     readonly userId: string;
-    readonly email: string;
+    readonly email?: string | null;
     readonly status: "active" | "inactive";
     readonly tenantId: string;
   } | null>;
@@ -75,21 +102,28 @@ export interface AppSessionRepository {
     roleIds?: readonly string[];
   }): Promise<boolean>;
 
-  /** Reads explicit capability overrides for the tenant user. */
+  /**
+   * Reads explicit capability overrides for the tenant user.
+   */
   listUserCapabilityOverrides(input: {
     tenantId: string;
     userId: string;
   }): Promise<readonly UserCapabilityOverride[]>;
 }
 
-/** Contract for the app-session application service. */
+/**
+ * Contract for the app-session application service.
+ */
 export interface LoginWithEmailPasswordService {
   login(input: LoginInput): Promise<LoginWithEmailPasswordOutcome>;
 }
+
+export type { TenantUserManagementService, UserManagementServiceDependencies } from "./user-management";
+
+export { LoginWithEmailPasswordServiceImpl } from "./app-session";
+export { createUserManagementService } from "./user-management";
 
 export interface UserCapabilityOverride {
   readonly capabilityCode: string;
   readonly effect: "allow" | "deny";
 }
-
-export { LoginWithEmailPasswordServiceImpl } from "./app-session";

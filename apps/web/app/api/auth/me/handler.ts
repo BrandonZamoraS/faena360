@@ -6,7 +6,7 @@ import {
   type CookieContainer,
 } from "../../../../lib/auth/session";
 import { SupabaseAppSessionRepository } from "../../../../../../packages/infrastructure/src/auth";
-import { createWebSupabaseClient } from "../../../../lib/supabase";
+import { createWebSupabaseServiceClient } from "../../../../lib/supabase";
 
 export type MeRouteDependencies = {
   sessionRefresher?: AppSessionRefresher;
@@ -19,7 +19,7 @@ function resolveSessionRefresher(
     return dependencies.sessionRefresher;
   }
 
-  const supabase = createWebSupabaseClient();
+  const supabase = createWebSupabaseServiceClient();
   const repository = new SupabaseAppSessionRepository(supabase);
   return createServerStateSessionRefresher(repository);
 }

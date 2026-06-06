@@ -1,9 +1,29 @@
 export type {
-  UserProfileStatus,
   AppAuthErrorCode,
-  AuthUser,
-  AppSession,
-  AppAuthSuccess,
   AppAuthFailure,
   AppAuthResult,
+  AppAuthSuccess,
+  AppSession,
+  AuthUser,
+  UserProfileStatus,
 } from "./session";
+
+export type {
+  CapabilityCode,
+  CapabilityOverrideEffect,
+  EffectiveCapabilities,
+  RoleId,
+  TenantId,
+  TenantUserScope,
+  UserCapabilityOverride,
+  UserId,
+} from "./capabilities";
+
+export type {
+  AuthAdminPort,
+  CreateTenantUserErrorCode,
+  CreateTenantUserInput,
+  CreateTenantUserOutcome,
+  TenantUserSummary,
+  UserManagementRepository,
+} from "./user-management";

@@ -294,6 +294,36 @@ describe("POST /api/auth/login", () => {
     expect(response.status).toBe(400);
     expect(payload.ok).toBe(false);
   });
+
+  it("rejects non-object JSON payloads", async () => {
+    const login = vi.fn();
+    const request = new NextRequest("http://localhost/api/auth/login", {
+      method: "POST",
+      body: JSON.stringify(null),
+    });
+
+    const response = await handleLoginPost(request, { service: { login } });
+    const payload = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(payload.ok).toBe(false);
+    expect(login).not.toHaveBeenCalled();
+  });
+
+  it("rejects non-string credentials", async () => {
+    const login = vi.fn();
+    const request = new NextRequest("http://localhost/api/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email: 1, password: true }),
+    });
+
+    const response = await handleLoginPost(request, { service: { login } });
+    const payload = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(payload.ok).toBe(false);
+    expect(login).not.toHaveBeenCalled();
+  });
 });
 
 describe("DELETE /api/auth/login", () => {

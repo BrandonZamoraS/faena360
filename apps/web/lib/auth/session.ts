@@ -75,7 +75,7 @@ export function createServerStateSessionRefresher(
         user_id: userProfile.userId,
         auth_user_id: session.auth_user_id,
         tenant_id: tenant.id,
-        email: userProfile.email,
+        email: userProfile.email ?? session.email,
         roles,
         effective_capabilities: effectiveCapabilities,
         status: userProfile.status,

@@ -4,6 +4,7 @@ import { SupabaseAuthAdapter } from "./SupabaseAuthAdapter";
 
 type SupabaseAuthQuery = {
   signInWithPassword: ReturnType<typeof vi.fn>;
+  signOut: ReturnType<typeof vi.fn>;
 };
 
 function createClient(): {
@@ -12,6 +13,7 @@ function createClient(): {
 } {
   const auth: SupabaseAuthQuery = {
     signInWithPassword: vi.fn(),
+    signOut: vi.fn(),
   };
 
   const client = {
@@ -22,7 +24,7 @@ function createClient(): {
 }
 
 describe("SupabaseAuthAdapter", () => {
-  it("maps tenant metadata from tenant_id", async () => {
+  it("signInWithPassword returns mapped AuthUser with tenant_id metadata", async () => {
     const { client, auth } = createClient();
 
     auth.signInWithPassword.mockResolvedValue({
@@ -51,7 +53,7 @@ describe("SupabaseAuthAdapter", () => {
     });
   });
 
-  it("falls back to app_metadata.tenantId", async () => {
+  it("does not fall back to tenant metadata camelCase", async () => {
     const { client, auth } = createClient();
 
     auth.signInWithPassword.mockResolvedValue({
@@ -73,7 +75,7 @@ describe("SupabaseAuthAdapter", () => {
       password: "secret",
     });
 
-    expect(user.tenantId).toBe("tenant-camel");
+    expect(user.tenantId).toBeUndefined();
   });
 
   it("uses input email when Supabase user email is unavailable", async () => {
@@ -141,5 +143,28 @@ describe("SupabaseAuthAdapter", () => {
         password: "secret",
       })
     ).rejects.toThrow("Authenticated user has no email");
+  });
+
+  it("signOut delegates to Supabase auth signOut", async () => {
+    const { client, auth } = createClient();
+
+    auth.signOut.mockResolvedValue({ error: null });
+
+    const adapter = new SupabaseAuthAdapter(client);
+
+    await expect(adapter.signOut()).resolves.toBeUndefined();
+
+    expect(auth.signOut).toHaveBeenCalledOnce();
+    expect(auth.signOut).toHaveBeenCalledWith({ scope: "local" });
+  });
+
+  it("throws when Supabase signOut fails", async () => {
+    const { client, auth } = createClient();
+
+    auth.signOut.mockResolvedValue({ error: { message: "Sign-out failed" } });
+
+    const adapter = new SupabaseAuthAdapter(client);
+
+    await expect(adapter.signOut()).rejects.toThrow("Sign-out failed");
   });
 });

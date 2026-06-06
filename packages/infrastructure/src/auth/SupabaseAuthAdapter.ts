@@ -1,8 +1,11 @@
-import type { AuthIdentityPort, LoginInput } from "../../../application/src/auth";
+import type {
+  AuthIdentityPort,
+  AuthUser,
+  LoginInput,
+} from "@faena360/application";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 const WEB_TENANT_META_KEY = "tenant_id";
-const APP_TENANT_META_KEY = "tenantId";
 
 /**
  * Adapter around Supabase Auth for the application's identity contract.
@@ -13,7 +16,7 @@ export class SupabaseAuthAdapter implements AuthIdentityPort {
   /**
    * Signs in with credentials and extracts tenant binding from app metadata.
    */
-  async signInWithPassword(input: LoginInput): Promise<{ id: string; email: string; tenantId?: string | null }> {
+  async signInWithPassword(input: LoginInput): Promise<AuthUser> {
     const { data, error } = await this.client.auth.signInWithPassword({
       email: input.email,
       password: input.password,
@@ -37,15 +40,26 @@ export class SupabaseAuthAdapter implements AuthIdentityPort {
     };
   }
 
+  /**
+   * Clears any signed-in Supabase auth session.
+   */
+  async signOut(): Promise<void> {
+    const { error } = await this.client.auth.signOut({
+      scope: "local",
+    });
+
+    if (error) {
+      throw error;
+    }
+  }
+
   private extractTenantId(appMetadata: unknown): string | undefined {
     if (!appMetadata || typeof appMetadata !== "object") {
       return undefined;
     }
 
     const rawMetadata = appMetadata as Record<string, unknown>;
-    const rawTenantId =
-      rawMetadata[WEB_TENANT_META_KEY] ??
-      rawMetadata[APP_TENANT_META_KEY];
+    const rawTenantId = rawMetadata[WEB_TENANT_META_KEY];
 
     if (typeof rawTenantId !== "string") {
       return undefined;

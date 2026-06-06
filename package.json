@@ -2,7 +2,13 @@
   "name": "faena360",
   "private": true,
   "packageManager": "pnpm@11.4.0",
+  "dependencies": {
+    "@faena360/application": "workspace:*",
+    "@supabase/supabase-js": "^2"
+  },
   "scripts": {
+    "tenant:create-admin": "pnpm exec tsx supabase/scripts/create-tenant-with-admin.ts",
+    "test:onboarding": "pnpm exec tsx supabase/scripts/test-onboarding.ts",
     "dev": "pnpm -r --parallel dev",
     "build": "pnpm -r build",
     "lint": "pnpm -r lint",
@@ -12,9 +18,10 @@
     "check": "pnpm format:check && pnpm lint && pnpm -r typecheck"
   },
   "devDependencies": {
-    "prettier": "^3",
-    "prettier-plugin-tailwindcss": "^0.6",
-    "typescript": "^5",
-    "vitest": "^3"
+    "prettier": "^3.8.3",
+    "prettier-plugin-tailwindcss": "^0.8.0",
+    "tsx": "^4.22.4",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.6"
   }
 }

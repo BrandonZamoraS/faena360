@@ -49,16 +49,15 @@ export class LoginWithEmailPasswordServiceImpl
 
     const tenantId = authUser.tenantId?.trim();
     if (!tenantId) {
-      return {
-        ok: false,
-        code: "inactive_tenant",
-      };
+      await this.cleanupAuthIdentity();
+      return { ok: false, code: "missing_tenant" };
     }
 
     let tenant: { readonly id: string; readonly status: string };
     try {
       tenant = await this.appSessionRepository.getTenant({ tenantId });
     } catch {
+      await this.cleanupAuthIdentity();
       return {
         ok: false,
         code: "inactive_tenant",
@@ -66,6 +65,7 @@ export class LoginWithEmailPasswordServiceImpl
     }
 
     if (tenant.status !== "active") {
+      await this.cleanupAuthIdentity();
       return {
         ok: false,
         code: "inactive_tenant",
@@ -75,7 +75,7 @@ export class LoginWithEmailPasswordServiceImpl
     let userProfile:
       | {
           readonly userId: string;
-          readonly email: string;
+          readonly email?: string | null;
           readonly status: "active" | "inactive";
           readonly tenantId: string;
         }
@@ -86,6 +86,7 @@ export class LoginWithEmailPasswordServiceImpl
         authUserId: authUser.id,
       });
     } catch {
+      await this.cleanupAuthIdentity();
       return {
         ok: false,
         code: "inactive_user",
@@ -93,6 +94,19 @@ export class LoginWithEmailPasswordServiceImpl
     }
 
     if (!userProfile || userProfile.status !== "active") {
+      await this.cleanupAuthIdentity();
+      return {
+        ok: false,
+        code: "inactive_user",
+      };
+    }
+
+    const profileEmail = userProfile.email?.trim();
+    const authEmail = authUser.email?.trim();
+    const sessionEmail = profileEmail || authEmail;
+
+    if (!sessionEmail) {
+      await this.cleanupAuthIdentity();
       return {
         ok: false,
         code: "inactive_user",
@@ -106,6 +120,7 @@ export class LoginWithEmailPasswordServiceImpl
         userId: userProfile.userId,
       });
     } catch {
+      await this.cleanupAuthIdentity();
       return {
         ok: false,
         code: "web_access_denied",
@@ -120,27 +135,33 @@ export class LoginWithEmailPasswordServiceImpl
       });
       effectiveCapabilities = Array.from(resolved.capabilities);
     } catch {
+      await this.cleanupAuthIdentity();
       return {
         ok: false,
         code: "web_access_denied",
       };
     }
 
-    let canAccessWeb: boolean;
+    let hasWebAccessRole: boolean;
     try {
-      canAccessWeb = await this.appSessionRepository.hasWebAccessRole({
+      hasWebAccessRole = await this.appSessionRepository.hasWebAccessRole({
         tenantId,
         userId: userProfile.userId,
         roleIds: roles,
       });
     } catch {
+      await this.cleanupAuthIdentity();
       return {
         ok: false,
         code: "web_access_denied",
       };
     }
 
-    if (!canAccessWeb || !effectiveCapabilities.includes(WEB_ACCESS_CAPABILITY)) {
+    const canAccessWeb =
+      hasWebAccessRole && effectiveCapabilities.includes(WEB_ACCESS_CAPABILITY);
+
+    if (!canAccessWeb) {
+      await this.cleanupAuthIdentity();
       return {
         ok: false,
         code: "web_access_denied",
@@ -153,12 +174,24 @@ export class LoginWithEmailPasswordServiceImpl
         user_id: userProfile.userId,
         auth_user_id: authUser.id,
         tenant_id: tenant.id,
-        email: userProfile.email,
+        email: sessionEmail,
         roles,
         effective_capabilities: effectiveCapabilities,
         status: userProfile.status,
         can_access_web: canAccessWeb,
       },
     };
+  }
+
+  private async cleanupAuthIdentity(): Promise<void> {
+    if (!this.authIdentityPort.signOut) {
+      return;
+    }
+
+    try {
+      await this.authIdentityPort.signOut();
+    } catch {
+      return;
+    }
   }
 }
