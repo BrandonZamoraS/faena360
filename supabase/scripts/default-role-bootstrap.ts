@@ -51,6 +51,7 @@ const ADMIN_CAPABILITY_KEYS = [
   "roles:create",
   "roles:update",
   "capabilities:read",
+  "web.portal.access",
 
   // Financial and operational record operations for audits and overrides
   "projects:read",
@@ -105,6 +106,7 @@ const SUPERVISOR_CAPABILITY_KEYS = [
   "users:read",
   "roles:read",
   "capabilities:read",
+  "web.portal.access",
   "projects:read",
   "subprojects:read",
   "machines:read",
