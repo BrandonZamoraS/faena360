@@ -13,7 +13,26 @@
     "isolatedModules": true,
     "jsx": "preserve",
     "incremental": true,
-    "forceConsistentCasingInFileNames": true
+    "forceConsistentCasingInFileNames": true,
+    "baseUrl": ".",
+    "paths": {
+      "@faena360/domain": [
+        "packages/domain/src",
+        "packages/domain"
+      ],
+      "@faena360/application": [
+        "packages/application/src",
+        "packages/application"
+      ],
+      "@faena360/infrastructure": [
+        "packages/infrastructure/src",
+        "packages/infrastructure"
+      ],
+      "@faena360/shared": [
+        "packages/shared/index.ts",
+        "packages/shared"
+      ]
+    }
   },
   "exclude": ["node_modules", "dist", "build", ".next"]
 }
