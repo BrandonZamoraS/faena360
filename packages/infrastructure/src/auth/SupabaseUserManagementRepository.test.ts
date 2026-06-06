@@ -1,3 +1,4 @@
+import { describe, expect, it } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { SupabaseUserManagementRepository } from "./SupabaseUserManagementRepository";
@@ -33,24 +34,21 @@ function createMockQuery<T>(
     data: response.data,
     error: response.error,
     count: response.count,
-  };
-
-  return {
     select: (
-      columns: string,
-      options?: {
+      _columns: string,
+      _options?: {
         readonly count?: "exact" | "planned" | "estimated";
         readonly head?: boolean;
       }
-    ): unknown => {
+    ) => {
       calls.push({
         operation: "select",
-        details: `${columns}${options ? `:${JSON.stringify(options)}` : ""}`,
+        details: `${_columns}${_options ? `:${JSON.stringify(_options)}` : ""}`,
       });
 
       return query;
     },
-    eq: (column: string, value: unknown): unknown => {
+    eq: (column: string, value: unknown) => {
       calls.push({
         operation: "eq",
         details: `${column}=${String(value)}`,
@@ -58,7 +56,7 @@ function createMockQuery<T>(
 
       return query;
     },
-    insert: (_values: unknown): unknown => {
+    insert: (_values: unknown) => {
       calls.push({
         operation: "insert",
         details: "inserted",
@@ -77,13 +75,14 @@ function createMockQuery<T>(
       data: response.data,
       error: response.error,
     }),
-    data: response.data,
-    error: response.error,
-    count: response.count,
+  };
+
+  return {
+    ...query,
   };
 }
 
-export async function runUserManagementRepositoryTenantActiveFilterCheck(): Promise<void> {
+async function runUserManagementRepositoryTenantActiveFilterCheck(): Promise<void> {
   const calls: QueryCall[] = [];
 
   const activeUsersByTenant = [
@@ -119,49 +118,35 @@ export async function runUserManagementRepositoryTenantActiveFilterCheck(): Prom
     tenantId: "tenant-1",
   });
 
-  if (result.length !== 1) {
-    throw new Error("Expected one active tenant user.");
-  }
+  expect(result).toHaveLength(1);
 
   const resultSummary = result[0];
 
-  if (resultSummary.tenant_id !== "tenant-1") {
-    throw new Error("Expected listed users to stay on requested tenant scope.");
-  }
+  expect(resultSummary.tenant_id).toBe("tenant-1");
 
-  if (resultSummary.status !== "active") {
-    throw new Error("Expected listed users to be active-only.");
-  }
+  expect(resultSummary.status).toBe("active");
 
   const selectCall = calls.find((entry) => entry.operation === "select");
-  if (
-    !selectCall ||
-    !selectCall.details.includes(
-      "user_id,tenant_id,email,full_name,phone,status"
-    )
-  ) {
-    throw new Error(
-      "Expected listActiveUsers to read tenant and profile summary columns."
-    );
-  }
+  expect(selectCall).toBeDefined();
+  expect(selectCall?.details).toContain(
+    "user_id,tenant_id,email,full_name,phone,status"
+  );
 
   const tenantFilter = calls.find(
     (entry) =>
       entry.operation === "eq" && entry.details.startsWith("tenant_id=")
   );
-  if (!tenantFilter || tenantFilter.details !== "tenant_id=tenant-1") {
-    throw new Error("Expected active listing to filter by tenant_id.");
-  }
+  expect(tenantFilter).toBeDefined();
+  expect(tenantFilter?.details).toBe("tenant_id=tenant-1");
 
   const statusFilter = calls.find(
     (entry) => entry.operation === "eq" && entry.details.startsWith("status=")
   );
-  if (!statusFilter || statusFilter.details !== "status=active") {
-    throw new Error("Expected active listing to filter by status=active.");
-  }
+  expect(statusFilter).toBeDefined();
+  expect(statusFilter?.details).toBe("status=active");
 }
 
-export async function runUserManagementRepositoryAuditFallbackCheck(): Promise<void> {
+async function runUserManagementRepositoryAuditFallbackCheck(): Promise<void> {
   const calls: QueryCall[] = [];
   const tenantLookupResult = {
     tenant_id: "tenant-1",
@@ -256,35 +241,25 @@ export async function runUserManagementRepositoryAuditFallbackCheck(): Promise<v
 
   const insertCalls = calls.filter((entry) => entry.operation === "insert");
 
-  if (insertCalls.length !== 3) {
-    throw new Error(
-      "Expected audit insert fallback to try multiple candidate payloads."
-    );
-  }
+  expect(insertCalls).toHaveLength(3);
 
   const fallbackOrder = insertCalls.map((entry) => entry.details);
-  if (
-    fallbackOrder[0] !== "audit-log:1" ||
-    fallbackOrder[1] !== "audit-log:2" ||
-    fallbackOrder[2] !== "audit-log:3"
-  ) {
-    throw new Error(
-      "Expected audit fallback to attempt three payload variants in order."
-    );
-  }
+  expect(fallbackOrder).toEqual(["audit-log:1", "audit-log:2", "audit-log:3"]);
 
-  if (auditInsertAttempts.length !== 3) {
-    throw new Error(
-      "Expected three insert attempts while exercising fallback behavior."
-    );
-  }
+  expect(auditInsertAttempts).toHaveLength(3);
 
   const tenantQueryCalls = calls.filter(
     (entry) => entry.operation === "from" && entry.details === "user_profiles"
   );
-  if (tenantQueryCalls.length !== 1) {
-    throw new Error(
-      "Expected user profile lookup before audit insert fallback."
-    );
-  }
+  expect(tenantQueryCalls).toHaveLength(1);
 }
+
+describe("SupabaseUserManagementRepository", () => {
+  it("lists only active users for the requested tenant", async () => {
+    await runUserManagementRepositoryTenantActiveFilterCheck();
+  });
+
+  it("retries audit payload variants when inserts fail", async () => {
+    await runUserManagementRepositoryAuditFallbackCheck();
+  });
+});

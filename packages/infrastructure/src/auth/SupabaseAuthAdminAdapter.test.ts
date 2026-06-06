@@ -1,3 +1,4 @@
+import { describe, expect, it } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { SupabaseAuthAdminAdapter } from "./SupabaseAuthAdminAdapter";
@@ -10,7 +11,7 @@ interface CreateUserSpyPayload {
   };
 }
 
-export async function runAuthAdminAdapterContractChecks(): Promise<void> {
+async function runAuthAdminAdapterContractChecks(): Promise<void> {
   let capturedCreatePayload: CreateUserSpyPayload | undefined;
   let capturedDeleteUserId: string | undefined;
 
@@ -61,22 +62,17 @@ export async function runAuthAdminAdapterContractChecks(): Promise<void> {
     },
   });
 
-  if (!capturedCreatePayload) {
-    throw new Error("Expected createUser to call Supabase auth createUser.");
-  }
-
-  if (capturedCreatePayload.app_metadata.tenant_id !== "tenant-1") {
-    throw new Error("Expected createUser to pass tenant_id to app_metadata.");
-  }
+  expect(capturedCreatePayload).toBeDefined();
+  expect(capturedCreatePayload?.app_metadata.tenant_id).toBe("tenant-1");
 
   await adapter.deleteUser("auth-user-id-1");
 
-  if (capturedDeleteUserId !== "auth-user-id-1") {
-    throw new Error("Expected deleteUser to forward exact auth user id.");
-  }
+  expect(capturedDeleteUserId).toBe("auth-user-id-1");
 }
 
-export async function runAuthAdminAdapterSqlFailureBehavior(): Promise<void> {
+async function runAuthAdminAdapterSqlFailureBehavior(): Promise<void> {
+  let deleteUserCalled = false;
+
   const client = {
     auth: {
       admin: {
@@ -93,6 +89,7 @@ export async function runAuthAdminAdapterSqlFailureBehavior(): Promise<void> {
           } as const;
         },
         deleteUser: async () => {
+          deleteUserCalled = true;
           throw new Error(
             "deleteUser should not be called when auth creation fails."
           );
@@ -110,33 +107,25 @@ export async function runAuthAdminAdapterSqlFailureBehavior(): Promise<void> {
     client,
   });
 
-  let failedWithMessage: string | undefined;
-
-  try {
-    await adapter.createUser({
+  await expect(
+    adapter.createUser({
       email: "tenant-user@example.com",
       temporaryPassword: "TempPass123!",
       app_metadata: {
         tenant_id: "tenant-1",
       },
-    });
-  } catch (error) {
-    if (error instanceof Error) {
-      failedWithMessage = error.message;
-    }
-  }
+    })
+  ).rejects.toThrow("duplicate key value violates unique constraint");
 
-  if (!failedWithMessage) {
-    throw new Error("Expected createUser to fail when SQL returns an error.");
-  }
-
-  if (
-    !failedWithMessage.includes(
-      "duplicate key value violates unique constraint"
-    )
-  ) {
-    throw new Error(
-      `Expected SQL-style error message to be propagated, got ${failedWithMessage}`
-    );
-  }
+  expect(deleteUserCalled).toBe(false);
 }
+
+describe("SupabaseAuthAdminAdapter", () => {
+  it("passes tenant metadata to Supabase auth user creation", async () => {
+    await runAuthAdminAdapterContractChecks();
+  });
+
+  it("propagates SQL errors from createUser failures", async () => {
+    await runAuthAdminAdapterSqlFailureBehavior();
+  });
+});

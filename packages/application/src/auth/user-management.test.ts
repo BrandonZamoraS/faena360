@@ -1,3 +1,4 @@
+import { describe, expect, it } from "vitest";
 import type {
   AuthAdminPort,
   CreateTenantUserInput,
@@ -159,20 +160,14 @@ function createUserManagementServiceWithMocks(
 }
 
 function assert(condition: boolean, message: string): void {
-  if (!condition) {
-    throw new Error(message);
-  }
+  expect(condition, message).toBe(true);
 }
 
 function assertEquals<T>(actual: T, expected: T, message: string): void {
-  if (actual !== expected) {
-    throw new Error(
-      `${message} (got ${String(actual)} expected ${String(expected)})`
-    );
-  }
+  expect(actual, message).toEqual(expected);
 }
 
-export async function runUserManagementServiceContractChecks(): Promise<void> {
+async function runUserManagementServiceContractChecks(): Promise<void> {
   await runCapabilityRejectionPreventsCreation();
   await runDuplicatePreflightRejectsWithoutAuthWrite();
   await runCompensationRunsOnLocalFailureAfterAuthCreated();
@@ -393,3 +388,25 @@ async function runListUsersFiltersToActiveTenantOnly(): Promise<void> {
     "Expected repository result to remain active in service defaults"
   );
 }
+
+describe("user management service", () => {
+  it("prevents creating a user when capability is denied", async () => {
+    await runCapabilityRejectionPreventsCreation();
+  });
+
+  it("prevents creating duplicate identifiers before writing auth", async () => {
+    await runDuplicatePreflightRejectsWithoutAuthWrite();
+  });
+
+  it("compensates auth creation when repository write fails", async () => {
+    await runCompensationRunsOnLocalFailureAfterAuthCreated();
+  });
+
+  it("returns only active users scoped to the requesting tenant", async () => {
+    await runListUsersFiltersToActiveTenantOnly();
+  });
+
+  it("runs user management contract checks", async () => {
+    await runUserManagementServiceContractChecks();
+  });
+});
