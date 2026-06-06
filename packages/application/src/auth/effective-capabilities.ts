@@ -1,12 +1,32 @@
-import type {
-  CapabilityCode,
-  EffectiveCapabilities,
-  RoleId,
-  TenantId,
-  TenantUserScope,
+/**
+ * Types and resolver used to compute effective capabilities for a tenant-scoped user.
+ */
+
+export type UserId = string;
+export type TenantId = string;
+export type RoleId = string;
+export type CapabilityCode = string;
+
+export type CapabilityOverrideEffect = "allow" | "deny";
+
+export interface TenantUserScope {
+  readonly userId: UserId;
+  readonly tenantId: TenantId;
+}
+
+export interface UserCapabilityOverride extends TenantUserScope {
+  readonly capabilityCode: CapabilityCode;
+  readonly effect: CapabilityOverrideEffect;
+}
+
+export type UserCapabilityOverrideInput = Omit<
   UserCapabilityOverride,
-  UserId,
-} from "@faena360/domain";
+  keyof TenantUserScope
+>;
+
+export interface EffectiveCapabilities extends TenantUserScope {
+  readonly capabilities: ReadonlySet<CapabilityCode>;
+}
 
 export interface EffectiveCapabilitiesRepository {
   listUserRoleIds(scope: TenantUserScope): Promise<readonly RoleId[]>;
@@ -16,7 +36,7 @@ export interface EffectiveCapabilitiesRepository {
   }): Promise<readonly CapabilityCode[]>;
   listUserCapabilityOverrides(
     scope: TenantUserScope
-  ): Promise<readonly UserCapabilityOverride[]>;
+  ): Promise<readonly UserCapabilityOverrideInput[]>;
 }
 
 export interface EffectiveCapabilitiesCache {
@@ -157,7 +177,7 @@ export function createEffectiveCapabilitiesResolver({
 
 export function applyCapabilityOverrides(
   roleCapabilities: readonly CapabilityCode[],
-  overrides: readonly UserCapabilityOverride[]
+  overrides: readonly UserCapabilityOverrideInput[]
 ): ReadonlySet<CapabilityCode> {
   const capabilities = new Set(roleCapabilities);
 

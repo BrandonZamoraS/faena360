@@ -3,6 +3,7 @@
   "private": true,
   "packageManager": "pnpm@11.4.0",
   "dependencies": {
+    "@faena360/application": "workspace:*",
     "@supabase/supabase-js": "^2"
   },
   "scripts": {

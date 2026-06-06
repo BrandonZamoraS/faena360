@@ -16,3 +16,12 @@ export type {
   TenantUserSummary,
   UserManagementRepository,
 } from "./user-management";
+export type {
+  AppAuthErrorCode,
+  AppAuthFailure,
+  AppAuthResult,
+  AppAuthSuccess,
+  AppSession,
+  AuthUser,
+  UserProfileStatus,
+} from "./session";
