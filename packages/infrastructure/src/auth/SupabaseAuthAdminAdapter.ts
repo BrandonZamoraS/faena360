@@ -89,6 +89,7 @@ export class SupabaseAuthAdminAdapter implements AuthAdminPort {
     }
 
     if (createdUser.app_metadata?.tenant_id !== input.app_metadata.tenant_id) {
+      await this.deleteUser(createdUser.id);
       throw new Error(
         "Auth identity creation did not persist tenant metadata."
       );

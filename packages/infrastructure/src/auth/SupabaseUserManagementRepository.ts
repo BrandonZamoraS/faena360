@@ -45,15 +45,20 @@ export class SupabaseUserManagementRepository implements UserManagementRepositor
       ? normalizeIdentifierPhone(input.phone)
       : undefined;
 
-    if (await existsByNormalizedField(this.client, "email", normalizedEmail)) {
+    const response = await this.client.rpc("user_profile_identifier_exists", {
+      lookup_email: normalizedEmail,
+      lookup_phone: normalizedPhone ?? null,
+    });
+
+    if (response.error) {
+      throw new Error(response.error.message);
+    }
+
+    if (response.data === true) {
       return true;
     }
 
-    if (!normalizedPhone) {
-      return false;
-    }
-
-    return existsByNormalizedField(this.client, "phone", normalizedPhone);
+    return false;
   }
 
   public async createProfile(input: CreateProfileInput): Promise<string> {
@@ -158,30 +163,6 @@ export class SupabaseUserManagementRepository implements UserManagementRepositor
     const data = response.data as { tenant_id?: string };
     return data?.tenant_id;
   }
-}
-
-async function existsByNormalizedField(
-  client: SupabaseClient,
-  column: "email" | "phone",
-  value: string
-): Promise<boolean> {
-  const response = await client.from("user_profiles").select(column);
-
-  if (response.error) {
-    throw new Error(response.error.message);
-  }
-
-  const rows = response.data as Array<Record<typeof column, string | null>>;
-  const normalize =
-    column === "email" ? normalizeIdentifierEmail : normalizeIdentifierPhone;
-
-  return rows.some((row) => {
-    const currentValue = row[column];
-
-    return (
-      typeof currentValue === "string" && normalize(currentValue) === value
-    );
-  });
 }
 
 function normalizeIdentifierEmail(value: string): string {

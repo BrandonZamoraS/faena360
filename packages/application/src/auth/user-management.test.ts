@@ -14,6 +14,10 @@ import { CapabilityDeniedError } from "./effective-capabilities";
 
 interface MockCalls {
   readonly requireCapability: string[];
+  readonly requireCapabilityScopes: Array<{
+    readonly tenantId: string;
+    readonly userId: string;
+  }>;
   readonly identifierExistsCalls: Array<{
     readonly email: string;
     readonly phone?: string;
@@ -50,6 +54,7 @@ type UserManagementDependenciesOverrides = {
 function createCallsTracker(): MockCalls {
   return {
     requireCapability: [],
+    requireCapabilityScopes: [],
     identifierExistsCalls: [],
     createAuthCalls: [],
     deleteAuthCalls: [],
@@ -145,8 +150,9 @@ function createUserManagementServiceWithMocks(
       ...overrides?.repository,
     },
     capabilityChecker: {
-      requireCapability: async (_scope, capabilityCode) => {
+      requireCapability: async (scope, capabilityCode) => {
         calls.requireCapability.push(capabilityCode);
+        calls.requireCapabilityScopes.push(scope);
         return {} as unknown as never;
       },
       ...overrides?.capabilityChecker,
@@ -180,8 +186,9 @@ async function runCapabilityRejectionPreventsCreation(): Promise<void> {
   const { service } = createUserManagementServiceWithMocks({
     calls,
     capabilityChecker: {
-      requireCapability: async () => {
+      requireCapability: async (scope) => {
         calls.requireCapability.push("users:create");
+        calls.requireCapabilityScopes.push(scope);
         throw new CapabilityDeniedError("actor-1", "tenant-1", "users:create");
       },
     },
@@ -217,6 +224,16 @@ async function runCapabilityRejectionPreventsCreation(): Promise<void> {
     calls.requireCapability.length,
     1,
     "Expected one capability check call"
+  );
+  assertEquals(
+    calls.requireCapabilityScopes[0]?.tenantId,
+    "tenant-1",
+    "Expected capability check to receive camelCase tenantId"
+  );
+  assertEquals(
+    calls.requireCapabilityScopes[0]?.userId,
+    "actor-1",
+    "Expected capability check to receive camelCase userId"
   );
   assertEquals(
     calls.createAuthCalls.length,

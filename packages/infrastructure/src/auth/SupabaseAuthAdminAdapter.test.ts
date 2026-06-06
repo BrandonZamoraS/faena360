@@ -122,6 +122,47 @@ async function runAuthAdminAdapterSqlFailureBehavior(): Promise<void> {
   expect(deleteUserCalled).toBe(false);
 }
 
+async function runAuthAdminAdapterCompensatesMetadataMismatch(): Promise<void> {
+  let deletedUserId: string | undefined;
+
+  const client = {
+    auth: {
+      admin: {
+        createUser: async () => ({
+          data: {
+            user: {
+              id: "auth-user-id-1",
+              app_metadata: {
+                tenant_id: "wrong-tenant",
+              },
+            },
+          },
+          error: null,
+        }),
+        deleteUser: async (userId: string) => {
+          deletedUserId = userId;
+
+          return { error: null };
+        },
+      },
+    },
+  } as unknown as SupabaseClient;
+
+  const adapter = new SupabaseAuthAdminAdapter({ client });
+
+  await expect(
+    adapter.createUser({
+      email: "tenant-user@example.com",
+      temporaryPassword: "TempPass123!",
+      app_metadata: {
+        tenant_id: "tenant-1",
+      },
+    })
+  ).rejects.toThrow("Auth identity creation did not persist tenant metadata");
+
+  expect(deletedUserId).toBe("auth-user-id-1");
+}
+
 describe("SupabaseAuthAdminAdapter", () => {
   it("passes tenant metadata to Supabase auth user creation", async () => {
     await runAuthAdminAdapterContractChecks();
@@ -129,5 +170,9 @@ describe("SupabaseAuthAdminAdapter", () => {
 
   it("propagates SQL errors from createUser failures", async () => {
     await runAuthAdminAdapterSqlFailureBehavior();
+  });
+
+  it("compensates auth users created with mismatched tenant metadata", async () => {
+    await runAuthAdminAdapterCompensatesMetadataMismatch();
   });
 });

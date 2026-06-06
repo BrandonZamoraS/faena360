@@ -26,6 +26,28 @@ create unique index if not exists idx_user_profiles_phone_normalized_unique
   on public.user_profiles ((public.normalize_identifier_phone(phone)))
   where public.normalize_identifier_phone(phone) is not null;
 
+create or replace function public.user_profile_identifier_exists(
+  lookup_email text,
+  lookup_phone text default null
+)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.user_profiles up
+    where public.normalize_identifier_email(up.email) = public.normalize_identifier_email(lookup_email)
+       or (
+         lookup_phone is not null
+         and up.phone is not null
+         and public.normalize_identifier_phone(up.phone) = public.normalize_identifier_phone(lookup_phone)
+       )
+  );
+$$;
+
 -- Keep role ownership tenant-aware for both current and migrated schemas.
 alter table public.user_roles
   add column if not exists tenant_id uuid;

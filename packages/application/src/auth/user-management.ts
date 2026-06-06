@@ -14,12 +14,17 @@ interface TenantSessionScope {
   readonly user_id: string;
 }
 
+interface CapabilityScope {
+  readonly tenantId: string;
+  readonly userId: string;
+}
+
 export interface UserManagementServiceDependencies {
   readonly authAdmin: AuthAdminPort;
   readonly repository: UserManagementRepository;
   readonly capabilityChecker: {
     requireCapability(
-      scope: TenantSessionScope,
+      scope: CapabilityScope,
       capabilityCode: string
     ): Promise<unknown>;
   };
@@ -71,8 +76,8 @@ export function createUserManagementService(
       try {
         await capabilityChecker.requireCapability(
           {
-            ...session,
-            tenant_id: tenantId,
+            tenantId,
+            userId: session.user_id,
           },
           USERS_CREATE_CAPABILITY
         );
@@ -174,8 +179,8 @@ export function createUserManagementService(
 
       await capabilityChecker.requireCapability(
         {
-          ...session,
-          tenant_id: tenantId,
+          tenantId,
+          userId: session.user_id,
         },
         USERS_READ_CAPABILITY
       );

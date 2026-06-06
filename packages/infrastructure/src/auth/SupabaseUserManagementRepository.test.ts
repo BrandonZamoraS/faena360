@@ -161,29 +161,19 @@ async function runAssignRolesDeduplicatesRoleIdsBeforeInsert(): Promise<void> {
 
 async function runIdentifierExistsNormalizesInputBeforeLookup(): Promise<void> {
   const calls: QueryCall[] = [];
-  const rowsByColumn = {
-    email: [{ email: "admin@example.com" }],
-    phone: [{ phone: "+1 (555) 111-2222" }],
-  };
 
   const client = {
-    from: (table: string) => {
-      expect(table).toBe("user_profiles");
+    rpc: (functionName: string, args: Record<string, unknown>) => {
+      calls.push({ operation: "rpc", details: functionName });
+      calls.push({
+        operation: "rpc_args",
+        details: `${String(args.lookup_email)}:${String(args.lookup_phone)}`,
+      });
 
-      const query = {
+      return {
+        data: true,
         error: null,
-        select: (_columns: string) => {
-          calls.push({ operation: "select", details: _columns });
-
-          return {
-            data: rowsByColumn[_columns as "email" | "phone"] ?? [],
-            error: null,
-          };
-        },
-        single: async () => ({ data: null, error: null }),
       };
-
-      return query;
     },
   } as unknown as SupabaseClient;
 
@@ -196,8 +186,12 @@ async function runIdentifierExistsNormalizesInputBeforeLookup(): Promise<void> {
 
   expect(exists).toBe(true);
   expect(calls).toContainEqual({
-    operation: "select",
-    details: "email",
+    operation: "rpc",
+    details: "user_profile_identifier_exists",
+  });
+  expect(calls).toContainEqual({
+    operation: "rpc_args",
+    details: "admin@example.com:15551112222",
   });
 }
 
