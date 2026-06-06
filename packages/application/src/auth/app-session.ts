@@ -30,6 +30,8 @@ export class LoginWithEmailPasswordServiceImpl implements LoginWithEmailPassword
     private readonly authIdentityPort: AuthIdentityPort,
     private readonly appSessionRepository: AppSessionRepository
   ) {
+    // Infraestructura y dominio se mantienen desacoplados: aquí adaptamos el
+    // repositorio de sesión a la forma que el resolver de capacidades espera.
     const repositoryAdapter: EffectiveCapabilitiesRepository = {
       listUserRoleIds: ({ tenantId, userId }) =>
         appSessionRepository.listUserRoles({ tenantId, userId }),

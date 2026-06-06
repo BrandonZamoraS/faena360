@@ -1,3 +1,10 @@
+/**
+ * Public API del módulo de dominio de autenticación.
+ *
+ * Reexporta tipos estables para que Application/Infrastructure compartan el
+ * mismo contrato sin depender de rutas de archivo internas.
+ */
+
 export type {
   AppAuthErrorCode,
   AppAuthFailure,

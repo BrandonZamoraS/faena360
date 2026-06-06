@@ -13,9 +13,17 @@ import {
 } from "@faena360/application";
 import { createWebSupabaseClient } from "../../../../lib/supabase";
 
+/**
+ * Handler de API auth/login para orquestar la autenticación web.
+ */
+
 export type LoginRouteDependencies = {
   service?: LoginWithEmailPasswordService;
 };
+
+/**
+ * Construye el caso de uso real con adaptadores de infraestructura.
+ */
 
 function buildLoginService(): LoginWithEmailPasswordService {
   // Capa Web/Delivery: compone adaptadores concretos para ejecutar el caso de
@@ -28,6 +36,9 @@ function buildLoginService(): LoginWithEmailPasswordService {
   );
 }
 
+/**
+ * Mapeo de resultados de dominio a estatus HTTP para la API de login.
+ */
 function mapCodeToStatus(
   code:
     | "invalid_credentials"
@@ -130,6 +141,7 @@ export async function handleLoginPost(
 }
 
 export async function handleLoginDelete(): Promise<NextResponse> {
+  // Endpoint de logout de sesión de aplicación, sin tocar estado remoto de Auth.
   const response = NextResponse.json({ ok: true, code: "logged_out" });
   clearAppSessionCookie(response);
   return response;

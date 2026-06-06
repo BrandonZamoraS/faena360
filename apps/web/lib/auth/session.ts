@@ -3,8 +3,17 @@ import { NextResponse } from "next/server";
 import { type AppSession } from "@faena360/domain";
 import type { AppSessionRepository } from "@faena360/application";
 
+/**
+ * Soporte de sesión de aplicación para la capa Web.
+ *
+ * Administra una cookie firmada con sesión mínima de dominio y expone guardas que
+ * validan autenticación y acceso web sobre infraestructura.
+ */
+
 export const APP_SESSION_COOKIE_NAME = "faena360.app-session";
+/** TTL de la cookie de app session (8 horas). */
 const APP_SESSION_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 8;
+/** Límite de antigüedad del token firmado para rechazar sesiones viejas. */
 const APP_SESSION_COOKIE_TTL_MILLISECONDS =
   APP_SESSION_COOKIE_MAX_AGE_SECONDS * 1000;
 const APP_SESSION_COOKIE_VERSION = "v1";
@@ -29,6 +38,10 @@ export interface GetAppSessionOptions {
   readonly sessionRefresher?: AppSessionRefresher;
 }
 
+/**
+ * Factory de refresher: revalida tenant/usuario/capacidades contra DB en cada request
+ * protegida y devuelve una sesión renovada o nula si perdió validez.
+ */
 export function createServerStateSessionRefresher(
   repository: AppSessionRepository
 ): AppSessionRefresher {
@@ -202,6 +215,8 @@ async function resolveEffectiveCapabilities(input: {
   readonly userId: string;
   readonly roleIds: readonly string[];
 }): Promise<string[]> {
+  // Reusa la misma regla de cálculo que el login para mantener coherencia entre
+  // sesión recién creada y refrescada.
   const roleCapabilities = await input.repository.listTenantRoleCapabilities({
     tenantId: input.tenantId,
     roleIds: input.roleIds,
@@ -233,6 +248,7 @@ export function writeAppSessionCookie(
   response: ReturnType<typeof NextResponse.json>,
   session: AppSession
 ): void {
+  // Persistimos sesión mínima en cookie firmada para mantener estado entre requests.
   const token = createSignedAppSessionToken(session);
 
   response.cookies.set({
@@ -249,6 +265,7 @@ export function writeAppSessionCookie(
 export function clearAppSessionCookie(
   response: ReturnType<typeof NextResponse.json>
 ): void {
+  // Borrado explícito de cookie para finalizar sesión al cerrar sesión del usuario.
   response.cookies.set({
     name: APP_SESSION_COOKIE_NAME,
     value: "",
@@ -261,6 +278,8 @@ export function clearAppSessionCookie(
 }
 
 function normalizeAppSession(value: unknown): AppSession | null {
+  // Validación de forma defensiva para descartar payloads adulterados o
+  // incompatibles antes de confiar en la sesión.
   if (!value || typeof value !== "object") {
     return null;
   }
@@ -296,6 +315,7 @@ function normalizeAppSession(value: unknown): AppSession | null {
 }
 
 function createSignedAppSessionToken(session: AppSession): string {
+  // Serializa y firma estado + timestamp para garantizar integridad de la sesión.
   const payload = createSerializedSessionPayload(session);
   const issuedAtEpochMs = Date.now();
   const signature = createTokenSignature({
@@ -313,12 +333,14 @@ function createSignedAppSessionToken(session: AppSession): string {
 }
 
 function createSerializedSessionPayload(session: AppSession): string {
+  // Codifica el payload con un formato estable para parseo determinista.
   return Buffer.from(JSON.stringify(session), "utf8").toString("base64url");
 }
 
 function parseSignedSessionToken(
   rawCookie: string
 ): SignedAppSessionToken | null {
+  // Verifica estructura/version, expiración y firma de la cookie de sesión.
   const parts = rawCookie.split(".");
   if (parts.length !== 4) {
     return null;
@@ -380,6 +402,7 @@ function createTokenSignature(input: {
 }
 
 function timingSafeEqualStrings(a: string, b: string): boolean {
+  // Compara firmas en tiempo constante para minimizar side-channels de timing.
   if (a.length !== b.length) {
     return false;
   }

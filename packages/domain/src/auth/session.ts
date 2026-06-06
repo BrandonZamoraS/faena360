@@ -6,11 +6,14 @@
  * mientras Infrastructure y Web se encargan de los detalles técnicos.
  */
 
-/** Supported user profile states in the local authorization layer. */
+/** Estados posibles del perfil de usuario dentro del dominio de auth. */
 export type UserProfileStatus = "active" | "inactive";
 
 /**
- * Canonical error vocabulary for app-session login outcomes.
+ * Códigos de error del login de sesión de aplicación.
+ *
+ * Son parte del contrato de dominio para que otras capas no dependan de mensajes
+ * de infraestructura y puedan responder de forma consistente.
  */
 export type AppAuthErrorCode =
   | "invalid_credentials"
@@ -20,19 +23,19 @@ export type AppAuthErrorCode =
   | "web_access_denied";
 
 /**
- * Authenticated identity as returned by the Identity provider.
+ * Identidad autenticada que llega desde el proveedor de identidad.
  */
 export interface AuthUser {
-  /** Auth provider user identifier. */
+  /** Identificador del usuario en el proveedor de identidad. */
   readonly id: string;
-  /** User email address used for login attempts. */
+  /** Email con el que se intenta autenticar. */
   readonly email: string;
-  /** Tenant binding source from auth metadata. */
+  /** Tenant asociado por metadata confiable del proveedor de identidad. */
   readonly tenantId?: string | null;
 }
 
 /**
- * App session issued by the backend login use case.
+ * Sesión de aplicación emitida por el caso de uso de login backend.
  *
  * La sesión incluye el tenant, roles y capacidades ya resueltas porque las capas
  * externas necesitan una fotografía mínima para responder rápido. Aun así, Web
@@ -61,6 +64,6 @@ export type AppAuthFailure = {
 };
 
 /**
- * Result of app session login attempts.
+ * Resultado tipado del login de aplicación (éxito o error de dominio).
  */
 export type AppAuthResult = AppAuthSuccess | AppAuthFailure;

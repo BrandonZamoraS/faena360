@@ -9,6 +9,13 @@ import type {
 
 import { CapabilityDeniedError } from "./effective-capabilities";
 
+/**
+ * Flujo de aplicación para administración de usuarios dentro de un tenant.
+ *
+ * Orquesta proveedores (auth admin + repositorios + chequeo de capacidades)
+ * y deja la consistencia de datos de dominio en manos de los repositorios.
+ */
+
 interface TenantSessionScope {
   readonly tenant_id: string;
   readonly user_id: string;
@@ -54,6 +61,9 @@ export function createUserManagementService(
   dependencies: UserManagementServiceDependencies
 ): TenantUserManagementService {
   const { authAdmin, repository, capabilityChecker } = dependencies;
+
+  // Cierra el ciclo de permisos antes de tocar cualquier persistencia:
+  // si el actor no puede crear usuarios, todo el flujo se rechaza temprano.
 
   return {
     async createUser(session, input): Promise<CreateTenantUserOutcome> {
@@ -193,6 +203,8 @@ export function createUserManagementService(
 }
 
 function resolveTenantId(tenantId?: string | null): string {
+  // Normaliza entrada de tenant para evitar que espacios en blanco rompan
+  // validaciones de permisos downstream.
   if (!tenantId) {
     return "";
   }
@@ -201,6 +213,8 @@ function resolveTenantId(tenantId?: string | null): string {
 }
 
 function containsTenantOverride(input: CreateTenantUserInput): boolean {
+  // Protege contra intentos de sobre-escribir tenant con payloads fuera de
+  // contrato (multi-tenant spoofing desde body del cliente).
   const candidate = input as unknown as Record<string, unknown>;
 
   return (
@@ -213,6 +227,7 @@ function containsTenantOverride(input: CreateTenantUserInput): boolean {
 function normalizeCreateUserInput(
   input: CreateTenantUserInput
 ): NormalizedCreateTenantUserInput {
+  // Asegura datos consistentes para validaciones y búsquedas de unicidad.
   return {
     email: input.email.trim().toLowerCase(),
     temporaryPassword: input.temporaryPassword,
@@ -223,6 +238,7 @@ function normalizeCreateUserInput(
 }
 
 function normalizePhone(phone?: string): string | undefined {
+  // Limpia formato libre de usuario; si queda vacío, no persiste phone.
   if (!phone) {
     return undefined;
   }
@@ -236,6 +252,7 @@ async function compensateAuthCreation(
   authAdmin: AuthAdminPort,
   authUserId: string
 ): Promise<boolean> {
+  // Compensación final para mantener consistencia entre Auth y perfil local.
   try {
     await authAdmin.deleteUser(authUserId);
     return true;

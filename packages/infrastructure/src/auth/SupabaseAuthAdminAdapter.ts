@@ -54,6 +54,14 @@ export interface SupabaseAuthAdminAdapterDependencies {
   readonly client: SupabaseAuthAdminClient;
 }
 
+/**
+ * Adaptador de la API administrativa de Supabase Auth para el puerto de dominio.
+ *
+ * Separa el contrato de User Management de cómo Supabase devuelve payloads,
+ * y valida que la metadata del tenant se persistió antes de confirmar la
+ * creación.
+ */
+
 export class SupabaseAuthAdminAdapter implements AuthAdminPort {
   private readonly client: SupabaseAuthAdminClient;
 
@@ -64,6 +72,8 @@ export class SupabaseAuthAdminAdapter implements AuthAdminPort {
   public async createUser(
     input: CreateUserInput
   ): Promise<{ readonly authUserId: string }> {
+    // Creamos al usuario remoto y validamos que venga con tenant_id para evitar
+    // identidades huérfanas entre Auth y perfil local.
     const response = await this.client.auth.admin.createUser({
       email: input.email,
       password: input.temporaryPassword,
@@ -101,6 +111,7 @@ export class SupabaseAuthAdminAdapter implements AuthAdminPort {
   }
 
   public async deleteUser(authUserId: string): Promise<void> {
+    // Operación de compensación para rollback de creación parcial en Application.
     const response = await this.client.auth.admin.deleteUser(authUserId);
     if (response.error) {
       throw new Error(formatSupabaseError(response.error));
@@ -109,5 +120,7 @@ export class SupabaseAuthAdminAdapter implements AuthAdminPort {
 }
 
 function formatSupabaseError(error: SupabaseAuthError): string {
+  // Conserva un texto consistente incluso cuando la forma exacta del error
+  // cambia entre versiones de SDK.
   return "message" in error ? error.message : "Supabase auth request failed.";
 }

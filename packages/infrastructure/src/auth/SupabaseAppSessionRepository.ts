@@ -54,6 +54,8 @@ export class SupabaseAppSessionRepository implements AppSessionRepository {
   async getTenant(input: {
     tenantId: string;
   }): Promise<{ id: string; status: string }> {
+    // Tenant y estado son la base del contexto de autorización; sin esto no
+    // debería continuar ningún flujo de sesión de aplicación.
     const { data, error } = await this.client
       .from("tenants")
       .select("id, status")
@@ -109,6 +111,7 @@ export class SupabaseAppSessionRepository implements AppSessionRepository {
     tenantId: string;
     userId: string;
   }): Promise<readonly string[]> {
+    // Deduplicamos por userId+tenant para evitar dobles roles en caso de inconsistencias.
     const { data, error } = await this.client
       .from("user_roles")
       .select("role_id")
@@ -247,6 +250,8 @@ export class SupabaseAppSessionRepository implements AppSessionRepository {
     tenantId: string;
     userId: string;
   }): Promise<readonly UserCapabilityOverride[]> {
+    // Mantiene separadas las capacidades por role_id de las overrides del usuario.
+    // Así no confundimos la política base de rol con excepciones declaradas localmente.
     const overrides = await this.client
       .from("user_capability_overrides")
       .select("capability_id, grant_type")
@@ -299,6 +304,8 @@ export class SupabaseAppSessionRepository implements AppSessionRepository {
     },
     message: string
   ): T[] {
+    // Unifica manejo de errores de Supabase para no propagar respuestas parciales
+    // de cada consulta y centralizar mensajes consistentes.
     if (result.error) {
       throw new Error(result.error.message ?? message);
     }

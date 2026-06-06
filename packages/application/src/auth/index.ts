@@ -1,3 +1,9 @@
+/**
+ * API pública del módulo Application para autenticación.
+ * Expone contratos y casos de uso que Web consume sin conocer implementaciones
+ * concretas de Supabase, tablas o detalles HTTP.
+ */
+
 export {
   applyCapabilityOverrides,
   CapabilityDeniedError,
@@ -33,7 +39,7 @@ export type {
 } from "@faena360/domain";
 
 /**
- * Input accepted by app-session login flow.
+ * Credenciales esperadas por el caso de uso de login.
  */
 export interface LoginInput {
   readonly email: string;
@@ -41,33 +47,33 @@ export interface LoginInput {
 }
 
 /**
- * Effective result of app-session login.
+ * Resultado del login de aplicación (éxito o fallo tipado).
  */
 export type LoginWithEmailPasswordOutcome = AppAuthResult;
 
 /**
- * Input credential identity provider contract.
+ * Contrato mínimo esperado desde el proveedor de identidad.
  */
 export interface AuthIdentityPort {
   signInWithPassword(input: LoginInput): Promise<AuthUser>;
 
-  /** Optional cleanup hook to clear the local auth session after app authorization failures. */
+  /** Hook opcional para limpiar sesión local si la autorización de app falla. */
   signOut?(): Promise<void>;
 }
 
 /**
- * Local authorization data required to build a session.
+ * Datos de autorización local requeridos para construir una sesión de app.
  */
 export interface AppSessionRepository {
-  /** Resolves a tenant row by identifier. */
+  /** Resuelve tenant por id para validar contexto activo del dominio. */
   getTenant(input: { tenantId: string }): Promise<{
     readonly id: string;
     readonly status: string;
   }>;
 
   /**
-   * Loads a local user profile for a tenant-scoped user.
-   * Returns `null` when profile does not exist.
+   * Carga el perfil local del usuario dentro del tenant.
+   * Retorna `null` cuando no existe para evitar crear sesiones huérfanas.
    */
   getUserProfile(input: { tenantId: string; authUserId: string }): Promise<{
     readonly userId: string;
@@ -76,14 +82,14 @@ export interface AppSessionRepository {
     readonly tenantId: string;
   } | null>;
 
-  /** Lists role IDs assigned to the local user for authorization. */
+  /** Lista roles asignados al usuario para autorización local. */
   listUserRoles(input: {
     tenantId: string;
     userId: string;
   }): Promise<readonly string[]>;
 
   /**
-   * Resolves capability codes for all tenant role identifiers.
+   * Resuelve capacidades base de roles dentro del tenant.
    */
   listTenantRoleCapabilities(input: {
     tenantId: string;
@@ -91,7 +97,7 @@ export interface AppSessionRepository {
   }): Promise<readonly string[]>;
 
   /**
-   * Checks whether any assigned tenant role grants web access.
+   * Verifica si alguno de los roles habilita acceso web (marca estructural).
    */
   hasWebAccessRole(input: {
     tenantId: string;
@@ -100,7 +106,7 @@ export interface AppSessionRepository {
   }): Promise<boolean>;
 
   /**
-   * Reads explicit capability overrides for the tenant user.
+   * Lee overrides explícitos de capacidades para ese usuario/tenant.
    */
   listUserCapabilityOverrides(input: {
     tenantId: string;
@@ -109,7 +115,7 @@ export interface AppSessionRepository {
 }
 
 /**
- * Contract for the app-session application service.
+ * Contrato del caso de uso principal de login.
  */
 export interface LoginWithEmailPasswordService {
   login(input: LoginInput): Promise<LoginWithEmailPasswordOutcome>;

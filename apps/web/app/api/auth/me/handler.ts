@@ -8,6 +8,10 @@ import {
 import { SupabaseAppSessionRepository } from "@faena360/infrastructure";
 import { createWebSupabaseServiceClient } from "../../../../lib/supabase";
 
+/**
+ * Handler de endpoints protegidos por sesión (GET/POST) de `/api/auth/me`.
+ */
+
 export type MeRouteDependencies = {
   sessionRefresher?: AppSessionRefresher;
 };
@@ -27,6 +31,7 @@ function resolveSessionRefresher(
 }
 
 function getCookiesFromRequest(request: NextRequest): CookieContainer {
+  // Extrae solo lo necesario del request para que la guarda sea testeable.
   return {
     get: (name) => request.cookies.get(name),
   };
@@ -56,6 +61,9 @@ export async function handleMeGet(
   });
 }
 
+/**
+ * Variante privada de POST reutilizando la misma guarda de acceso web.
+ */
 export async function handleMePost(
   request: NextRequest,
   dependencies: MeRouteDependencies = {}
