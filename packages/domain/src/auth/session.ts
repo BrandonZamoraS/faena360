@@ -1,4 +1,10 @@
-/** Domain contracts for app-session authentication. */
+/**
+ * Capa Domain: define el lenguaje del negocio para autenticación.
+ *
+ * Esta capa no sabe nada de Supabase, Next.js, cookies ni HTTP. Esa separación
+ * permite que Application decida reglas usando conceptos estables del dominio,
+ * mientras Infrastructure y Web se encargan de los detalles técnicos.
+ */
 
 /** Supported user profile states in the local authorization layer. */
 export type UserProfileStatus = "active" | "inactive";
@@ -27,6 +33,11 @@ export interface AuthUser {
 
 /**
  * App session issued by the backend login use case.
+ *
+ * La sesión incluye el tenant, roles y capacidades ya resueltas porque las capas
+ * externas necesitan una fotografía mínima para responder rápido. Aun así, Web
+ * revalida esta fotografía contra el estado actual del servidor antes de confiar
+ * en ella para evitar sesiones obsoletas.
  */
 export interface AppSession {
   readonly user_id: string;

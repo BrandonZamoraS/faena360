@@ -19,6 +19,8 @@ function resolveSessionRefresher(
     return dependencies.sessionRefresher;
   }
 
+  // `/me` revalida sesión contra tablas protegidas por RLS. Usamos service role
+  // server-only porque no hay JWT de Supabase en la cookie propia de Faena360.
   const supabase = createWebSupabaseServiceClient();
   const repository = new SupabaseAppSessionRepository(supabase);
   return createServerStateSessionRefresher(repository);
@@ -34,6 +36,8 @@ export async function handleMeGet(
   request: NextRequest,
   dependencies: MeRouteDependencies = {}
 ): Promise<NextResponse> {
+  // `me` no confía solo en la firma de la cookie: además refresca estado actual
+  // de tenant/usuario/roles/capacidades antes de devolver datos privados.
   const sessionRefresher = resolveSessionRefresher(dependencies);
   const authResult = await requireWebAccess(getCookiesFromRequest(request), {
     sessionRefresher,
@@ -56,6 +60,8 @@ export async function handleMePost(
   request: NextRequest,
   dependencies: MeRouteDependencies = {}
 ): Promise<NextResponse> {
+  // Esta variante funciona como ejemplo de ruta privada: cualquier endpoint web
+  // tenant-aware debería pasar por la misma guarda `requireWebAccess`.
   const sessionRefresher = resolveSessionRefresher(dependencies);
   const authResult = await requireWebAccess(getCookiesFromRequest(request), {
     sessionRefresher,

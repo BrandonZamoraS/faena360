@@ -43,6 +43,10 @@ type CapabilityOverrideRow = {
 
 /**
  * Adapts Supabase tenant/auth tables to application session repository contract.
+ *
+ * Capa Infrastructure: traduce consultas Supabase al puerto que Application
+ * entiende. La regla de negocio no vive acá; este archivo solo sabe cómo leer
+ * tablas, mapear columnas snake_case y propagar errores de persistencia.
  */
 export class SupabaseAppSessionRepository implements AppSessionRepository {
   constructor(private readonly client: SupabaseClient) {}
@@ -75,6 +79,9 @@ export class SupabaseAppSessionRepository implements AppSessionRepository {
     readonly status: "active" | "inactive";
     readonly tenantId: string;
   } | null> {
+    // El perfil local une el usuario autenticado por Supabase con el usuario de
+    // negocio de Faena360. Por eso se filtra también por tenant: evita mezclar
+    // identidades entre tenants aunque el auth_user_id sea válido.
     const { data, error } = await this.client
       .from("user_profiles")
       .select("id, email, status, tenant_id")
@@ -125,6 +132,9 @@ export class SupabaseAppSessionRepository implements AppSessionRepository {
     userId: string;
     roleIds?: readonly string[];
   }): Promise<boolean> {
+    // Este método solo responde si algún rol asignado tiene la marca estructural
+    // de acceso web. La capacidad fina `web.portal.access` se resuelve aparte en
+    // Application para mantener separadas la pertenencia al rol y los permisos.
     const explicitRoleIds = input.roleIds
       ? Array.from(new Set(input.roleIds)).filter(
           (roleId) => roleId.trim().length > 0
@@ -163,6 +173,8 @@ export class SupabaseAppSessionRepository implements AppSessionRepository {
     tenantId: string;
     roleIds: readonly string[];
   }): Promise<readonly string[]> {
+    // Las capacidades se filtran por roles del mismo tenant para que un role_id
+    // ajeno no pueda contaminar el conjunto efectivo de permisos.
     const normalizedRoleIds = Array.from(new Set(input.roleIds)).filter(
       (roleId) => roleId.trim().length > 0
     );

@@ -32,6 +32,9 @@ export interface GetAppSessionOptions {
 export function createServerStateSessionRefresher(
   repository: AppSessionRepository
 ): AppSessionRefresher {
+  // La cookie firmada prueba integridad, no actualidad. Este refresher vuelve a
+  // consultar la fuente server-side para cortar sesiones si cambia el tenant,
+  // usuario, rol o capacidad después del login.
   return async (session) => {
     try {
       const tenant = await repository.getTenant({
@@ -121,6 +124,8 @@ export async function getAppSession(
     }
 
     if (!options?.sessionRefresher) {
+      // Sin refresher solo validamos integridad de la cookie. Las rutas privadas
+      // deben pasar un refresher para aplicar autorización vigente del servidor.
       return session;
     }
 
@@ -138,6 +143,8 @@ export async function requireAuth(
   cookies: CookieContainer,
   options?: GetAppSessionOptions
 ): Promise<AuthGuardResult> {
+  // Guarda base: responde si existe una sesión firmada y normalizable.
+  // No evalúa acceso web; esa responsabilidad vive en `requireWebAccess`.
   const session = await getAppSession(cookies, options);
 
   if (!session) {
@@ -161,6 +168,8 @@ export async function requireWebAccess(
   cookies: CookieContainer,
   options?: GetAppSessionOptions
 ): Promise<AuthGuardResult> {
+  // Guarda específica para rutas web privadas. Encadena autenticación + política
+  // de acceso web para que las rutas no dupliquen reglas de autorización.
   const authResult = await requireAuth(cookies, options);
 
   if (!authResult.ok) {
@@ -357,6 +366,8 @@ function createTokenSignature(input: {
   issuedAtEpochMs: number;
   payload: string;
 }): string {
+  // HMAC vincula versión, timestamp y payload. Si el navegador modifica tenant,
+  // roles o capacidades, la firma deja de coincidir y la sesión se rechaza.
   const secret = process.env.APP_SESSION_SECRET;
   if (!secret) {
     throw new Error("Missing APP_SESSION_SECRET.");

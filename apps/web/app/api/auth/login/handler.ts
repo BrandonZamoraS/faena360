@@ -18,6 +18,8 @@ export type LoginRouteDependencies = {
 };
 
 function buildLoginService(): LoginWithEmailPasswordService {
+  // Capa Web/Delivery: compone adaptadores concretos para ejecutar el caso de
+  // uso. La ruta conoce Next.js y Supabase; Application solo recibe puertos.
   const supabase = createWebSupabaseClient();
 
   return new LoginWithEmailPasswordServiceImpl(
@@ -51,6 +53,8 @@ export async function handleLoginPost(
   request: NextRequest,
   dependencies: LoginRouteDependencies = {}
 ): Promise<NextResponse> {
+  // El handler se mantiene separado de `route.ts` para poder inyectar el caso de
+  // uso en tests sin romper la firma exigida por Next App Router.
   const service = dependencies.service ?? buildLoginService();
   let payload: unknown;
 
@@ -119,6 +123,8 @@ export async function handleLoginPost(
     },
   });
 
+  // La cookie no reemplaza la autorización server-side: guarda una sesión firmada
+  // para identificar al usuario, pero `/me` y las guardas la revalidan contra DB.
   writeAppSessionCookie(response, outcome.session);
   return response;
 }
