@@ -1,14 +1,7 @@
 /** @vitest-environment jsdom */
 
 import { createRoot } from "react-dom/client";
-import {
-  afterEach,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { LoginForm } from "./login-form";
 
 type BrowserFetch = NonNullable<typeof fetch>;
@@ -67,7 +60,8 @@ describe("LoginForm runtime behavior", () => {
     const feedbackRegion = form.querySelector<HTMLElement>(
       "[data-login-feedback-region]"
     );
-    const emailLabel = form.querySelector<HTMLLabelElement>("label[for='email']");
+    const emailLabel =
+      form.querySelector<HTMLLabelElement>("label[for='email']");
     const passwordLabel = form.querySelector<HTMLLabelElement>(
       "label[for='password']"
     );
@@ -108,7 +102,8 @@ describe("LoginForm runtime behavior", () => {
     const feedbackRegion = form.querySelector<HTMLElement>(
       "[data-login-feedback-region]"
     );
-    const emailLabel = form.querySelector<HTMLLabelElement>("label[for='email']");
+    const emailLabel =
+      form.querySelector<HTMLLabelElement>("label[for='email']");
     const passwordLabel = form.querySelector<HTMLLabelElement>(
       "label[for='password']"
     );
@@ -159,7 +154,6 @@ describe("LoginForm runtime behavior", () => {
     return await mountForm();
   }
 
-
   it("renders labeled controls and submit action", async () => {
     const { emailLabel, passwordLabel, submitButton, feedbackRegion } =
       await mountAndGetParts();
@@ -168,8 +162,12 @@ describe("LoginForm runtime behavior", () => {
     expect(passwordLabel.textContent).toContain("Contraseña");
     expect(submitButton.type).toBe("submit");
     expect(submitButton.textContent).toContain("Iniciar sesión");
-    expect(feedbackRegion.getAttribute("data-login-feedback-region")).toBe("true");
-    expect(feedbackRegion.classList.contains("login-feedback-region")).toBe(true);
+    expect(feedbackRegion.getAttribute("data-login-feedback-region")).toBe(
+      "true"
+    );
+    expect(feedbackRegion.classList.contains("login-feedback-region")).toBe(
+      true
+    );
   });
 
   it("blocks empty submit on client and shows inline validation", async () => {
@@ -180,7 +178,9 @@ describe("LoginForm runtime behavior", () => {
     await submitForm();
 
     expect(fetchMock).not.toHaveBeenCalled();
-    expect(feedbackRegion.textContent).toBe("Ingresá email y contraseña para continuar.");
+    expect(feedbackRegion.textContent).toBe(
+      "Ingresá email y contraseña para continuar."
+    );
     expect(feedbackRegion.getAttribute("role")).toBe("status");
     expect(feedbackRegion.getAttribute("aria-live")).toBe("polite");
   });
@@ -191,18 +191,19 @@ describe("LoginForm runtime behavior", () => {
     const pushStateSpy = vi.spyOn(window.history, "pushState");
     const replaceStateSpy = vi.spyOn(window.history, "replaceState");
 
-    globalThis.fetch = vi.fn(async () =>
-      new Response(
-        JSON.stringify({
-          ok: true,
-          session: {
-            email: "admin@faena360.com",
-            tenant_id: "tenant-id",
-            roles: ["admin"],
-          },
-        }),
-        { status: 200, headers: { "Content-Type": "application/json" } }
-      )
+    globalThis.fetch = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            ok: true,
+            session: {
+              email: "admin@faena360.com",
+              tenant_id: "tenant-id",
+              roles: ["admin"],
+            },
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
     );
 
     emailInput.value = "  admin@faena360.com  ";
@@ -215,7 +216,8 @@ describe("LoginForm runtime behavior", () => {
 
     await submitForm();
 
-    const fetchCall = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
+    const fetchCall = (globalThis.fetch as ReturnType<typeof vi.fn>).mock
+      .calls[0];
     expect(fetchCall?.[0]).toBe("/api/auth/login");
 
     const bodyText = fetchCall?.[1]?.body;

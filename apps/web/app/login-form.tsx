@@ -118,8 +118,12 @@ export function LoginForm() {
         aria-atomic="true"
         data-login-feedback-region
       >
-        {error ? <p className="login-alert login-alert-error">{error}</p> : null}
-        {success ? <p className="login-alert login-alert-success">{success}</p> : null}
+        {error ? (
+          <p className="login-alert login-alert-error">{error}</p>
+        ) : null}
+        {success ? (
+          <p className="login-alert login-alert-success">{success}</p>
+        ) : null}
       </div>
 
       <button className="login-button" disabled={isSubmitting} type="submit">

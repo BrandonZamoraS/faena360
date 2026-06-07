@@ -1,4 +1,4 @@
-import * as React from 'react';
+import * as React from "react";
 
 declare const Ferrofluid: React.ComponentType<{
   className?: string;

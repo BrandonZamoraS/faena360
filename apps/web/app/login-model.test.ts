@@ -13,9 +13,9 @@ describe("login UI model", () => {
   });
 
   it("requires both email and password before submitting", () => {
-    expect(isValidLoginInput({ email: "admin@faena360.com", password: "" })).toBe(
-      false
-    );
+    expect(
+      isValidLoginInput({ email: "admin@faena360.com", password: "" })
+    ).toBe(false);
     expect(isValidLoginInput({ email: "", password: "secret" })).toBe(false);
     expect(
       isValidLoginInput({ email: "admin@faena360.com", password: "secret" })

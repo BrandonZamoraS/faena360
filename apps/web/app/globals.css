@@ -21,7 +21,11 @@ body {
 .login-shell {
   min-height: 100vh;
   background:
-    radial-gradient(circle at 12% 14%, rgba(68, 161, 92, 0.22), transparent 32rem),
+    radial-gradient(
+      circle at 12% 14%,
+      rgba(68, 161, 92, 0.22),
+      transparent 32rem
+    ),
     linear-gradient(135deg, #f7faf5 0%, #edf5ec 48%, #dfeee2 100%);
   padding: clamp(1rem, 4vw, 3rem);
 }
@@ -168,7 +172,11 @@ body {
     display: block;
     background:
       linear-gradient(135deg, rgba(79, 70, 229, 0.3), rgba(6, 182, 212, 0.2)),
-      radial-gradient(circle at 20% 20%, rgba(224, 242, 254, 0.35), transparent 52%),
+      radial-gradient(
+        circle at 20% 20%,
+        rgba(224, 242, 254, 0.35),
+        transparent 52%
+      ),
       linear-gradient(180deg, rgba(16, 33, 24, 0.08), rgba(16, 33, 24, 0.58));
   }
 
