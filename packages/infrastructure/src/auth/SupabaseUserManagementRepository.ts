@@ -28,6 +28,13 @@ interface AssignRolesInput {
   readonly roleIds: readonly string[];
 }
 
+interface UpdateProfileInput {
+  readonly tenantId: string;
+  readonly userId: string;
+  readonly fullName: string;
+  readonly phone?: string;
+}
+
 interface RecordAuditInput {
   readonly actorUserId: string;
   readonly targetUserId: string;
@@ -118,6 +125,50 @@ export class SupabaseUserManagementRepository implements UserManagementRepositor
     }
   }
 
+  public async replaceRoles(input: AssignRolesInput): Promise<void> {
+    const deleteResponse = await this.client
+      .from("user_roles")
+      .delete()
+      .eq("tenant_id", input.tenantId)
+      .eq("user_id", input.userId);
+
+    if (deleteResponse.error) {
+      throw new Error(deleteResponse.error.message);
+    }
+
+    await this.assignRoles(input);
+  }
+
+  public async updateProfile(input: UpdateProfileInput): Promise<void> {
+    const response = await this.client
+      .from("user_profiles")
+      .update({
+        full_name: input.fullName,
+        phone: input.phone ?? null,
+      })
+      .eq("tenant_id", input.tenantId)
+      .eq("id", input.userId);
+
+    if (response.error) {
+      throw new Error(response.error.message);
+    }
+  }
+
+  public async deactivateProfile(input: {
+    readonly tenantId: string;
+    readonly userId: string;
+  }): Promise<void> {
+    const response = await this.client
+      .from("user_profiles")
+      .update({ status: "inactive" })
+      .eq("tenant_id", input.tenantId)
+      .eq("id", input.userId);
+
+    if (response.error) {
+      throw new Error(response.error.message);
+    }
+  }
+
   public async listActiveUsers(input: {
     readonly tenantId: string;
   }): Promise<readonly TenantUserSummary[]> {
@@ -148,6 +199,33 @@ export class SupabaseUserManagementRepository implements UserManagementRepositor
       actor_user_id: input.actorUserId,
       target_user_id: input.targetUserId,
       action: "user_created",
+      occurred_at: new Date().toISOString(),
+    });
+
+    if (response.error) {
+      throw new Error(response.error.message);
+    }
+  }
+
+  public async recordUserUpdatedAudit(input: RecordAuditInput): Promise<void> {
+    await this.recordUserAudit(input, "user_updated");
+  }
+
+  public async recordUserDeactivatedAudit(
+    input: RecordAuditInput
+  ): Promise<void> {
+    await this.recordUserAudit(input, "user_deactivated");
+  }
+
+  private async recordUserAudit(
+    input: RecordAuditInput,
+    action: string
+  ): Promise<void> {
+    const response = await this.client.from("audit_log").insert({
+      tenant_id: await this.resolveTenantIdForProfile(input.targetUserId),
+      actor_user_id: input.actorUserId,
+      target_user_id: input.targetUserId,
+      action,
       occurred_at: new Date().toISOString(),
     });
 

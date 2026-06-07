@@ -31,6 +31,10 @@ export type {
   CreateTenantUserErrorCode,
   CreateTenantUserInput,
   CreateTenantUserOutcome,
+  DeactivateTenantUserInput,
+  MutateTenantUserErrorCode,
+  MutateTenantUserOutcome,
   TenantUserSummary,
+  UpdateTenantUserInput,
   UserManagementRepository,
 } from "./user-management";

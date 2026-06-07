@@ -37,10 +37,26 @@ interface MockCalls {
     readonly roleIds: readonly string[];
   }>;
   readonly auditCalls: Array<{
+    readonly action?: string;
     readonly actorUserId: string;
     readonly targetUserId: string;
   }>;
   readonly listActiveCalls: string[];
+  readonly updateProfileCalls: Array<{
+    readonly tenantId: string;
+    readonly userId: string;
+    readonly fullName: string;
+    readonly phone?: string;
+  }>;
+  readonly replaceRoleCalls: Array<{
+    readonly tenantId: string;
+    readonly userId: string;
+    readonly roleIds: readonly string[];
+  }>;
+  readonly deactivateProfileCalls: Array<{
+    readonly tenantId: string;
+    readonly userId: string;
+  }>;
 }
 
 type UserManagementDependenciesOverrides = {
@@ -62,6 +78,9 @@ function createCallsTracker(): MockCalls {
     assignRoleCalls: [],
     auditCalls: [],
     listActiveCalls: [],
+    updateProfileCalls: [],
+    replaceRoleCalls: [],
+    deactivateProfileCalls: [],
   };
 }
 
@@ -145,7 +164,59 @@ function createUserManagementServiceWithMocks(
         actorUserId,
         targetUserId,
       }: Parameters<UserManagementRepository["recordUserCreatedAudit"]>[0]) => {
-        calls.auditCalls.push({ actorUserId, targetUserId });
+        calls.auditCalls.push({
+          action: "user_created",
+          actorUserId,
+          targetUserId,
+        });
+      },
+      updateProfile: async ({
+        tenantId,
+        userId,
+        fullName,
+        phone,
+      }: Parameters<UserManagementRepository["updateProfile"]>[0]) => {
+        calls.updateProfileCalls.push({
+          tenantId,
+          userId,
+          fullName,
+          ...(phone ? { phone } : {}),
+        });
+      },
+      replaceRoles: async ({
+        tenantId,
+        userId,
+        roleIds,
+      }: Parameters<UserManagementRepository["replaceRoles"]>[0]) => {
+        calls.replaceRoleCalls.push({ tenantId, userId, roleIds });
+      },
+      deactivateProfile: async ({
+        tenantId,
+        userId,
+      }: Parameters<UserManagementRepository["deactivateProfile"]>[0]) => {
+        calls.deactivateProfileCalls.push({ tenantId, userId });
+      },
+      recordUserUpdatedAudit: async ({
+        actorUserId,
+        targetUserId,
+      }: Parameters<UserManagementRepository["recordUserUpdatedAudit"]>[0]) => {
+        calls.auditCalls.push({
+          action: "user_updated",
+          actorUserId,
+          targetUserId,
+        });
+      },
+      recordUserDeactivatedAudit: async ({
+        actorUserId,
+        targetUserId,
+      }: Parameters<
+        UserManagementRepository["recordUserDeactivatedAudit"]
+      >[0]) => {
+        calls.auditCalls.push({
+          action: "user_deactivated",
+          actorUserId,
+          targetUserId,
+        });
       },
       ...overrides?.repository,
     },
@@ -178,6 +249,8 @@ async function runUserManagementServiceContractChecks(): Promise<void> {
   await runDuplicatePreflightRejectsWithoutAuthWrite();
   await runCompensationRunsOnLocalFailureAfterAuthCreated();
   await runListUsersFiltersToActiveTenantOnly();
+  await runUpdateUserRequiresUpdateCapabilityAndReplacesRoles();
+  await runDeactivateUserSoftDeletesProfileOnly();
 }
 
 async function runCapabilityRejectionPreventsCreation(): Promise<void> {
@@ -406,6 +479,105 @@ async function runListUsersFiltersToActiveTenantOnly(): Promise<void> {
   );
 }
 
+async function runUpdateUserRequiresUpdateCapabilityAndReplacesRoles(): Promise<void> {
+  const calls = createCallsTracker();
+
+  const { service } = createUserManagementServiceWithMocks({ calls });
+
+  const result = await service.updateUser(
+    {
+      tenant_id: " tenant-4 ",
+      user_id: "actor-4",
+    },
+    {
+      userId: "target-user-4",
+      fullName: "  Updated User  ",
+      phone: " +1 (555) 222-3333 ",
+      roleIds: ["role-a", "role-b", "role-a"],
+    }
+  );
+
+  assert(result.ok === true, "Expected updateUser to succeed by default.");
+  assertEquals(
+    calls.requireCapability[0],
+    "users:update",
+    "Expected users:update capability check"
+  );
+  assertEquals(
+    calls.updateProfileCalls[0],
+    {
+      tenantId: "tenant-4",
+      userId: "target-user-4",
+      fullName: "Updated User",
+      phone: "15552223333",
+    },
+    "Expected normalized profile update payload"
+  );
+  assertEquals(
+    calls.replaceRoleCalls[0],
+    {
+      tenantId: "tenant-4",
+      userId: "target-user-4",
+      roleIds: ["role-a", "role-b"],
+    },
+    "Expected role replacement with deduplicated role ids"
+  );
+  assertEquals(
+    calls.auditCalls.at(-1),
+    {
+      action: "user_updated",
+      actorUserId: "actor-4",
+      targetUserId: "target-user-4",
+    },
+    "Expected update audit event"
+  );
+}
+
+async function runDeactivateUserSoftDeletesProfileOnly(): Promise<void> {
+  const calls = createCallsTracker();
+
+  const { service } = createUserManagementServiceWithMocks({ calls });
+
+  const result = await service.deactivateUser(
+    {
+      tenant_id: "tenant-5",
+      user_id: "actor-5",
+    },
+    {
+      userId: "target-user-5",
+    }
+  );
+
+  assert(result.ok === true, "Expected deactivateUser to succeed by default.");
+  assertEquals(
+    calls.requireCapability[0],
+    "users:update",
+    "Expected users:update capability check for soft delete"
+  );
+  assertEquals(
+    calls.deactivateProfileCalls[0],
+    {
+      tenantId: "tenant-5",
+      userId: "target-user-5",
+    },
+    "Expected soft delete to deactivate the local profile"
+  );
+  assertEquals(
+    calls.deleteAuthCalls.length,
+    0,
+    "Expected soft delete not to hard-delete Auth identity"
+  );
+  assertEquals(
+    calls.auditCalls.at(-1),
+    {
+      action: "user_deactivated",
+      actorUserId: "actor-5",
+      targetUserId: "target-user-5",
+    },
+    "Expected soft delete audit event"
+  );
+}
+
 describe("user management service", () => {
   it("prevents creating a user when capability is denied", async () => {
     await runCapabilityRejectionPreventsCreation();
@@ -421,6 +593,14 @@ describe("user management service", () => {
 
   it("returns only active users scoped to the requesting tenant", async () => {
     await runListUsersFiltersToActiveTenantOnly();
+  });
+
+  it("updates a user only with update capability and replaces roles", async () => {
+    await runUpdateUserRequiresUpdateCapabilityAndReplacesRoles();
+  });
+
+  it("soft deletes users by deactivating local profiles", async () => {
+    await runDeactivateUserSoftDeletesProfileOnly();
   });
 
   it("runs user management contract checks", async () => {

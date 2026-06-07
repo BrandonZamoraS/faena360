@@ -35,6 +35,14 @@ function createMockQuery<T>(
       });
       return query;
     },
+    delete: () => {
+      calls.push({ operation: "delete", details: table });
+      return query;
+    },
+    update: (values: unknown) => {
+      calls.push({ operation: "update", details: `${table}:${JSON.stringify(values)}` });
+      return query;
+    },
     insert: (values: unknown) => {
       calls.push({ operation: "insert", details: table });
       onInsert?.(values);
@@ -56,6 +64,88 @@ function createMockQuery<T>(
   };
 
   return query;
+}
+
+async function runUpdateProfileScopesByTenantAndUser(): Promise<void> {
+  const calls: QueryCall[] = [];
+
+  const client = {
+    from: (table: string) => {
+      expect(table).toBe("user_profiles");
+      return createMockQuery({ data: null, error: null }, calls, table);
+    },
+  } as unknown as SupabaseClient;
+
+  const repository = new SupabaseUserManagementRepository(client);
+  await repository.updateProfile({
+    tenantId: "tenant-1",
+    userId: "user-id-1",
+    fullName: "Updated User",
+    phone: "15552223333",
+  });
+
+  expect(calls).toContainEqual({
+    operation: "update",
+    details: 'user_profiles:{"full_name":"Updated User","phone":"15552223333"}',
+  });
+  expect(calls).toContainEqual({
+    operation: "eq",
+    details: "user_profiles:tenant_id=tenant-1",
+  });
+  expect(calls).toContainEqual({
+    operation: "eq",
+    details: "user_profiles:id=user-id-1",
+  });
+}
+
+async function runReplaceRolesDeletesThenInsertsTenantScopedRoles(): Promise<void> {
+  const calls: QueryCall[] = [];
+  const insertPayloads: unknown[] = [];
+
+  const client = {
+    from: (table: string) => {
+      expect(table).toBe("user_roles");
+      return createMockQuery(
+        { data: null, error: null },
+        calls,
+        table,
+        (values) => insertPayloads.push(values)
+      );
+    },
+  } as unknown as SupabaseClient;
+
+  const repository = new SupabaseUserManagementRepository(client);
+  await repository.replaceRoles({
+    tenantId: "tenant-1",
+    userId: "user-id-1",
+    roleIds: ["role-a", "role-b", "role-a"],
+  });
+
+  expect(calls).toContainEqual({ operation: "delete", details: "user_roles" });
+  expect(insertPayloads[0]).toEqual([
+    { tenant_id: "tenant-1", user_id: "user-id-1", role_id: "role-a" },
+    { tenant_id: "tenant-1", user_id: "user-id-1", role_id: "role-b" },
+  ]);
+}
+
+async function runDeactivateProfileUsesStatusInactive(): Promise<void> {
+  const calls: QueryCall[] = [];
+
+  const client = {
+    from: (table: string) => {
+      expect(table).toBe("user_profiles");
+      return createMockQuery({ data: null, error: null }, calls, table);
+    },
+  } as unknown as SupabaseClient;
+
+  const repository = new SupabaseUserManagementRepository(client);
+  await repository.deactivateProfile({ tenantId: "tenant-1", userId: "user-id-1" });
+
+  expect(calls).toContainEqual({
+    operation: "update",
+    details: 'user_profiles:{"status":"inactive"}',
+  });
+  expect(calls).not.toContainEqual({ operation: "delete", details: "user_profiles" });
 }
 
 async function runTenantActiveUsersUseSchemaColumnsCheck(): Promise<void> {
@@ -278,5 +368,17 @@ describe("SupabaseUserManagementRepository", () => {
 
   it("writes audit log using canonical column names", async () => {
     await runRecordUserCreatedAuditUsesCurrentSchema();
+  });
+
+  it("updates profiles scoped by tenant and user", async () => {
+    await runUpdateProfileScopesByTenantAndUser();
+  });
+
+  it("replaces user roles with tenant-scoped assignments", async () => {
+    await runReplaceRolesDeletesThenInsertsTenantScopedRoles();
+  });
+
+  it("soft deletes profiles by setting status inactive", async () => {
+    await runDeactivateProfileUsesStatusInactive();
   });
 });

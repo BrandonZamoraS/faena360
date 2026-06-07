@@ -10,6 +10,12 @@ vi.mock("next/font/google", () => ({
   Geist_Mono: vi.fn(() => ({ variable: "--font-geist-mono" })),
 }));
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({
+    replace: vi.fn(),
+  }),
+}));
+
 describe("Login entry page", () => {
   it("renders root login UI with labeled form controls and submit button", () => {
     const html = renderToStaticMarkup(<Home />);

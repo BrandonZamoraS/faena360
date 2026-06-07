@@ -4,6 +4,14 @@ import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { LoginForm } from "./login-form";
 
+const replaceMock = vi.fn();
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({
+    replace: replaceMock,
+  }),
+}));
+
 type BrowserFetch = NonNullable<typeof fetch>;
 
 describe("LoginForm runtime behavior", () => {
@@ -12,6 +20,7 @@ describe("LoginForm runtime behavior", () => {
   let originalFetch: BrowserFetch | undefined;
 
   beforeEach(() => {
+    replaceMock.mockClear();
     container = document.createElement("div");
     document.body.appendChild(container);
     root = createRoot(container);
@@ -188,9 +197,6 @@ describe("LoginForm runtime behavior", () => {
   it("posts trimmed email and unchanged password to the login API", async () => {
     const { emailInput, passwordInput, feedbackRegion } =
       await mountAndGetParts();
-    const pushStateSpy = vi.spyOn(window.history, "pushState");
-    const replaceStateSpy = vi.spyOn(window.history, "replaceState");
-
     globalThis.fetch = vi.fn(
       async () =>
         new Response(
@@ -231,9 +237,7 @@ describe("LoginForm runtime behavior", () => {
     expect(feedbackRegion.textContent).toContain(
       "Sesión iniciada como admin@faena360.com."
     );
-    expect(pushStateSpy).not.toHaveBeenCalled();
-    expect(replaceStateSpy).not.toHaveBeenCalled();
-    expect(window.location.href).toContain("http://localhost");
+    expect(replaceMock).toHaveBeenCalledWith("/dashboard");
   });
 
   it("replaces prior success feedback when a later failure arrives", async () => {
