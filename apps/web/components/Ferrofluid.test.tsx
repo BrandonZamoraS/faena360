@@ -6,8 +6,9 @@ import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import Ferrofluid from "./Ferrofluid";
 
-(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean })
-  .IS_REACT_ACT_ENVIRONMENT = true;
+(
+  globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }
+).IS_REACT_ACT_ENVIRONMENT = true;
 
 vi.mock("ogl", () => ({
   Renderer: class {
@@ -42,7 +43,10 @@ class ResizeObserverStub {
 describe("Ferrofluid", () => {
   beforeEach(() => {
     vi.stubGlobal("ResizeObserver", ResizeObserverStub);
-    vi.stubGlobal("requestAnimationFrame", vi.fn(() => 1));
+    vi.stubGlobal(
+      "requestAnimationFrame",
+      vi.fn(() => 1)
+    );
     vi.stubGlobal("cancelAnimationFrame", vi.fn());
   });
 
@@ -56,9 +60,7 @@ describe("Ferrofluid", () => {
 
     expect(() => {
       act(() => {
-        root.render(
-          <Ferrofluid colors={["#4F46E5", "#06B6D4", "#E0F2FE"]} />
-        );
+        root.render(<Ferrofluid colors={["#4F46E5", "#06B6D4", "#E0F2FE"]} />);
       });
     }).not.toThrow();
 

@@ -1,2 +1,1 @@
-// TODO: export domain entities and value objects
-export {};
+export * from "./src";
