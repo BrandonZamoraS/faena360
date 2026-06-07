@@ -1,10 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { AppSession } from "@faena360/domain";
-import {
-  createDashboardViewModel,
-  renderDashboardShell,
-} from "./page";
+import { createDashboardViewModel, renderDashboardShell } from "./page";
 
 const baseSession: AppSession = {
   user_id: "user-a",

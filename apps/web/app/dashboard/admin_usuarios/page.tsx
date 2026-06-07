@@ -39,10 +39,16 @@ export function renderUserAdminShell(input: UserAdminShellInput) {
         <aside className="flex border-b border-[#dcebe1] bg-[#edf5ec] px-6 py-6 lg:w-72 lg:flex-col lg:border-b-0 lg:border-r">
           <p className="text-sm font-semibold text-[#173b29]">Faena360</p>
           <nav className="mt-8 space-y-2" aria-label="Módulos">
-            <a className="block rounded-xl px-4 py-3 text-sm font-semibold text-[#173b29] hover:bg-white" href="/dashboard">
+            <a
+              className="block rounded-xl px-4 py-3 text-sm font-semibold text-[#173b29] hover:bg-white"
+              href="/dashboard"
+            >
               Dashboard
             </a>
-            <a className="block rounded-xl bg-[#173b29] px-4 py-3 text-sm font-semibold text-white" href="/dashboard/admin_usuarios">
+            <a
+              className="block rounded-xl bg-[#173b29] px-4 py-3 text-sm font-semibold text-white"
+              href="/dashboard/admin_usuarios"
+            >
               admin_usuarios
             </a>
           </nav>
@@ -58,27 +64,50 @@ export function renderUserAdminShell(input: UserAdminShellInput) {
 
         <section className="flex min-w-0 flex-1 flex-col gap-8 px-6 py-8">
           <header className="rounded-2xl border border-[#dcebe1] bg-white p-8">
-            <p className="text-sm font-medium text-[#0f5132]">{input.tenantName}</p>
-            <h1 className="mt-3 text-3xl font-semibold tracking-[-0.03em]">admin_usuarios</h1>
+            <p className="text-sm font-medium text-[#0f5132]">
+              {input.tenantName}
+            </p>
+            <h1 className="mt-3 text-3xl font-semibold tracking-[-0.03em]">
+              admin_usuarios
+            </h1>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-[#385346]">
-              Crear, modificar y eliminar usuarios del tenant autenticado. Soft delete: el perfil pasa a inactivo y deja de poder iniciar sesión.
+              Crear, modificar y eliminar usuarios del tenant autenticado. Soft
+              delete: el perfil pasa a inactivo y deja de poder iniciar sesión.
             </p>
           </header>
 
           <section className="rounded-2xl border border-[#dcebe1] bg-white p-6">
             <h2 className="text-xl font-semibold">Crear usuario</h2>
-            <form action={input.createAction} className="mt-5 grid gap-4 md:grid-cols-2">
+            <form
+              action={input.createAction}
+              className="mt-5 grid gap-4 md:grid-cols-2"
+            >
               <label className="space-y-2 text-sm font-medium">
                 <span>Email</span>
-                <input className="login-input" name="email" required type="email" />
+                <input
+                  className="login-input"
+                  name="email"
+                  required
+                  type="email"
+                />
               </label>
               <label className="space-y-2 text-sm font-medium">
                 <span>Contraseña temporal</span>
-                <input className="login-input" name="temporaryPassword" required type="password" />
+                <input
+                  className="login-input"
+                  name="temporaryPassword"
+                  required
+                  type="password"
+                />
               </label>
               <label className="space-y-2 text-sm font-medium">
                 <span>Nombre completo</span>
-                <input className="login-input" name="fullName" required type="text" />
+                <input
+                  className="login-input"
+                  name="fullName"
+                  required
+                  type="text"
+                />
               </label>
               <label className="space-y-2 text-sm font-medium">
                 <span>Teléfono</span>
@@ -88,43 +117,77 @@ export function renderUserAdminShell(input: UserAdminShellInput) {
                 <legend className="text-sm font-semibold">Roles</legend>
                 <div className="flex flex-wrap gap-3">
                   {input.roles.map((role) => (
-                    <label className="rounded-full border border-[#dcebe1] px-3 py-2 text-sm" key={role.id}>
-                      <input className="mr-2" name="roleIds" type="checkbox" value={role.id} />
+                    <label
+                      className="rounded-full border border-[#dcebe1] px-3 py-2 text-sm"
+                      key={role.id}
+                    >
+                      <input
+                        className="mr-2"
+                        name="roleIds"
+                        type="checkbox"
+                        value={role.id}
+                      />
                       {role.name}
                     </label>
                   ))}
                 </div>
               </fieldset>
-              <button className="login-button md:col-span-2" type="submit">Crear usuario</button>
+              <button className="login-button md:col-span-2" type="submit">
+                Crear usuario
+              </button>
             </form>
           </section>
 
           <section className="space-y-4">
             <h2 className="text-xl font-semibold">Usuarios activos</h2>
             {input.users.map((user) => (
-              <article className="rounded-2xl border border-[#dcebe1] bg-white p-6" key={user.user_id}>
+              <article
+                className="rounded-2xl border border-[#dcebe1] bg-white p-6"
+                key={user.user_id}
+              >
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                   <div>
                     <p className="font-semibold">{user.full_name}</p>
                     <p className="text-sm text-[#385346]">{user.email}</p>
                   </div>
-                  <p className="rounded-full bg-[#e5f6ea] px-3 py-1 text-xs font-semibold text-[#0f5132]">{user.status}</p>
+                  <p className="rounded-full bg-[#e5f6ea] px-3 py-1 text-xs font-semibold text-[#0f5132]">
+                    {user.status}
+                  </p>
                 </div>
-                <form action={input.updateAction} className="mt-5 grid gap-4 md:grid-cols-[1fr_1fr_auto]">
+                <form
+                  action={input.updateAction}
+                  className="mt-5 grid gap-4 md:grid-cols-[1fr_1fr_auto]"
+                >
                   <input name="userId" type="hidden" value={user.user_id} />
                   <label className="space-y-2 text-sm font-medium">
                     <span>Modificar usuario</span>
-                    <input className="login-input" name="fullName" required type="text" defaultValue={user.full_name} />
+                    <input
+                      className="login-input"
+                      name="fullName"
+                      required
+                      type="text"
+                      defaultValue={user.full_name}
+                    />
                   </label>
                   <label className="space-y-2 text-sm font-medium">
                     <span>Teléfono</span>
-                    <input className="login-input" name="phone" type="tel" defaultValue={user.phone ?? ""} />
+                    <input
+                      className="login-input"
+                      name="phone"
+                      type="tel"
+                      defaultValue={user.phone ?? ""}
+                    />
                   </label>
-                  <button className="login-button self-end" type="submit">Guardar cambios</button>
+                  <button className="login-button self-end" type="submit">
+                    Guardar cambios
+                  </button>
                 </form>
                 <form action={input.deactivateAction} className="mt-4">
                   <input name="userId" type="hidden" value={user.user_id} />
-                  <button className="rounded-xl bg-[#fff1f0] px-4 py-3 text-sm font-semibold text-[#8a1f16]" type="submit">
+                  <button
+                    className="rounded-xl bg-[#fff1f0] px-4 py-3 text-sm font-semibold text-[#8a1f16]"
+                    type="submit"
+                  >
                     Eliminar usuario
                   </button>
                 </form>
@@ -184,7 +247,9 @@ function buildUserManagementService(session: AppSession) {
   });
 }
 
-async function listRoles(tenantId: string): Promise<readonly TenantRoleOption[]> {
+async function listRoles(
+  tenantId: string
+): Promise<readonly TenantRoleOption[]> {
   const { data, error } = await createWebSupabaseServiceClient()
     .from("roles")
     .select("id, name")
@@ -231,7 +296,9 @@ export async function createUserAction(formData: FormData) {
       temporaryPassword: getString(formData, "temporaryPassword"),
       fullName: getString(formData, "fullName"),
       phone: getString(formData, "phone"),
-      roleIds: formData.getAll("roleIds").filter((value): value is string => typeof value === "string"),
+      roleIds: formData
+        .getAll("roleIds")
+        .filter((value): value is string => typeof value === "string"),
     }
   );
 
@@ -284,7 +351,10 @@ export default async function AdminUsuariosPage() {
   const [tenantName, roles, users] = await Promise.all([
     lookupTenantName(session.tenant_id),
     listRoles(session.tenant_id),
-    service.listUsers({ tenant_id: session.tenant_id, user_id: session.user_id }),
+    service.listUsers({
+      tenant_id: session.tenant_id,
+      user_id: session.user_id,
+    }),
   ]);
 
   return renderUserAdminShell({

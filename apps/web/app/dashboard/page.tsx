@@ -61,7 +61,9 @@ export async function createDashboardViewModel(input: {
   };
 }
 
-export function renderDashboardShell(viewModel: Exclude<DashboardViewModel, { redirectTo: "/" }>) {
+export function renderDashboardShell(
+  viewModel: Exclude<DashboardViewModel, { redirectTo: "/" }>
+) {
   const showUserAdminModule = canAccessUserAdminModule(
     viewModel.effectiveCapabilities
   );
@@ -101,32 +103,32 @@ export function renderDashboardShell(viewModel: Exclude<DashboardViewModel, { re
         </aside>
 
         <section className="flex min-w-0 flex-1 flex-col gap-8 px-6 py-8">
-        <header className="rounded-[2rem] border border-[#dcebe1] bg-white p-8 shadow-sm">
-          <p className="text-sm font-medium text-[#0f5132]">Dashboard</p>
-          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <h1 className="text-4xl font-semibold tracking-[-0.03em] sm:text-5xl">
-                {viewModel.tenantName}
-              </h1>
-              <p className="mt-3 text-base leading-7 text-[#385346]">
-                Sesión activa para {viewModel.userEmail}.
+          <header className="rounded-[2rem] border border-[#dcebe1] bg-white p-8 shadow-sm">
+            <p className="text-sm font-medium text-[#0f5132]">Dashboard</p>
+            <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <h1 className="text-4xl font-semibold tracking-[-0.03em] sm:text-5xl">
+                  {viewModel.tenantName}
+                </h1>
+                <p className="mt-3 text-base leading-7 text-[#385346]">
+                  Sesión activa para {viewModel.userEmail}.
+                </p>
+              </div>
+              <p className="rounded-full bg-[#e5f6ea] px-4 py-2 text-sm font-medium text-[#0f5132]">
+                Roles: {viewModel.roles.join(", ")}
               </p>
             </div>
-            <p className="rounded-full bg-[#e5f6ea] px-4 py-2 text-sm font-medium text-[#0f5132]">
-              Roles: {viewModel.roles.join(", ")}
-            </p>
-          </div>
-        </header>
+          </header>
 
-        <section className="rounded-[2rem] border border-dashed border-[#b8d8c2] bg-white/80 p-10 text-center">
-          <p className="text-lg font-semibold text-[#102118]">
-            No hay módulos operativos publicados todavía.
-          </p>
-          <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-[#385346]">
-            Este espacio queda preparado para futuras métricas, usuarios y módulos
-            del tenant autenticado.
-          </p>
-        </section>
+          <section className="rounded-[2rem] border border-dashed border-[#b8d8c2] bg-white/80 p-10 text-center">
+            <p className="text-lg font-semibold text-[#102118]">
+              No hay módulos operativos publicados todavía.
+            </p>
+            <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-[#385346]">
+              Este espacio queda preparado para futuras métricas, usuarios y
+              módulos del tenant autenticado.
+            </p>
+          </section>
         </section>
       </div>
     </main>

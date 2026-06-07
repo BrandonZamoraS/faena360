@@ -40,7 +40,10 @@ function createMockQuery<T>(
       return query;
     },
     update: (values: unknown) => {
-      calls.push({ operation: "update", details: `${table}:${JSON.stringify(values)}` });
+      calls.push({
+        operation: "update",
+        details: `${table}:${JSON.stringify(values)}`,
+      });
       return query;
     },
     insert: (values: unknown) => {
@@ -139,13 +142,19 @@ async function runDeactivateProfileUsesStatusInactive(): Promise<void> {
   } as unknown as SupabaseClient;
 
   const repository = new SupabaseUserManagementRepository(client);
-  await repository.deactivateProfile({ tenantId: "tenant-1", userId: "user-id-1" });
+  await repository.deactivateProfile({
+    tenantId: "tenant-1",
+    userId: "user-id-1",
+  });
 
   expect(calls).toContainEqual({
     operation: "update",
     details: 'user_profiles:{"status":"inactive"}',
   });
-  expect(calls).not.toContainEqual({ operation: "delete", details: "user_profiles" });
+  expect(calls).not.toContainEqual({
+    operation: "delete",
+    details: "user_profiles",
+  });
 }
 
 async function runTenantActiveUsersUseSchemaColumnsCheck(): Promise<void> {
