@@ -6,11 +6,6 @@ on:
       - development
       - stage
       - production
-  push:
-    branches:
-      - development
-      - stage
-      - production
 
 jobs:
   validate:
@@ -53,5 +48,3 @@ jobs:
           # Real environment values are injected only in deployment workflows.
           NEXT_PUBLIC_SUPABASE_URL: https://ci-check.supabase.co
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-check-anon-key
-          APP_SESSION_SECRET: ci-check-session-secret-with-minimum-length
-          SUPABASE_SERVICE_ROLE_KEY: ci-check-service-role-key

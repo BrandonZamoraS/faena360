@@ -8,7 +8,6 @@
     "build": "tsc --noEmit"
   },
   "dependencies": {
-    "@faena360/application": "workspace:*",
     "@faena360/domain": "workspace:*",
     "@supabase/supabase-js": "^2"
   },
