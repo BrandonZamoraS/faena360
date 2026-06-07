@@ -252,7 +252,7 @@ const Ferrofluid = ({
       colors[5],
       colors[6],
       colors[7],
-    ];
+    ].filter((color) => typeof color === "string" && color.length > 0);
     const { arr, count, avg } = prepColors(normalizedColors);
 
     const uniforms = {

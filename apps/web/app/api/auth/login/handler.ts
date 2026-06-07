@@ -12,6 +12,7 @@ import {
   LoginWithEmailPasswordServiceImpl,
 } from "@faena360/application";
 import { createWebSupabaseClient } from "../../../../lib/supabase";
+import { createWebSupabaseServiceClient } from "../../../../lib/supabase";
 
 /**
  * Handler de API auth/login para orquestar la autenticación web.
@@ -29,10 +30,11 @@ function buildLoginService(): LoginWithEmailPasswordService {
   // Capa Web/Delivery: compone adaptadores concretos para ejecutar el caso de
   // uso. La ruta conoce Next.js y Supabase; Application solo recibe puertos.
   const supabase = createWebSupabaseClient();
+  const serviceSupabase = createWebSupabaseServiceClient();
 
   return new LoginWithEmailPasswordServiceImpl(
     new SupabaseAuthAdapter(supabase),
-    new SupabaseAppSessionRepository(supabase)
+    new SupabaseAppSessionRepository(serviceSupabase)
   );
 }
 
