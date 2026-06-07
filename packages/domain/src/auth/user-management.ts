@@ -1,0 +1,96 @@
+/**
+ * DTO de entrada para crear usuarios de un tenant.
+ */
+export interface CreateTenantUserInput {
+  readonly email: string;
+  readonly temporaryPassword: string;
+  readonly fullName: string;
+  readonly phone?: string;
+  readonly roleIds: readonly string[];
+}
+
+/**
+ * Resumen de usuario retornado en listados administrados por tenant.
+ */
+export interface TenantUserSummary {
+  readonly user_id: string;
+  readonly tenant_id: string;
+  readonly email: string;
+  readonly full_name: string;
+  readonly phone: string | null;
+  readonly status: "active" | "inactive";
+}
+
+/**
+ * Errores de aplicación para crear usuario; cada código representa una rama
+ * de recuperación/conversión esperable en Application.
+ */
+export type CreateTenantUserErrorCode =
+  | "missing_tenant"
+  | "duplicate_identifier"
+  | "capability_denied"
+  | "auth_create_failed"
+  | "profile_create_failed"
+  | "role_assignment_failed"
+  | "audit_failed"
+  | "compensation_failed";
+
+/**
+ * Puerto de administración del proveedor de identidad (operaciones irreversibles
+ * en Auth) que debe implementar Infraestructure.
+ */
+export interface AuthAdminPort {
+  createUser(input: {
+    readonly email: string;
+    readonly temporaryPassword: string;
+    readonly app_metadata: {
+      readonly tenant_id: string;
+    };
+  }): Promise<{ readonly authUserId: string }>;
+
+  deleteUser(authUserId: string): Promise<void>;
+}
+
+/**
+ * Puerto de persistencia local para perfiles/roles de usuario.
+ */
+export interface UserManagementRepository {
+  identifierExists(input: {
+    readonly email: string;
+    readonly phone?: string;
+  }): Promise<boolean>;
+
+  createProfile(input: {
+    readonly tenantId: string;
+    readonly authUserId: string;
+    readonly email: string;
+    readonly fullName: string;
+    readonly phone?: string;
+  }): Promise<string>;
+
+  assignRoles(input: {
+    readonly tenantId: string;
+    readonly userId: string;
+    readonly roleIds: readonly string[];
+  }): Promise<void>;
+
+  listActiveUsers(input: {
+    readonly tenantId: string;
+  }): Promise<readonly TenantUserSummary[]>;
+
+  recordUserCreatedAudit(input: {
+    readonly actorUserId: string;
+    readonly targetUserId: string;
+  }): Promise<void>;
+}
+
+/**
+ * Resultado canónico del caso de uso de alta de usuario.
+ */
+export interface CreateTenantUserOutcome {
+  readonly ok: boolean;
+  readonly authUserId?: string;
+  readonly userId?: string;
+  readonly user?: TenantUserSummary;
+  readonly code?: CreateTenantUserErrorCode;
+}

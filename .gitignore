@@ -1,5 +1,10 @@
 # Local AI runtime state
 .atl/
+.worktrees/
+
+# Local Supabase CLI state
+supabase/.branches/
+supabase/.temp/
 
 # Obsidian Vault
 obsidian-vault/

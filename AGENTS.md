@@ -27,6 +27,14 @@ When an agent has several unrelated tasks:
 
 This applies to reading 4+ files, multi-file edits, test execution, or any task that can be divided.
 
+## Supabase Command Gate (MANDATORY)
+
+- Agents **MUST NOT** run Supabase CLI commands by default, including `supabase db reset`, `supabase test`, migration execution, or SQL test execution.
+- If Supabase execution is needed for verification or debugging, the agent must stop and report the exact command, why it is needed, and what result is expected.
+- Only run Supabase commands after the user explicitly authorizes that specific command/run.
+- If a Supabase-related error appears, investigate files and logs that are already available, then ask via chat instead of retrying commands repeatedly.
+- Non-Supabase checks such as `pnpm build`, `pnpm lint`, or `pnpm -r typecheck` may still run when appropriate.
+
 ## Questions and Doubts
 
 - Whenever you have questions, doubts, or need extra data about code, documentation, or requirements, you **MUST ask directly via chat**.
