@@ -23,6 +23,7 @@ type TenantRoleOption = {
 
 type UserAdminShellInput = {
   readonly tenantName: string;
+  readonly capabilities: readonly string[];
   readonly users: readonly TenantUserSummary[];
   readonly roles: readonly TenantRoleOption[];
   readonly createAction?: (formData: FormData) => Promise<void>;
@@ -31,9 +32,20 @@ type UserAdminShellInput = {
 };
 
 const USER_READ_CAPABILITY = "users:read";
-const USER_ADMIN_CAPABILITIES = ["users:create", "users:update"];
+const USER_CREATE_CAPABILITY = "users:create";
+const USER_UPDATE_CAPABILITY = "users:update";
+const ROLE_READ_CAPABILITY = "roles:read";
+const ROLE_UPDATE_CAPABILITY = "roles:update";
+const USER_ADMIN_CAPABILITIES = [
+  USER_CREATE_CAPABILITY,
+  USER_UPDATE_CAPABILITY,
+];
 
 export function renderUserAdminShell(input: UserAdminShellInput) {
+  const canCreateUsers = input.capabilities.includes(USER_CREATE_CAPABILITY);
+  const canUpdateUsers = input.capabilities.includes(USER_UPDATE_CAPABILITY);
+  const canManageRoles = canRenderRoleControls(input.capabilities);
+
   return (
     <main className="min-h-screen bg-[#f5fbf7] text-[#102118]">
       <div className="mx-auto flex min-h-screen max-w-7xl flex-col lg:flex-row">
@@ -77,67 +89,51 @@ export function renderUserAdminShell(input: UserAdminShellInput) {
             </p>
           </header>
 
-          <section className="rounded-2xl border border-[#dcebe1] bg-white p-6">
-            <h2 className="text-xl font-semibold">Crear usuario</h2>
-            <form
-              action={input.createAction}
-              className="mt-5 grid gap-4 md:grid-cols-2"
-            >
-              <label className="space-y-2 text-sm font-medium">
-                <span>Email</span>
-                <input
-                  className="login-input"
-                  name="email"
-                  required
-                  type="email"
-                />
-              </label>
-              <label className="space-y-2 text-sm font-medium">
-                <span>Contraseña temporal</span>
-                <input
-                  className="login-input"
-                  name="temporaryPassword"
-                  required
-                  type="password"
-                />
-              </label>
-              <label className="space-y-2 text-sm font-medium">
-                <span>Nombre completo</span>
-                <input
-                  className="login-input"
-                  name="fullName"
-                  required
-                  type="text"
-                />
-              </label>
-              <label className="space-y-2 text-sm font-medium">
-                <span>Teléfono</span>
-                <input className="login-input" name="phone" type="tel" />
-              </label>
-              <fieldset className="space-y-2 md:col-span-2">
-                <legend className="text-sm font-semibold">Roles</legend>
-                <div className="flex flex-wrap gap-3">
-                  {input.roles.map((role) => (
-                    <label
-                      className="rounded-full border border-[#dcebe1] px-3 py-2 text-sm"
-                      key={role.id}
-                    >
-                      <input
-                        className="mr-2"
-                        name="roleIds"
-                        type="checkbox"
-                        value={role.id}
-                      />
-                      {role.name}
-                    </label>
-                  ))}
-                </div>
-              </fieldset>
-              <button className="login-button md:col-span-2" type="submit">
-                Crear usuario
-              </button>
-            </form>
-          </section>
+          {canCreateUsers ? (
+            <section className="rounded-2xl border border-[#dcebe1] bg-white p-6">
+              <h2 className="text-xl font-semibold">Crear usuario</h2>
+              <form
+                action={input.createAction}
+                className="mt-5 grid gap-4 md:grid-cols-2"
+              >
+                <label className="space-y-2 text-sm font-medium">
+                  <span>Email</span>
+                  <input
+                    className="login-input"
+                    name="email"
+                    required
+                    type="email"
+                  />
+                </label>
+                <label className="space-y-2 text-sm font-medium">
+                  <span>Contraseña temporal</span>
+                  <input
+                    className="login-input"
+                    name="temporaryPassword"
+                    required
+                    type="password"
+                  />
+                </label>
+                <label className="space-y-2 text-sm font-medium">
+                  <span>Nombre completo</span>
+                  <input
+                    className="login-input"
+                    name="fullName"
+                    required
+                    type="text"
+                  />
+                </label>
+                <label className="space-y-2 text-sm font-medium">
+                  <span>Teléfono</span>
+                  <input className="login-input" name="phone" type="tel" />
+                </label>
+                {canManageRoles ? <RoleCheckboxes roles={input.roles} /> : null}
+                <button className="login-button md:col-span-2" type="submit">
+                  Crear usuario
+                </button>
+              </form>
+            </section>
+          ) : null}
 
           <section className="space-y-4">
             <h2 className="text-xl font-semibold">Usuarios activos</h2>
@@ -155,49 +151,81 @@ export function renderUserAdminShell(input: UserAdminShellInput) {
                     {user.status}
                   </p>
                 </div>
-                <form
-                  action={input.updateAction}
-                  className="mt-5 grid gap-4 md:grid-cols-[1fr_1fr_auto]"
-                >
-                  <input name="userId" type="hidden" value={user.user_id} />
-                  <label className="space-y-2 text-sm font-medium">
-                    <span>Modificar usuario</span>
-                    <input
-                      className="login-input"
-                      name="fullName"
-                      required
-                      type="text"
-                      defaultValue={user.full_name}
-                    />
-                  </label>
-                  <label className="space-y-2 text-sm font-medium">
-                    <span>Teléfono</span>
-                    <input
-                      className="login-input"
-                      name="phone"
-                      type="tel"
-                      defaultValue={user.phone ?? ""}
-                    />
-                  </label>
-                  <button className="login-button self-end" type="submit">
-                    Guardar cambios
-                  </button>
-                </form>
-                <form action={input.deactivateAction} className="mt-4">
-                  <input name="userId" type="hidden" value={user.user_id} />
-                  <button
-                    className="rounded-xl bg-[#fff1f0] px-4 py-3 text-sm font-semibold text-[#8a1f16]"
-                    type="submit"
-                  >
-                    Eliminar usuario
-                  </button>
-                </form>
+                {canUpdateUsers ? (
+                  <>
+                    <form
+                      action={input.updateAction}
+                      className="mt-5 grid gap-4 md:grid-cols-[1fr_1fr_auto]"
+                    >
+                      <input name="userId" type="hidden" value={user.user_id} />
+                      <label className="space-y-2 text-sm font-medium">
+                        <span>Modificar usuario</span>
+                        <input
+                          className="login-input"
+                          name="fullName"
+                          required
+                          type="text"
+                          defaultValue={user.full_name}
+                        />
+                      </label>
+                      <label className="space-y-2 text-sm font-medium">
+                        <span>Teléfono</span>
+                        <input
+                          className="login-input"
+                          name="phone"
+                          type="tel"
+                          defaultValue={user.phone ?? ""}
+                        />
+                      </label>
+                      <button className="login-button self-end" type="submit">
+                        Guardar cambios
+                      </button>
+                    </form>
+                    <form action={input.deactivateAction} className="mt-4">
+                      <input name="userId" type="hidden" value={user.user_id} />
+                      <button
+                        className="rounded-xl bg-[#fff1f0] px-4 py-3 text-sm font-semibold text-[#8a1f16]"
+                        type="submit"
+                      >
+                        Eliminar usuario
+                      </button>
+                    </form>
+                  </>
+                ) : null}
               </article>
             ))}
           </section>
         </section>
       </div>
     </main>
+  );
+}
+
+function RoleCheckboxes({
+  roles,
+}: {
+  readonly roles: readonly TenantRoleOption[];
+}) {
+  return (
+    <fieldset className="space-y-2 md:col-span-2">
+      <legend className="text-sm font-semibold">Roles</legend>
+      <div className="flex flex-wrap gap-3">
+        {roles.map((role) => (
+          <label
+            className="rounded-full border border-[#dcebe1] px-3 py-2 text-sm"
+            key={role.id}
+          >
+            <input
+              className="mr-2"
+              name="roleIds"
+              type="checkbox"
+              value={role.id}
+            />
+            {role.name}
+          </label>
+        ))}
+      </div>
+    </fieldset>
   );
 }
 
@@ -240,6 +268,22 @@ export function canAccessUserAdminPage(
     USER_ADMIN_CAPABILITIES.some((capability) =>
       capabilities.includes(capability)
     )
+  );
+}
+
+export function canRunUserAdminAction(
+  capabilities: readonly string[],
+  capability: string
+): boolean {
+  return (
+    canAccessUserAdminPage(capabilities) && capabilities.includes(capability)
+  );
+}
+
+function canRenderRoleControls(capabilities: readonly string[]): boolean {
+  return (
+    capabilities.includes(ROLE_READ_CAPABILITY) &&
+    capabilities.includes(ROLE_UPDATE_CAPABILITY)
   );
 }
 
@@ -302,7 +346,15 @@ function getString(formData: FormData, key: string): string {
 
 export async function createUserAction(formData: FormData) {
   "use server";
-  const session = await getWebSession();
+  const session = await getAuthorizedPageSession();
+  if (
+    !canRunUserAdminAction(
+      session.effective_capabilities,
+      USER_CREATE_CAPABILITY
+    )
+  ) {
+    redirect("/dashboard");
+  }
   const service = buildUserManagementService(session);
   const result = await service.createUser(
     { tenant_id: session.tenant_id, user_id: session.user_id },
@@ -326,7 +378,15 @@ export async function createUserAction(formData: FormData) {
 
 export async function updateUserAction(formData: FormData) {
   "use server";
-  const session = await getWebSession();
+  const session = await getAuthorizedPageSession();
+  if (
+    !canRunUserAdminAction(
+      session.effective_capabilities,
+      USER_UPDATE_CAPABILITY
+    )
+  ) {
+    redirect("/dashboard");
+  }
   const service = buildUserManagementService(session);
   const result = await service.updateUser(
     { tenant_id: session.tenant_id, user_id: session.user_id },
@@ -346,7 +406,15 @@ export async function updateUserAction(formData: FormData) {
 
 export async function deactivateUserAction(formData: FormData) {
   "use server";
-  const session = await getWebSession();
+  const session = await getAuthorizedPageSession();
+  if (
+    !canRunUserAdminAction(
+      session.effective_capabilities,
+      USER_UPDATE_CAPABILITY
+    )
+  ) {
+    redirect("/dashboard");
+  }
   const service = buildUserManagementService(session);
   const result = await service.deactivateUser(
     { tenant_id: session.tenant_id, user_id: session.user_id },
@@ -365,7 +433,9 @@ export default async function AdminUsuariosPage() {
   const service = buildUserManagementService(session);
   const [tenantName, roles, users] = await Promise.all([
     lookupTenantName(session.tenant_id),
-    listRoles(session.tenant_id),
+    canRenderRoleControls(session.effective_capabilities)
+      ? listRoles(session.tenant_id)
+      : [],
     service.listUsers({
       tenant_id: session.tenant_id,
       user_id: session.user_id,
@@ -374,6 +444,7 @@ export default async function AdminUsuariosPage() {
 
   return renderUserAdminShell({
     tenantName,
+    capabilities: session.effective_capabilities,
     roles,
     users,
     createAction: createUserAction,
