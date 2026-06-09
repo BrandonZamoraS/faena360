@@ -113,6 +113,11 @@ export interface UserManagementRepository {
     readonly userId: string;
   }): Promise<{ readonly authUserId: string }>;
 
+  reactivateProfile(input: {
+    readonly tenantId: string;
+    readonly userId: string;
+  }): Promise<void>;
+
   listActiveUsers(input: {
     readonly tenantId: string;
   }): Promise<readonly TenantUserSummary[]>;

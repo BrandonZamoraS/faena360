@@ -267,17 +267,6 @@ export function createUserManagementService(
         throw error;
       }
 
-      try {
-        await repository.updateProfile({
-          tenantId,
-          userId: normalizedInput.userId,
-          fullName: normalizedInput.fullName,
-          ...(normalizedInput.phone ? { phone: normalizedInput.phone } : {}),
-        });
-      } catch {
-        return { ok: false, code: "profile_update_failed" };
-      }
-
       if (normalizedInput.roleIds) {
         try {
           await requireActorCapability(
@@ -292,7 +281,20 @@ export function createUserManagementService(
           }
           throw error;
         }
+      }
 
+      try {
+        await repository.updateProfile({
+          tenantId,
+          userId: normalizedInput.userId,
+          fullName: normalizedInput.fullName,
+          ...(normalizedInput.phone ? { phone: normalizedInput.phone } : {}),
+        });
+      } catch {
+        return { ok: false, code: "profile_update_failed" };
+      }
+
+      if (normalizedInput.roleIds) {
         try {
           await repository.replaceRoles({
             tenantId,
@@ -341,13 +343,21 @@ export function createUserManagementService(
         throw error;
       }
 
+      let authUserId: string;
       try {
         const deactivatedProfile = await repository.deactivateProfile({
           tenantId,
           userId,
         });
-        await authAdmin.disableUser(deactivatedProfile.authUserId);
+        authUserId = deactivatedProfile.authUserId;
       } catch {
+        return { ok: false, code: "profile_update_failed" };
+      }
+
+      try {
+        await authAdmin.disableUser(authUserId);
+      } catch {
+        await repository.reactivateProfile({ tenantId, userId });
         return { ok: false, code: "profile_update_failed" };
       }
 

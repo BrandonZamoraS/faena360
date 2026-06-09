@@ -58,6 +58,10 @@ interface MockCalls {
     readonly tenantId: string;
     readonly userId: string;
   }>;
+  readonly reactivateProfileCalls: Array<{
+    readonly tenantId: string;
+    readonly userId: string;
+  }>;
 }
 
 type UserManagementDependenciesOverrides = {
@@ -83,6 +87,7 @@ function createCallsTracker(): MockCalls {
     updateProfileCalls: [],
     replaceRoleCalls: [],
     deactivateProfileCalls: [],
+    reactivateProfileCalls: [],
   };
 }
 
@@ -204,6 +209,12 @@ function createUserManagementServiceWithMocks(
         calls.deactivateProfileCalls.push({ tenantId, userId });
         return { authUserId: "auth-user-id-for-deactivate" };
       },
+      reactivateProfile: async ({
+        tenantId,
+        userId,
+      }: Parameters<UserManagementRepository["reactivateProfile"]>[0]) => {
+        calls.reactivateProfileCalls.push({ tenantId, userId });
+      },
       recordUserUpdatedAudit: async ({
         actorUserId,
         targetUserId,
@@ -258,7 +269,9 @@ async function runUserManagementServiceContractChecks(): Promise<void> {
   await runCompensationRunsOnLocalFailureAfterAuthCreated();
   await runListUsersFiltersToActiveTenantOnly();
   await runUpdateUserRequiresUpdateCapabilityAndReplacesRoles();
+  await runUpdateUserRequiresRoleCapabilityBeforeProfileMutation();
   await runDeactivateUserSoftDeletesProfileOnly();
+  await runDeactivateUserCompensatesProfileWhenAuthDisableFails();
   await runCreateUserRequiresRoleUpdateCapabilityForRoleGrants();
 }
 
@@ -593,6 +606,56 @@ async function runCreateUserRequiresRoleUpdateCapabilityForRoleGrants(): Promise
   );
 }
 
+async function runUpdateUserRequiresRoleCapabilityBeforeProfileMutation(): Promise<void> {
+  const calls = createCallsTracker();
+
+  const { service } = createUserManagementServiceWithMocks({
+    calls,
+    capabilityChecker: {
+      requireCapability: async (scope, capabilityCode) => {
+        calls.requireCapability.push(capabilityCode);
+        calls.requireCapabilityScopes.push(scope);
+        if (capabilityCode === "roles:update") {
+          throw new CapabilityDeniedError(
+            scope.userId,
+            scope.tenantId,
+            capabilityCode
+          );
+        }
+      },
+    },
+  });
+
+  const result = await service.updateUser(
+    { tenant_id: "tenant-7", user_id: "actor-7" },
+    {
+      userId: "target-user-7",
+      fullName: "Partial Mutation Risk",
+      roleIds: ["admin-role-id"],
+    }
+  );
+
+  assert(
+    result.ok === false,
+    "Expected updateUser to reject unsafe role edits."
+  );
+  assertEquals(
+    result.code,
+    "capability_denied",
+    "Expected capability denial when actor cannot update roles"
+  );
+  assertEquals(
+    calls.updateProfileCalls.length,
+    0,
+    "Expected no profile mutation before role capability is confirmed"
+  );
+  assertEquals(
+    calls.replaceRoleCalls.length,
+    0,
+    "Expected no role replacement after role capability is denied"
+  );
+}
+
 async function runDeactivateUserSoftDeletesProfileOnly(): Promise<void> {
   const calls = createCallsTracker();
 
@@ -643,6 +706,53 @@ async function runDeactivateUserSoftDeletesProfileOnly(): Promise<void> {
   );
 }
 
+async function runDeactivateUserCompensatesProfileWhenAuthDisableFails(): Promise<void> {
+  const calls = createCallsTracker();
+
+  const { service } = createUserManagementServiceWithMocks({
+    calls,
+    authAdmin: {
+      disableUser: async (authUserId) => {
+        calls.disableAuthCalls.push(authUserId);
+        throw new Error("Auth disable failed in test.");
+      },
+    },
+  });
+
+  const result = await service.deactivateUser(
+    {
+      tenant_id: "tenant-8",
+      user_id: "actor-8",
+    },
+    {
+      userId: "target-user-8",
+    }
+  );
+
+  assert(
+    result.ok === false,
+    "Expected deactivateUser to fail when Auth disable fails."
+  );
+  assertEquals(
+    result.code,
+    "profile_update_failed",
+    "Expected failed deactivation outcome when Auth disable cannot complete"
+  );
+  assertEquals(
+    calls.reactivateProfileCalls[0],
+    {
+      tenantId: "tenant-8",
+      userId: "target-user-8",
+    },
+    "Expected local profile reactivation compensation after Auth disable failure"
+  );
+  assertEquals(
+    calls.auditCalls.length,
+    0,
+    "Expected no deactivation audit when deactivation is compensated"
+  );
+}
+
 describe("user management service", () => {
   it("prevents creating a user when capability is denied", async () => {
     await runCapabilityRejectionPreventsCreation();
@@ -664,8 +774,16 @@ describe("user management service", () => {
     await runUpdateUserRequiresUpdateCapabilityAndReplacesRoles();
   });
 
+  it("checks role edit capability before mutating profile fields", async () => {
+    await runUpdateUserRequiresRoleCapabilityBeforeProfileMutation();
+  });
+
   it("soft deletes users by deactivating local profiles", async () => {
     await runDeactivateUserSoftDeletesProfileOnly();
+  });
+
+  it("reactivates the local profile when auth disable fails", async () => {
+    await runDeactivateUserCompensatesProfileWhenAuthDisableFails();
   });
 
   it("requires role update capability before granting roles on create", async () => {

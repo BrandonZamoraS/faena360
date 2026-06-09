@@ -4,7 +4,9 @@ import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { LoginForm } from "./login-form";
 
-const replaceMock = vi.fn();
+const { replaceMock } = vi.hoisted(() => ({
+  replaceMock: vi.fn(),
+}));
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({

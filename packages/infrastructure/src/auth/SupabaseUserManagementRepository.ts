@@ -28,10 +28,6 @@ interface AssignRolesInput {
   readonly roleIds: readonly string[];
 }
 
-interface RoleIdRow {
-  readonly id: string;
-}
-
 interface UpdateProfileInput {
   readonly tenantId: string;
   readonly userId: string;
@@ -132,19 +128,15 @@ export class SupabaseUserManagementRepository implements UserManagementRepositor
   public async replaceRoles(input: AssignRolesInput): Promise<void> {
     const uniqueRoleIds = Array.from(new Set(input.roleIds));
 
-    await this.ensureRolesBelongToTenant(input.tenantId, uniqueRoleIds);
+    const response = await this.client.rpc("replace_user_roles_for_tenant", {
+      target_tenant_id: input.tenantId,
+      target_user_id: input.userId,
+      replacement_role_ids: uniqueRoleIds,
+    });
 
-    const deleteResponse = await this.client
-      .from("user_roles")
-      .delete()
-      .eq("tenant_id", input.tenantId)
-      .eq("user_id", input.userId);
-
-    if (deleteResponse.error) {
-      throw new Error(deleteResponse.error.message);
+    if (response.error) {
+      throw new Error(response.error.message);
     }
-
-    await this.assignRoles({ ...input, roleIds: uniqueRoleIds });
   }
 
   public async updateProfile(input: UpdateProfileInput): Promise<void> {
@@ -186,29 +178,18 @@ export class SupabaseUserManagementRepository implements UserManagementRepositor
     return { authUserId: data.auth_user_id };
   }
 
-  private async ensureRolesBelongToTenant(
-    tenantId: string,
-    roleIds: readonly string[]
-  ): Promise<void> {
-    if (roleIds.length === 0) {
-      return;
-    }
-
+  public async reactivateProfile(input: {
+    readonly tenantId: string;
+    readonly userId: string;
+  }): Promise<void> {
     const response = await this.client
-      .from("roles")
-      .select("id")
-      .eq("tenant_id", tenantId)
-      .in("id", roleIds);
+      .from("user_profiles")
+      .update({ status: "active" })
+      .eq("tenant_id", input.tenantId)
+      .eq("id", input.userId);
 
     if (response.error) {
       throw new Error(response.error.message);
-    }
-
-    const allowedRoleIds = new Set(
-      ((response.data ?? []) as readonly RoleIdRow[]).map((row) => row.id)
-    );
-    if (roleIds.some((roleId) => !allowedRoleIds.has(roleId))) {
-      throw new Error("Role assignment includes roles outside the tenant.");
     }
   }
 

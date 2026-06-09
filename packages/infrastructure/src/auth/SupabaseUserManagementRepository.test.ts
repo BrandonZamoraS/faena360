@@ -110,25 +110,14 @@ async function runUpdateProfileScopesByTenantAndUser(): Promise<void> {
 
 async function runReplaceRolesDeletesThenInsertsTenantScopedRoles(): Promise<void> {
   const calls: QueryCall[] = [];
-  const insertPayloads: unknown[] = [];
+  let rpcArguments: unknown;
 
   const client = {
-    from: (table: string) => {
-      if (table === "roles") {
-        return createMockQuery(
-          { data: [{ id: "role-a" }, { id: "role-b" }], error: null },
-          calls,
-          table
-        );
-      }
+    rpc: (functionName: string, args: unknown) => {
+      calls.push({ operation: "rpc", details: functionName });
+      rpcArguments = args;
 
-      expect(table).toBe("user_roles");
-      return createMockQuery(
-        { data: null, error: null },
-        calls,
-        table,
-        (values) => insertPayloads.push(values)
-      );
+      return { data: null, error: null };
     },
   } as unknown as SupabaseClient;
 
@@ -139,31 +128,27 @@ async function runReplaceRolesDeletesThenInsertsTenantScopedRoles(): Promise<voi
     roleIds: ["role-a", "role-b", "role-a"],
   });
 
-  expect(calls).toContainEqual({ operation: "delete", details: "user_roles" });
-  expect(insertPayloads[0]).toEqual([
-    { tenant_id: "tenant-1", user_id: "user-id-1", role_id: "role-a" },
-    { tenant_id: "tenant-1", user_id: "user-id-1", role_id: "role-b" },
+  expect(calls).toEqual([
+    { operation: "rpc", details: "replace_user_roles_for_tenant" },
   ]);
+  expect(rpcArguments).toEqual({
+    target_tenant_id: "tenant-1",
+    target_user_id: "user-id-1",
+    replacement_role_ids: ["role-a", "role-b"],
+  });
 }
 
 async function runReplaceRolesValidatesBeforeDeletingCurrentRoles(): Promise<void> {
   const calls: QueryCall[] = [];
 
   const client = {
-    from: (table: string) => {
-      if (table === "roles") {
-        return createMockQuery(
-          { data: [{ id: "role-a" }], error: null },
-          calls,
-          table
-        );
-      }
+    rpc: (functionName: string) => {
+      calls.push({ operation: "rpc", details: functionName });
 
-      if (table === "user_roles") {
-        return createMockQuery({ data: null, error: null }, calls, table);
-      }
-
-      throw new Error(`Unexpected table ${table}`);
+      return {
+        data: null,
+        error: { message: "Role assignment includes roles outside the tenant" },
+      };
     },
   } as unknown as SupabaseClient;
 
@@ -177,10 +162,9 @@ async function runReplaceRolesValidatesBeforeDeletingCurrentRoles(): Promise<voi
     })
   ).rejects.toThrow("Role assignment includes roles outside the tenant");
 
-  expect(calls).not.toContainEqual({
-    operation: "delete",
-    details: "user_roles",
-  });
+  expect(calls).toEqual([
+    { operation: "rpc", details: "replace_user_roles_for_tenant" },
+  ]);
 }
 
 async function runDeactivateProfileUsesStatusInactive(): Promise<void> {
