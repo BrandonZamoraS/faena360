@@ -128,6 +128,9 @@ export class SupabaseUserManagementRepository implements UserManagementRepositor
   public async replaceRoles(input: AssignRolesInput): Promise<void> {
     const uniqueRoleIds = Array.from(new Set(input.roleIds));
 
+    // Reemplazar roles con delete+insert desde el cliente no es atómico; el RPC
+    // mantiene la operación en una transacción para preservar permisos previos
+    // si falla la inserción o la validación de roles.
     const response = await this.client.rpc("replace_user_roles_for_tenant", {
       target_tenant_id: input.tenantId,
       target_user_id: input.userId,
@@ -182,6 +185,8 @@ export class SupabaseUserManagementRepository implements UserManagementRepositor
     readonly tenantId: string;
     readonly userId: string;
   }): Promise<void> {
+    // Solo se usa como compensación cuando falla la revocación de Auth tras una
+    // deactivación local; mantiene consistente lo que ve el admin con el estado.
     const response = await this.client
       .from("user_profiles")
       .update({ status: "active" })

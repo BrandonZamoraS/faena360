@@ -12,10 +12,14 @@ declare
   unique_role_ids uuid[];
   valid_role_count integer;
 begin
+  -- Deduplicamos dentro de la transacción para que el contrato sea estable aun
+  -- si el cliente envía roles repetidos.
   select coalesce(array_agg(distinct role_id), array[]::uuid[])
   into unique_role_ids
   from unnest(coalesce(replacement_role_ids, array[]::uuid[])) as replacement(role_id);
 
+  -- La función corre como security definer; por eso valida explícitamente que
+  -- el usuario objetivo pertenece al tenant recibido.
   if not exists (
     select 1
     from public.user_profiles up
@@ -26,6 +30,8 @@ begin
   end if;
 
   if cardinality(unique_role_ids) > 0 then
+    -- Validamos todos los roles antes del delete para que un rol externo o
+    -- inexistente no borre las asignaciones actuales.
     select count(*)
     into valid_role_count
     from public.roles r
@@ -37,6 +43,8 @@ begin
     end if;
   end if;
 
+  -- Delete e insert viven en la misma función/tx; si algo falla, Postgres hace
+  -- rollback y conserva las asignaciones anteriores.
   delete from public.user_roles ur
   where ur.tenant_id = target_tenant_id
     and ur.user_id = target_user_id;
@@ -47,6 +55,8 @@ begin
 end;
 $$;
 
+-- La operación es privilegiada y debe llamarse solo desde el service-role del
+-- backend, nunca desde clientes anon/authenticated.
 revoke execute on function public.replace_user_roles_for_tenant(uuid, uuid, uuid[]) from public;
 revoke execute on function public.replace_user_roles_for_tenant(uuid, uuid, uuid[]) from anon;
 revoke execute on function public.replace_user_roles_for_tenant(uuid, uuid, uuid[]) from authenticated;

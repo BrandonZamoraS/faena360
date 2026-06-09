@@ -42,6 +42,9 @@ const USER_ADMIN_CAPABILITIES = [
 ];
 
 export function renderUserAdminShell(input: UserAdminShellInput) {
+  // La página puede abrirse con permisos delegados; cada bloque debe reflejar
+  // la acción real que la sesión puede ejecutar para no mostrar formularios que
+  // el servidor va a rechazar de todos modos.
   const canCreateUsers = input.capabilities.includes(USER_CREATE_CAPABILITY);
   const canUpdateUsers = input.capabilities.includes(USER_UPDATE_CAPABILITY);
   const canManageRoles = canRenderRoleControls(input.capabilities);
@@ -263,6 +266,8 @@ async function getAuthorizedPageSession(): Promise<AppSession> {
 export function canAccessUserAdminPage(
   capabilities: readonly string[]
 ): boolean {
+  // El módulo siempre lista usuarios; por eso `users:read` es parte del gate
+  // base aunque crear y actualizar se autoricen por separado más abajo.
   return (
     capabilities.includes(USER_READ_CAPABILITY) &&
     USER_ADMIN_CAPABILITIES.some((capability) =>
@@ -275,12 +280,16 @@ export function canRunUserAdminAction(
   capabilities: readonly string[],
   capability: string
 ): boolean {
+  // Las Server Actions son invocables por POST directo; repetir el gate del
+  // módulo evita mutaciones que la UI protegida no permitiría iniciar.
   return (
     canAccessUserAdminPage(capabilities) && capabilities.includes(capability)
   );
 }
 
 function canRenderRoleControls(capabilities: readonly string[]): boolean {
+  // Ver roles y asignarlos son permisos distintos: no exponemos metadata de
+  // roles a quien solo puede crear/editar usuarios sin administrar roles.
   return (
     capabilities.includes(ROLE_READ_CAPABILITY) &&
     capabilities.includes(ROLE_UPDATE_CAPABILITY)
@@ -309,6 +318,8 @@ function buildUserManagementService(session: AppSession) {
 async function listRoles(
   tenantId: string
 ): Promise<readonly TenantRoleOption[]> {
+  // Esta lectura usa service-role y salta RLS; el caller debe haber comprobado
+  // `roles:read` antes de llegar acá.
   const { data, error } = await createWebSupabaseServiceClient()
     .from("roles")
     .select("id, name")
@@ -433,6 +444,8 @@ export default async function AdminUsuariosPage() {
   const service = buildUserManagementService(session);
   const [tenantName, roles, users] = await Promise.all([
     lookupTenantName(session.tenant_id),
+    // Si la sesión no puede administrar roles, no hacemos la consulta: ocultar
+    // checkboxes no alcanza porque los nombres/ids de roles también son datos.
     canRenderRoleControls(session.effective_capabilities)
       ? listRoles(session.tenant_id)
       : [],

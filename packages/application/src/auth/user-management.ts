@@ -268,6 +268,8 @@ export function createUserManagementService(
       }
 
       if (normalizedInput.roleIds) {
+        // Las ediciones combinadas perfil+roles deben ser todo-o-nada desde la
+        // perspectiva del permiso: si falta `roles:update`, no mutamos perfil.
         try {
           await requireActorCapability(
             capabilityChecker,
@@ -345,6 +347,8 @@ export function createUserManagementService(
 
       let authUserId: string;
       try {
+        // Primero dejamos el perfil local inactivo para bloquear el flujo web;
+        // después revocamos Auth para cubrir accesos directos vía Supabase.
         const deactivatedProfile = await repository.deactivateProfile({
           tenantId,
           userId,
@@ -357,6 +361,8 @@ export function createUserManagementService(
       try {
         await authAdmin.disableUser(authUserId);
       } catch {
+        // El admin recibe fallo, así que compensamos el cambio local para no
+        // dejar al usuario inactivo sin auditoría de deactivación exitosa.
         await repository.reactivateProfile({ tenantId, userId });
         return { ok: false, code: "profile_update_failed" };
       }
