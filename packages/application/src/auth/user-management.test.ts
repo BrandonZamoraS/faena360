@@ -24,6 +24,7 @@ interface MockCalls {
   }>;
   readonly createAuthCalls: string[];
   readonly deleteAuthCalls: string[];
+  readonly disableAuthCalls: string[];
   readonly createProfileCalls: Array<{
     readonly tenantId: string;
     readonly authUserId: string;
@@ -74,6 +75,7 @@ function createCallsTracker(): MockCalls {
     identifierExistsCalls: [],
     createAuthCalls: [],
     deleteAuthCalls: [],
+    disableAuthCalls: [],
     createProfileCalls: [],
     assignRoleCalls: [],
     auditCalls: [],
@@ -105,6 +107,11 @@ function createUserManagementServiceWithMocks(
         authUserId: Parameters<AuthAdminPort["deleteUser"]>[0]
       ) => {
         calls.deleteAuthCalls.push(authUserId);
+      },
+      disableUser: async (
+        authUserId: Parameters<AuthAdminPort["disableUser"]>[0]
+      ) => {
+        calls.disableAuthCalls.push(authUserId);
       },
       ...overrides?.authAdmin,
     },
@@ -195,6 +202,7 @@ function createUserManagementServiceWithMocks(
         userId,
       }: Parameters<UserManagementRepository["deactivateProfile"]>[0]) => {
         calls.deactivateProfileCalls.push({ tenantId, userId });
+        return { authUserId: "auth-user-id-for-deactivate" };
       },
       recordUserUpdatedAudit: async ({
         actorUserId,
@@ -251,6 +259,7 @@ async function runUserManagementServiceContractChecks(): Promise<void> {
   await runListUsersFiltersToActiveTenantOnly();
   await runUpdateUserRequiresUpdateCapabilityAndReplacesRoles();
   await runDeactivateUserSoftDeletesProfileOnly();
+  await runCreateUserRequiresRoleUpdateCapabilityForRoleGrants();
 }
 
 async function runCapabilityRejectionPreventsCreation(): Promise<void> {
@@ -514,6 +523,11 @@ async function runUpdateUserRequiresUpdateCapabilityAndReplacesRoles(): Promise<
     "Expected normalized profile update payload"
   );
   assertEquals(
+    calls.requireCapability,
+    ["users:update", "roles:update"],
+    "Expected role grants during update to require roles:update"
+  );
+  assertEquals(
     calls.replaceRoleCalls[0],
     {
       tenantId: "tenant-4",
@@ -530,6 +544,52 @@ async function runUpdateUserRequiresUpdateCapabilityAndReplacesRoles(): Promise<
       targetUserId: "target-user-4",
     },
     "Expected update audit event"
+  );
+}
+
+async function runCreateUserRequiresRoleUpdateCapabilityForRoleGrants(): Promise<void> {
+  const calls = createCallsTracker();
+
+  const { service } = createUserManagementServiceWithMocks({
+    calls,
+    capabilityChecker: {
+      requireCapability: async (scope, capabilityCode) => {
+        calls.requireCapability.push(capabilityCode);
+        calls.requireCapabilityScopes.push(scope);
+        if (capabilityCode === "roles:update") {
+          throw new CapabilityDeniedError(
+            scope.userId,
+            scope.tenantId,
+            capabilityCode
+          );
+        }
+      },
+    },
+  });
+
+  const result = await service.createUser(
+    { tenant_id: "tenant-6", user_id: "actor-6" },
+    {
+      email: "new-user@example.com",
+      temporaryPassword: "Temp123!",
+      fullName: "New User",
+      roleIds: ["admin-role-id"],
+    }
+  );
+
+  assert(
+    result.ok === false,
+    "Expected createUser to reject unsafe role grants."
+  );
+  assertEquals(
+    result.code,
+    "capability_denied",
+    "Expected capability denial when actor cannot update roles"
+  );
+  assertEquals(
+    calls.createAuthCalls.length,
+    0,
+    "Expected no Auth user creation when role grant capability is denied"
   );
 }
 
@@ -568,6 +628,11 @@ async function runDeactivateUserSoftDeletesProfileOnly(): Promise<void> {
     "Expected soft delete not to hard-delete Auth identity"
   );
   assertEquals(
+    calls.disableAuthCalls[0],
+    "auth-user-id-for-deactivate",
+    "Expected soft delete to revoke Auth access for the deactivated user"
+  );
+  assertEquals(
     calls.auditCalls.at(-1),
     {
       action: "user_deactivated",
@@ -601,6 +666,10 @@ describe("user management service", () => {
 
   it("soft deletes users by deactivating local profiles", async () => {
     await runDeactivateUserSoftDeletesProfileOnly();
+  });
+
+  it("requires role update capability before granting roles on create", async () => {
+    await runCreateUserRequiresRoleUpdateCapabilityForRoleGrants();
   });
 
   it("runs user management contract checks", async () => {

@@ -68,6 +68,8 @@ export interface AuthAdminPort {
   }): Promise<{ readonly authUserId: string }>;
 
   deleteUser(authUserId: string): Promise<void>;
+
+  disableUser(authUserId: string): Promise<void>;
 }
 
 /**
@@ -109,7 +111,7 @@ export interface UserManagementRepository {
   deactivateProfile(input: {
     readonly tenantId: string;
     readonly userId: string;
-  }): Promise<void>;
+  }): Promise<{ readonly authUserId: string }>;
 
   listActiveUsers(input: {
     readonly tenantId: string;

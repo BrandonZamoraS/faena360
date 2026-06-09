@@ -26,11 +26,15 @@ export type DashboardViewModel =
       readonly effectiveCapabilities: readonly string[];
     };
 
+const USER_READ_CAPABILITY = "users:read";
 const USER_ADMIN_MODULE_CAPABILITIES = ["users:create", "users:update"];
 
 function canAccessUserAdminModule(capabilities: readonly string[]) {
-  return USER_ADMIN_MODULE_CAPABILITIES.every((capability) =>
-    capabilities.includes(capability)
+  return (
+    capabilities.includes(USER_READ_CAPABILITY) &&
+    USER_ADMIN_MODULE_CAPABILITIES.some((capability) =>
+      capabilities.includes(capability)
+    )
   );
 }
 

@@ -28,6 +28,10 @@ interface AssignRolesInput {
   readonly roleIds: readonly string[];
 }
 
+interface RoleIdRow {
+  readonly id: string;
+}
+
 interface UpdateProfileInput {
   readonly tenantId: string;
   readonly userId: string;
@@ -126,6 +130,10 @@ export class SupabaseUserManagementRepository implements UserManagementRepositor
   }
 
   public async replaceRoles(input: AssignRolesInput): Promise<void> {
+    const uniqueRoleIds = Array.from(new Set(input.roleIds));
+
+    await this.ensureRolesBelongToTenant(input.tenantId, uniqueRoleIds);
+
     const deleteResponse = await this.client
       .from("user_roles")
       .delete()
@@ -136,7 +144,7 @@ export class SupabaseUserManagementRepository implements UserManagementRepositor
       throw new Error(deleteResponse.error.message);
     }
 
-    await this.assignRoles(input);
+    await this.assignRoles({ ...input, roleIds: uniqueRoleIds });
   }
 
   public async updateProfile(input: UpdateProfileInput): Promise<void> {
@@ -157,15 +165,50 @@ export class SupabaseUserManagementRepository implements UserManagementRepositor
   public async deactivateProfile(input: {
     readonly tenantId: string;
     readonly userId: string;
-  }): Promise<void> {
+  }): Promise<{ readonly authUserId: string }> {
     const response = await this.client
       .from("user_profiles")
       .update({ status: "inactive" })
+      .select("auth_user_id")
       .eq("tenant_id", input.tenantId)
-      .eq("id", input.userId);
+      .eq("id", input.userId)
+      .single();
 
     if (response.error) {
       throw new Error(response.error.message);
+    }
+
+    const data = response.data as { auth_user_id?: string } | null;
+    if (!data?.auth_user_id) {
+      throw new Error("Profile deactivation did not return auth user id.");
+    }
+
+    return { authUserId: data.auth_user_id };
+  }
+
+  private async ensureRolesBelongToTenant(
+    tenantId: string,
+    roleIds: readonly string[]
+  ): Promise<void> {
+    if (roleIds.length === 0) {
+      return;
+    }
+
+    const response = await this.client
+      .from("roles")
+      .select("id")
+      .eq("tenant_id", tenantId)
+      .in("id", roleIds);
+
+    if (response.error) {
+      throw new Error(response.error.message);
+    }
+
+    const allowedRoleIds = new Set(
+      ((response.data ?? []) as readonly RoleIdRow[]).map((row) => row.id)
+    );
+    if (roleIds.some((roleId) => !allowedRoleIds.has(roleId))) {
+      throw new Error("Role assignment includes roles outside the tenant.");
     }
   }
 

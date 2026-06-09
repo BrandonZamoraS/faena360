@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { renderUserAdminShell } from "./page";
+import { canAccessUserAdminPage, renderUserAdminShell } from "./page";
 
 const roles = [
   { id: "role-admin", name: "administrador" },
@@ -32,5 +32,14 @@ describe("admin_usuarios page shell", () => {
     expect(html).toContain("Eliminar usuario");
     expect(html).toContain("Soft delete: el perfil pasa a inactivo");
     expect(html).toContain("Cerrar sesión");
+  });
+
+  it("requires read plus at least one user administration capability", () => {
+    expect(canAccessUserAdminPage(["users:read", "users:create"])).toBe(true);
+    expect(canAccessUserAdminPage(["users:read", "users:update"])).toBe(true);
+    expect(canAccessUserAdminPage(["users:create", "users:update"])).toBe(
+      false
+    );
+    expect(canAccessUserAdminPage(["users:read"])).toBe(false);
   });
 });

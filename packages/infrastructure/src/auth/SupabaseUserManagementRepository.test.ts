@@ -35,6 +35,13 @@ function createMockQuery<T>(
       });
       return query;
     },
+    in: (column: string, values: readonly unknown[]) => {
+      calls.push({
+        operation: "in",
+        details: `${table}:${column}=${values.join(",")}`,
+      });
+      return query;
+    },
     delete: () => {
       calls.push({ operation: "delete", details: table });
       return query;
@@ -107,6 +114,14 @@ async function runReplaceRolesDeletesThenInsertsTenantScopedRoles(): Promise<voi
 
   const client = {
     from: (table: string) => {
+      if (table === "roles") {
+        return createMockQuery(
+          { data: [{ id: "role-a" }, { id: "role-b" }], error: null },
+          calls,
+          table
+        );
+      }
+
       expect(table).toBe("user_roles");
       return createMockQuery(
         { data: null, error: null },
@@ -131,18 +146,59 @@ async function runReplaceRolesDeletesThenInsertsTenantScopedRoles(): Promise<voi
   ]);
 }
 
+async function runReplaceRolesValidatesBeforeDeletingCurrentRoles(): Promise<void> {
+  const calls: QueryCall[] = [];
+
+  const client = {
+    from: (table: string) => {
+      if (table === "roles") {
+        return createMockQuery(
+          { data: [{ id: "role-a" }], error: null },
+          calls,
+          table
+        );
+      }
+
+      if (table === "user_roles") {
+        return createMockQuery({ data: null, error: null }, calls, table);
+      }
+
+      throw new Error(`Unexpected table ${table}`);
+    },
+  } as unknown as SupabaseClient;
+
+  const repository = new SupabaseUserManagementRepository(client);
+
+  await expect(
+    repository.replaceRoles({
+      tenantId: "tenant-1",
+      userId: "user-id-1",
+      roleIds: ["role-a", "missing-role"],
+    })
+  ).rejects.toThrow("Role assignment includes roles outside the tenant");
+
+  expect(calls).not.toContainEqual({
+    operation: "delete",
+    details: "user_roles",
+  });
+}
+
 async function runDeactivateProfileUsesStatusInactive(): Promise<void> {
   const calls: QueryCall[] = [];
 
   const client = {
     from: (table: string) => {
       expect(table).toBe("user_profiles");
-      return createMockQuery({ data: null, error: null }, calls, table);
+      return createMockQuery(
+        { data: { auth_user_id: "auth-user-id-1" }, error: null },
+        calls,
+        table
+      );
     },
   } as unknown as SupabaseClient;
 
   const repository = new SupabaseUserManagementRepository(client);
-  await repository.deactivateProfile({
+  const result = await repository.deactivateProfile({
     tenantId: "tenant-1",
     userId: "user-id-1",
   });
@@ -155,6 +211,7 @@ async function runDeactivateProfileUsesStatusInactive(): Promise<void> {
     operation: "delete",
     details: "user_profiles",
   });
+  expect(result.authUserId).toBe("auth-user-id-1");
 }
 
 async function runTenantActiveUsersUseSchemaColumnsCheck(): Promise<void> {
@@ -385,6 +442,10 @@ describe("SupabaseUserManagementRepository", () => {
 
   it("replaces user roles with tenant-scoped assignments", async () => {
     await runReplaceRolesDeletesThenInsertsTenantScopedRoles();
+  });
+
+  it("validates replacement roles before deleting current roles", async () => {
+    await runReplaceRolesValidatesBeforeDeletingCurrentRoles();
   });
 
   it("soft deletes profiles by setting status inactive", async () => {

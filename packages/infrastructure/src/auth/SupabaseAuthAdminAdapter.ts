@@ -42,6 +42,10 @@ interface SupabaseAuthAdminApi {
   readonly deleteUser: (
     authUserId: string
   ) => Promise<{ readonly error: SupabaseAuthError | null }>;
+  readonly updateUserById: (
+    authUserId: string,
+    attributes: { readonly ban_duration: string }
+  ) => Promise<{ readonly error: SupabaseAuthError | null }>;
 }
 
 interface SupabaseAuthAdminClient {
@@ -113,6 +117,16 @@ export class SupabaseAuthAdminAdapter implements AuthAdminPort {
   public async deleteUser(authUserId: string): Promise<void> {
     // Operación de compensación para rollback de creación parcial en Application.
     const response = await this.client.auth.admin.deleteUser(authUserId);
+    if (response.error) {
+      throw new Error(formatSupabaseError(response.error));
+    }
+  }
+
+  public async disableUser(authUserId: string): Promise<void> {
+    const response = await this.client.auth.admin.updateUserById(authUserId, {
+      ban_duration: "876000h",
+    });
+
     if (response.error) {
       throw new Error(formatSupabaseError(response.error));
     }

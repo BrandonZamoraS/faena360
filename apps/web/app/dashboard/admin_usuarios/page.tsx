@@ -30,6 +30,7 @@ type UserAdminShellInput = {
   readonly deactivateAction?: (formData: FormData) => Promise<void>;
 };
 
+const USER_READ_CAPABILITY = "users:read";
 const USER_ADMIN_CAPABILITIES = ["users:create", "users:update"];
 
 export function renderUserAdminShell(input: UserAdminShellInput) {
@@ -207,7 +208,7 @@ export async function logoutAction() {
   redirect("/");
 }
 
-async function getAuthorizedSession(): Promise<AppSession> {
+async function getWebSession(): Promise<AppSession> {
   const cookieStore = await cookies();
   const serviceClient = createWebSupabaseServiceClient();
   const repository = new SupabaseAppSessionRepository(serviceClient);
@@ -215,16 +216,30 @@ async function getAuthorizedSession(): Promise<AppSession> {
     sessionRefresher: createServerStateSessionRefresher(repository),
   });
 
-  if (!authResult.ok || !canManageUsers(authResult.session)) {
+  if (!authResult.ok) {
     redirect("/dashboard");
   }
 
   return authResult.session;
 }
 
-function canManageUsers(session: AppSession): boolean {
-  return USER_ADMIN_CAPABILITIES.every((capability) =>
-    session.effective_capabilities.includes(capability)
+async function getAuthorizedPageSession(): Promise<AppSession> {
+  const session = await getWebSession();
+  if (!canAccessUserAdminPage(session.effective_capabilities)) {
+    redirect("/dashboard");
+  }
+
+  return session;
+}
+
+export function canAccessUserAdminPage(
+  capabilities: readonly string[]
+): boolean {
+  return (
+    capabilities.includes(USER_READ_CAPABILITY) &&
+    USER_ADMIN_CAPABILITIES.some((capability) =>
+      capabilities.includes(capability)
+    )
   );
 }
 
@@ -287,7 +302,7 @@ function getString(formData: FormData, key: string): string {
 
 export async function createUserAction(formData: FormData) {
   "use server";
-  const session = await getAuthorizedSession();
+  const session = await getWebSession();
   const service = buildUserManagementService(session);
   const result = await service.createUser(
     { tenant_id: session.tenant_id, user_id: session.user_id },
@@ -311,7 +326,7 @@ export async function createUserAction(formData: FormData) {
 
 export async function updateUserAction(formData: FormData) {
   "use server";
-  const session = await getAuthorizedSession();
+  const session = await getWebSession();
   const service = buildUserManagementService(session);
   const result = await service.updateUser(
     { tenant_id: session.tenant_id, user_id: session.user_id },
@@ -331,7 +346,7 @@ export async function updateUserAction(formData: FormData) {
 
 export async function deactivateUserAction(formData: FormData) {
   "use server";
-  const session = await getAuthorizedSession();
+  const session = await getWebSession();
   const service = buildUserManagementService(session);
   const result = await service.deactivateUser(
     { tenant_id: session.tenant_id, user_id: session.user_id },
@@ -346,7 +361,7 @@ export async function deactivateUserAction(formData: FormData) {
 }
 
 export default async function AdminUsuariosPage() {
-  const session = await getAuthorizedSession();
+  const session = await getAuthorizedPageSession();
   const service = buildUserManagementService(session);
   const [tenantName, roles, users] = await Promise.all([
     lookupTenantName(session.tenant_id),

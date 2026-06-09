@@ -94,6 +94,20 @@ describe("dashboard shell", () => {
     expect(adminHtml).toContain("admin_usuarios");
     expect(adminHtml).toContain("Crear y administrar usuarios");
     expect(supervisorHtml).not.toContain("admin_usuarios");
+
+    const delegatedCreatorHtml = renderToStaticMarkup(
+      renderDashboardShell({
+        tenantName: "Tenant A",
+        userEmail: "creator@faena360.com",
+        roles: ["delegated_creator"],
+        effectiveCapabilities: [
+          "web.portal.access",
+          "users:read",
+          "users:create",
+        ],
+      })
+    );
+    expect(delegatedCreatorHtml).toContain("admin_usuarios");
   });
 
   it("renders a logout action in the authenticated sidebar", () => {

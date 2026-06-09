@@ -43,6 +43,7 @@ export interface UserManagementServiceDependencies {
 const USERS_CREATE_CAPABILITY = "users:create" as const;
 const USERS_READ_CAPABILITY = "users:read" as const;
 const USERS_UPDATE_CAPABILITY = "users:update" as const;
+const ROLES_UPDATE_CAPABILITY = "roles:update" as const;
 
 export interface TenantUserManagementService {
   createUser(
@@ -121,6 +122,26 @@ export function createUserManagementService(
         }
 
         throw error;
+      }
+
+      if (input.roleIds.length > 0) {
+        try {
+          await requireActorCapability(
+            capabilityChecker,
+            session,
+            tenantId,
+            ROLES_UPDATE_CAPABILITY
+          );
+        } catch (error) {
+          if (error instanceof CapabilityDeniedError) {
+            return {
+              ok: false,
+              code: "capability_denied",
+            };
+          }
+
+          throw error;
+        }
       }
 
       const normalizedInput = normalizeCreateUserInput(input);
@@ -259,6 +280,20 @@ export function createUserManagementService(
 
       if (normalizedInput.roleIds) {
         try {
+          await requireActorCapability(
+            capabilityChecker,
+            session,
+            tenantId,
+            ROLES_UPDATE_CAPABILITY
+          );
+        } catch (error) {
+          if (error instanceof CapabilityDeniedError) {
+            return { ok: false, code: "capability_denied" };
+          }
+          throw error;
+        }
+
+        try {
           await repository.replaceRoles({
             tenantId,
             userId: normalizedInput.userId,
@@ -307,7 +342,11 @@ export function createUserManagementService(
       }
 
       try {
-        await repository.deactivateProfile({ tenantId, userId });
+        const deactivatedProfile = await repository.deactivateProfile({
+          tenantId,
+          userId,
+        });
+        await authAdmin.disableUser(deactivatedProfile.authUserId);
       } catch {
         return { ok: false, code: "profile_update_failed" };
       }

@@ -15,6 +15,7 @@ interface CreateUserSpyPayload {
 async function runAuthAdminAdapterContractChecks(): Promise<void> {
   let capturedCreatePayload: CreateUserSpyPayload | undefined;
   let capturedDeleteUserId: string | undefined;
+  let capturedDisabledUserId: string | undefined;
 
   const client = {
     auth: {
@@ -36,6 +37,14 @@ async function runAuthAdminAdapterContractChecks(): Promise<void> {
         },
         deleteUser: async (userId: string) => {
           capturedDeleteUserId = userId;
+
+          return {
+            data: null,
+            error: null,
+          };
+        },
+        updateUserById: async (userId: string) => {
+          capturedDisabledUserId = userId;
 
           return {
             data: null,
@@ -70,6 +79,10 @@ async function runAuthAdminAdapterContractChecks(): Promise<void> {
   await adapter.deleteUser("auth-user-id-1");
 
   expect(capturedDeleteUserId).toBe("auth-user-id-1");
+
+  await adapter.disableUser("auth-user-id-2");
+
+  expect(capturedDisabledUserId).toBe("auth-user-id-2");
 }
 
 async function runAuthAdminAdapterSqlFailureBehavior(): Promise<void> {
