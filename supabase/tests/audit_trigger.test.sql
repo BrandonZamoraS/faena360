@@ -33,7 +33,7 @@ begin;
     -- Verify audit entry was created
     select * into _entry
     from audit_log
-    where action = 'tenants.create'
+    where action = 'tenant.create'
     order by occurred_at desc
     limit 1;
 
@@ -91,7 +91,7 @@ begin;
     begin
       select * into _entry
       from audit_log
-      where action = 'tenants.update'
+      where action = 'tenant.update'
       order by occurred_at desc
       limit 1;
 
@@ -149,7 +149,7 @@ begin;
     begin
       select * into _entry
       from audit_log
-      where action = 'tenants.delete'
+      where action = 'tenant.delete'
       order by occurred_at desc
       limit 1;
 
@@ -311,7 +311,7 @@ begin;
   declare
     _count integer;
   begin
-    select count(*) into _count from audit_log where action = 'tenants.update' and new_value->>'name' = '"rolled-back"';
+    select count(*) into _count from audit_log where action = 'tenant.update' and new_value->>'name' = 'rolled-back';
     if _count > 0 then
       raise exception 'FAIL: Audit entry exists after rollback — trigger not atomic with transaction';
     end if;

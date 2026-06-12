@@ -21,12 +21,13 @@ create or replace function current_app_tenant_id()
 returns uuid
 language plpgsql
 stable
+security definer
 as $$
 begin
   return coalesce(
     nullif(current_setting('app.current_tenant_id', true), '')::uuid,
-    (auth.jwt() ->> 'app_metadata')::jsonb ->> 'tenant_id'
-  )::uuid;
+    nullif((auth.jwt() -> 'app_metadata' ->> 'tenant_id'), '')::uuid
+  );
 exception
   when others then
     return null;
@@ -35,7 +36,12 @@ $$;
 
 -- --------------------------------------------------------
 -- RPC: set_audit_context(actor_id, source, target_id)
--- Sets session-local config variables consumed by audit_trigger().
+-- Sets session config variables consumed by audit_trigger().
+-- Uses session-level (is_local=false) so context persists across
+-- statements in the same database session.
+--
+-- SECURITY: Revoked from public; only service_role or authenticated
+-- users with explicit grants should execute this.
 -- --------------------------------------------------------
 create or replace function set_audit_context(
   actor_id uuid,
@@ -44,22 +50,31 @@ create or replace function set_audit_context(
 )
 returns void
 language plpgsql
+security definer
 as $$
 begin
-  perform set_config('app.current_actor_id', actor_id::text, true);
-  perform set_config('app.audit_source', source, true);
+  perform set_config('app.current_actor_id', actor_id::text, false);
+  perform set_config('app.audit_source', source, false);
   if target_id is not null then
-    perform set_config('app.audit_target_id', target_id::text, true);
+    perform set_config('app.audit_target_id', target_id::text, false);
   else
-    perform set_config('app.audit_target_id', '', true);
+    perform set_config('app.audit_target_id', '', false);
   end if;
 end;
 $$;
+
+-- Revoke from public to prevent clients from spoofing audit context
+revoke execute on function set_audit_context(uuid, text, uuid) from public;
+revoke execute on function set_audit_context(uuid, text) from public;
 
 -- --------------------------------------------------------
 -- Trigger function: audit_trigger()
 -- Reads session vars, computes JSONB diff (changed fields only),
 -- sanitizes sensitive keys, and inserts into audit_log.
+--
+-- SECURITY: Derives tenant_id from the mutated row when possible,
+-- with a fallback to current_app_tenant_id().
+-- Clears audit context after writing to prevent cross-request leakage.
 -- --------------------------------------------------------
 create or replace function audit_trigger()
 returns trigger
@@ -69,13 +84,42 @@ declare
   _actor_id  uuid   := nullif(current_setting('app.current_actor_id', true), '')::uuid;
   _source    text   := coalesce(nullif(current_setting('app.audit_source', true), ''), 'system');
   _target_id uuid   := nullif(current_setting('app.audit_target_id', true), '')::uuid;
-  _tenant_id uuid   := current_app_tenant_id();
+  _tenant_id uuid;
   _old_val   jsonb  := null;
   _new_val   jsonb  := null;
   _action    text;
+  _table_singular text;
 begin
-  -- Build action name: {table}.{operation}
-  _action := TG_TABLE_NAME || '.' ||
+  -- Derive tenant_id from the mutated row when possible
+  if TG_TABLE_NAME = 'tenants' then
+    _tenant_id := coalesce(NEW.id, OLD.id);
+  elsif TG_TABLE_NAME = 'user_profiles' then
+    _tenant_id := coalesce(NEW.tenant_id, OLD.tenant_id);
+  elsif TG_TABLE_NAME = 'roles' then
+    _tenant_id := coalesce(NEW.tenant_id, OLD.tenant_id);
+  elsif TG_TABLE_NAME = 'role_capabilities' then
+    _tenant_id := coalesce(NEW.tenant_id, OLD.tenant_id);
+  elsif TG_TABLE_NAME = 'user_capability_overrides' then
+    _tenant_id := coalesce(NEW.tenant_id, OLD.tenant_id);
+  elsif TG_TABLE_NAME = 'tenant_configurations' then
+    _tenant_id := coalesce(NEW.tenant_id, OLD.tenant_id);
+  else
+    _tenant_id := current_app_tenant_id();
+  end if;
+
+  -- Singularize table name for consistent action naming
+  _table_singular := case TG_TABLE_NAME
+    when 'tenants' then 'tenant'
+    when 'user_profiles' then 'user'
+    when 'roles' then 'role'
+    when 'role_capabilities' then 'capability'
+    when 'user_capability_overrides' then 'override'
+    when 'tenant_configurations' then 'config'
+    else TG_TABLE_NAME
+  end;
+
+  -- Build action name: {singular}.{operation}
+  _action := _table_singular || '.' ||
     case TG_OP
       when 'INSERT' then 'create'
       when 'UPDATE' then 'update'
@@ -132,6 +176,11 @@ begin
     _tenant_id, _actor_id, _target_id,
     _action, _source, _old_val, _new_val, now()
   );
+
+  -- Clear session context after use to prevent cross-request leakage
+  perform set_config('app.current_actor_id', '', false);
+  perform set_config('app.audit_source', '', false);
+  perform set_config('app.audit_target_id', '', false);
 
   return coalesce(NEW, OLD);
 end;
