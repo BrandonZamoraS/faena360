@@ -192,7 +192,10 @@ describe("SupabaseAuditRepository", () => {
     const rows = [
       makeRow({ action: "user.create", occurred_at: "2026-06-06T10:00:00Z" }),
       makeRow({ action: "user.update", occurred_at: "2026-06-06T11:00:00Z" }),
-      makeRow({ action: "user.deactivate", occurred_at: "2026-06-06T12:00:00Z" }),
+      makeRow({
+        action: "user.deactivate",
+        occurred_at: "2026-06-06T12:00:00Z",
+      }),
     ];
 
     qb.then.mockImplementation((resolve: (value: unknown) => void) =>
