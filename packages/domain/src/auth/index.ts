@@ -38,3 +38,5 @@ export type {
   UpdateTenantUserInput,
   UserManagementRepository,
 } from "./user-management";
+
+export type { AuditSource, AuditAction, AuditEntry } from "./audit";

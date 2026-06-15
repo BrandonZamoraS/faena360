@@ -133,3 +133,5 @@ export interface UserCapabilityOverride {
   readonly capabilityCode: string;
   readonly effect: "allow" | "deny";
 }
+
+export type { AuditPort } from "./audit";
