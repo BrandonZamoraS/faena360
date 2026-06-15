@@ -9,6 +9,17 @@ export interface CreateTenantUserInput {
   readonly roleIds: readonly string[];
 }
 
+export interface UpdateTenantUserInput {
+  readonly userId: string;
+  readonly fullName: string;
+  readonly phone?: string;
+  readonly roleIds?: readonly string[];
+}
+
+export interface DeactivateTenantUserInput {
+  readonly userId: string;
+}
+
 /**
  * Resumen de usuario retornado en listados administrados por tenant.
  */
@@ -35,6 +46,14 @@ export type CreateTenantUserErrorCode =
   | "audit_failed"
   | "compensation_failed";
 
+export type MutateTenantUserErrorCode =
+  | "missing_tenant"
+  | "missing_user"
+  | "capability_denied"
+  | "profile_update_failed"
+  | "role_assignment_failed"
+  | "audit_failed";
+
 /**
  * Puerto de administración del proveedor de identidad (operaciones irreversibles
  * en Auth) que debe implementar Infraestructure.
@@ -49,6 +68,8 @@ export interface AuthAdminPort {
   }): Promise<{ readonly authUserId: string }>;
 
   deleteUser(authUserId: string): Promise<void>;
+
+  disableUser(authUserId: string): Promise<void>;
 }
 
 /**
@@ -74,11 +95,44 @@ export interface UserManagementRepository {
     readonly roleIds: readonly string[];
   }): Promise<void>;
 
+  replaceRoles(input: {
+    readonly tenantId: string;
+    readonly userId: string;
+    readonly roleIds: readonly string[];
+  }): Promise<void>;
+
+  updateProfile(input: {
+    readonly tenantId: string;
+    readonly userId: string;
+    readonly fullName: string;
+    readonly phone?: string;
+  }): Promise<void>;
+
+  deactivateProfile(input: {
+    readonly tenantId: string;
+    readonly userId: string;
+  }): Promise<{ readonly authUserId: string }>;
+
+  reactivateProfile(input: {
+    readonly tenantId: string;
+    readonly userId: string;
+  }): Promise<void>;
+
   listActiveUsers(input: {
     readonly tenantId: string;
   }): Promise<readonly TenantUserSummary[]>;
 
   recordUserCreatedAudit(input: {
+    readonly actorUserId: string;
+    readonly targetUserId: string;
+  }): Promise<void>;
+
+  recordUserUpdatedAudit(input: {
+    readonly actorUserId: string;
+    readonly targetUserId: string;
+  }): Promise<void>;
+
+  recordUserDeactivatedAudit(input: {
     readonly actorUserId: string;
     readonly targetUserId: string;
   }): Promise<void>;
@@ -93,4 +147,9 @@ export interface CreateTenantUserOutcome {
   readonly userId?: string;
   readonly user?: TenantUserSummary;
   readonly code?: CreateTenantUserErrorCode;
+}
+
+export interface MutateTenantUserOutcome {
+  readonly ok: boolean;
+  readonly code?: MutateTenantUserErrorCode;
 }

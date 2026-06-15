@@ -3,7 +3,10 @@ import type {
   CreateTenantUserErrorCode,
   CreateTenantUserInput,
   CreateTenantUserOutcome,
+  DeactivateTenantUserInput,
+  MutateTenantUserOutcome,
   TenantUserSummary,
+  UpdateTenantUserInput,
   UserManagementRepository,
 } from "@faena360/domain";
 
@@ -39,6 +42,8 @@ export interface UserManagementServiceDependencies {
 
 const USERS_CREATE_CAPABILITY = "users:create" as const;
 const USERS_READ_CAPABILITY = "users:read" as const;
+const USERS_UPDATE_CAPABILITY = "users:update" as const;
+const ROLES_UPDATE_CAPABILITY = "roles:update" as const;
 
 export interface TenantUserManagementService {
   createUser(
@@ -47,6 +52,16 @@ export interface TenantUserManagementService {
   ): Promise<CreateTenantUserOutcome>;
 
   listUsers(session: TenantSessionScope): Promise<readonly TenantUserSummary[]>;
+
+  updateUser(
+    session: TenantSessionScope,
+    input: UpdateTenantUserInput
+  ): Promise<MutateTenantUserOutcome>;
+
+  deactivateUser(
+    session: TenantSessionScope,
+    input: DeactivateTenantUserInput
+  ): Promise<MutateTenantUserOutcome>;
 }
 
 interface NormalizedCreateTenantUserInput {
@@ -55,6 +70,13 @@ interface NormalizedCreateTenantUserInput {
   readonly fullName: string;
   readonly phone?: string;
   readonly roleIds: readonly string[];
+}
+
+interface NormalizedUpdateTenantUserInput {
+  readonly userId: string;
+  readonly fullName: string;
+  readonly phone?: string;
+  readonly roleIds?: readonly string[];
 }
 
 export function createUserManagementService(
@@ -100,6 +122,26 @@ export function createUserManagementService(
         }
 
         throw error;
+      }
+
+      if (input.roleIds.length > 0) {
+        try {
+          await requireActorCapability(
+            capabilityChecker,
+            session,
+            tenantId,
+            ROLES_UPDATE_CAPABILITY
+          );
+        } catch (error) {
+          if (error instanceof CapabilityDeniedError) {
+            return {
+              ok: false,
+              code: "capability_denied",
+            };
+          }
+
+          throw error;
+        }
       }
 
       const normalizedInput = normalizeCreateUserInput(input);
@@ -199,7 +241,159 @@ export function createUserManagementService(
         tenantId,
       });
     },
+
+    async updateUser(session, input): Promise<MutateTenantUserOutcome> {
+      const tenantId = resolveTenantId(session.tenant_id);
+      if (!tenantId) {
+        return { ok: false, code: "missing_tenant" };
+      }
+
+      const normalizedInput = normalizeUpdateUserInput(input);
+      if (!normalizedInput.userId) {
+        return { ok: false, code: "missing_user" };
+      }
+
+      try {
+        await requireActorCapability(
+          capabilityChecker,
+          session,
+          tenantId,
+          USERS_UPDATE_CAPABILITY
+        );
+      } catch (error) {
+        if (error instanceof CapabilityDeniedError) {
+          return { ok: false, code: "capability_denied" };
+        }
+        throw error;
+      }
+
+      if (normalizedInput.roleIds) {
+        // Las ediciones combinadas perfil+roles deben ser todo-o-nada desde la
+        // perspectiva del permiso: si falta `roles:update`, no mutamos perfil.
+        try {
+          await requireActorCapability(
+            capabilityChecker,
+            session,
+            tenantId,
+            ROLES_UPDATE_CAPABILITY
+          );
+        } catch (error) {
+          if (error instanceof CapabilityDeniedError) {
+            return { ok: false, code: "capability_denied" };
+          }
+          throw error;
+        }
+      }
+
+      try {
+        await repository.updateProfile({
+          tenantId,
+          userId: normalizedInput.userId,
+          fullName: normalizedInput.fullName,
+          ...(normalizedInput.phone ? { phone: normalizedInput.phone } : {}),
+        });
+      } catch {
+        return { ok: false, code: "profile_update_failed" };
+      }
+
+      if (normalizedInput.roleIds) {
+        try {
+          await repository.replaceRoles({
+            tenantId,
+            userId: normalizedInput.userId,
+            roleIds: normalizedInput.roleIds,
+          });
+        } catch {
+          return { ok: false, code: "role_assignment_failed" };
+        }
+      }
+
+      try {
+        await repository.recordUserUpdatedAudit({
+          actorUserId: session.user_id,
+          targetUserId: normalizedInput.userId,
+        });
+      } catch {
+        return { ok: false, code: "audit_failed" };
+      }
+
+      return { ok: true };
+    },
+
+    async deactivateUser(session, input): Promise<MutateTenantUserOutcome> {
+      const tenantId = resolveTenantId(session.tenant_id);
+      if (!tenantId) {
+        return { ok: false, code: "missing_tenant" };
+      }
+
+      const userId = input.userId.trim();
+      if (!userId) {
+        return { ok: false, code: "missing_user" };
+      }
+
+      try {
+        await requireActorCapability(
+          capabilityChecker,
+          session,
+          tenantId,
+          USERS_UPDATE_CAPABILITY
+        );
+      } catch (error) {
+        if (error instanceof CapabilityDeniedError) {
+          return { ok: false, code: "capability_denied" };
+        }
+        throw error;
+      }
+
+      let authUserId: string;
+      try {
+        // Primero dejamos el perfil local inactivo para bloquear el flujo web;
+        // después revocamos Auth para cubrir accesos directos vía Supabase.
+        const deactivatedProfile = await repository.deactivateProfile({
+          tenantId,
+          userId,
+        });
+        authUserId = deactivatedProfile.authUserId;
+      } catch {
+        return { ok: false, code: "profile_update_failed" };
+      }
+
+      try {
+        await authAdmin.disableUser(authUserId);
+      } catch {
+        // El admin recibe fallo, así que compensamos el cambio local para no
+        // dejar al usuario inactivo sin auditoría de deactivación exitosa.
+        await repository.reactivateProfile({ tenantId, userId });
+        return { ok: false, code: "profile_update_failed" };
+      }
+
+      try {
+        await repository.recordUserDeactivatedAudit({
+          actorUserId: session.user_id,
+          targetUserId: userId,
+        });
+      } catch {
+        return { ok: false, code: "audit_failed" };
+      }
+
+      return { ok: true };
+    },
   };
+}
+
+async function requireActorCapability(
+  capabilityChecker: UserManagementServiceDependencies["capabilityChecker"],
+  session: TenantSessionScope,
+  tenantId: string,
+  capabilityCode: string
+): Promise<void> {
+  await capabilityChecker.requireCapability(
+    {
+      tenantId,
+      userId: session.user_id,
+    },
+    capabilityCode
+  );
 }
 
 function resolveTenantId(tenantId?: string | null): string {
@@ -234,6 +428,17 @@ function normalizeCreateUserInput(
     fullName: input.fullName.trim(),
     phone: normalizePhone(input.phone),
     roleIds: input.roleIds,
+  };
+}
+
+function normalizeUpdateUserInput(
+  input: UpdateTenantUserInput
+): NormalizedUpdateTenantUserInput {
+  return {
+    userId: input.userId.trim(),
+    fullName: input.fullName.trim(),
+    phone: normalizePhone(input.phone),
+    roleIds: input.roleIds ? Array.from(new Set(input.roleIds)) : undefined,
   };
 }
 
