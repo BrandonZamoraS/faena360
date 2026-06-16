@@ -27,6 +27,13 @@ When an agent has several unrelated tasks:
 
 This applies to reading 4+ files, multi-file edits, test execution, or any task that can be divided.
 
+## SDD Intent Check (MANDATORY)
+
+- Before executing any GitHub issue, product change, feature, bugfix, or implementation request, the agent **MUST ask whether the work should use SDD** unless the user explicitly says it is or is not SDD.
+- Do not infer that a regular implementation workflow is acceptable just because the request does not mention SDD.
+- If the user says to use SDD, start with the project's SDD workflow before changing code.
+- If the user says not to use SDD, proceed with the normal isolated worktree + delegation + verification workflow when appropriate.
+
 ## Supabase Command Gate (MANDATORY)
 
 - Agents **MUST NOT** run Supabase CLI commands by default, including `supabase db reset`, `supabase test`, migration execution, or SQL test execution.
