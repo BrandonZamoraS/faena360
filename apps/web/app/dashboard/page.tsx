@@ -15,6 +15,20 @@ type TenantLookup = (tenantId: string) => Promise<{
   readonly status: string;
 }>;
 
+export type CatalogValidationError = {
+  readonly field?: string;
+  readonly code: string;
+  readonly message: string;
+};
+
+type DashboardModuleDefinition = {
+  readonly slug: string;
+  readonly href: `/dashboard/${string}`;
+  readonly label: string;
+  readonly description: string;
+  readonly canView: (capabilities: readonly string[]) => boolean;
+};
+
 export type DashboardViewModel =
   | {
       readonly redirectTo: "/";
@@ -29,14 +43,70 @@ export type DashboardViewModel =
 const USER_READ_CAPABILITY = "users:read";
 const USER_ADMIN_MODULE_CAPABILITIES = ["users:create", "users:update"];
 
+function hasCapability(capabilities: readonly string[], capability: string) {
+  return capabilities.includes(capability);
+}
+
 function canAccessUserAdminModule(capabilities: readonly string[]) {
   return (
-    capabilities.includes(USER_READ_CAPABILITY) &&
+    hasCapability(capabilities, USER_READ_CAPABILITY) &&
     USER_ADMIN_MODULE_CAPABILITIES.some((capability) =>
-      capabilities.includes(capability)
+      hasCapability(capabilities, capability)
     )
   );
 }
+
+const DASHBOARD_MODULES: readonly DashboardModuleDefinition[] = [
+  {
+    slug: "admin_usuarios",
+    href: "/dashboard/admin_usuarios",
+    label: "admin_usuarios",
+    description: "Crear y administrar usuarios",
+    canView: canAccessUserAdminModule,
+  },
+  {
+    slug: "projects",
+    href: "/dashboard/projects",
+    label: "Proyectos",
+    description: "Consultar proyectos del tenant",
+    canView: (capabilities) => hasCapability(capabilities, "projects:read"),
+  },
+  {
+    slug: "subprojects",
+    href: "/dashboard/subprojects",
+    label: "Subproyectos",
+    description: "Consultar subproyectos del tenant",
+    canView: (capabilities) => hasCapability(capabilities, "subprojects:read"),
+  },
+  {
+    slug: "machines",
+    href: "/dashboard/machines",
+    label: "Maquinaria",
+    description: "Consultar maquinaria del tenant",
+    canView: (capabilities) => hasCapability(capabilities, "machines:read"),
+  },
+  {
+    slug: "clients",
+    href: "/dashboard/clients",
+    label: "Clientes",
+    description: "Consultar clientes del tenant",
+    canView: (capabilities) => hasCapability(capabilities, "clients:read"),
+  },
+  {
+    slug: "categories",
+    href: "/dashboard/categories",
+    label: "Categorías",
+    description: "Consultar categorías del tenant",
+    canView: (capabilities) => hasCapability(capabilities, "categories:read"),
+  },
+  {
+    slug: "fuel_types",
+    href: "/dashboard/fuel_types",
+    label: "Tipos de combustible",
+    description: "Consultar tipos de combustible del tenant",
+    canView: (capabilities) => hasCapability(capabilities, "fuel_types:read"),
+  },
+];
 
 export async function createDashboardViewModel(input: {
   readonly session: AppSession | null;
@@ -68,8 +138,8 @@ export async function createDashboardViewModel(input: {
 export function renderDashboardShell(
   viewModel: Exclude<DashboardViewModel, { redirectTo: "/" }>
 ) {
-  const showUserAdminModule = canAccessUserAdminModule(
-    viewModel.effectiveCapabilities
+  const visibleModules = DASHBOARD_MODULES.filter((module) =>
+    module.canView(viewModel.effectiveCapabilities)
   );
 
   return (
@@ -84,17 +154,18 @@ export function renderDashboardShell(
             >
               Dashboard
             </a>
-            {showUserAdminModule ? (
+            {visibleModules.map((module) => (
               <a
+                key={module.slug}
                 className="block rounded-xl px-4 py-3 text-sm font-semibold text-[#173b29] transition hover:bg-white focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#2f7044]"
-                href="/dashboard/admin_usuarios"
+                href={module.href}
               >
-                <span className="block">admin_usuarios</span>
+                <span className="block">{module.label}</span>
                 <span className="mt-1 block text-xs font-medium text-[#385346]">
-                  Crear y administrar usuarios
+                  {module.description}
                 </span>
               </a>
-            ) : null}
+            ))}
           </nav>
           <form action={logoutAction} className="mt-8 lg:mt-auto">
             <button

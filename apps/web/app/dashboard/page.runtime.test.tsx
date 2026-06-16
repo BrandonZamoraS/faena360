@@ -50,6 +50,29 @@ describe("dashboard view model", () => {
     }
     expect(viewModel.redirectTo).toBe("/");
   });
+
+  it("keeps the dashboard gated by web access and portal capability", async () => {
+    const tenantLookup = vi.fn(async (tenantId: string) => ({
+      id: tenantId,
+      name: "Tenant A",
+      status: "active",
+    }));
+
+    const withoutWebAccess = await createDashboardViewModel({
+      session: { ...baseSession, can_access_web: false },
+      searchParams: {},
+      tenantLookup,
+    });
+    const withoutPortalAccess = await createDashboardViewModel({
+      session: { ...baseSession, effective_capabilities: [] },
+      searchParams: {},
+      tenantLookup,
+    });
+
+    expect(withoutWebAccess).toEqual({ redirectTo: "/" });
+    expect(withoutPortalAccess).toEqual({ redirectTo: "/" });
+    expect(tenantLookup).not.toHaveBeenCalled();
+  });
 });
 
 describe("dashboard shell", () => {
@@ -108,6 +131,44 @@ describe("dashboard shell", () => {
       })
     );
     expect(delegatedCreatorHtml).toContain("admin_usuarios");
+  });
+
+  it("renders catalog-like module links from current read capabilities", () => {
+    const html = renderToStaticMarkup(
+      renderDashboardShell({
+        tenantName: "Tenant A",
+        userEmail: "catalog-reader@faena360.com",
+        roles: ["supervisor"],
+        effectiveCapabilities: [
+          "web.portal.access",
+          "clients:read",
+          "categories:read",
+          "fuel_types:read",
+        ],
+      })
+    );
+
+    expect(html).toContain('href="/dashboard/clients"');
+    expect(html).toContain('href="/dashboard/categories"');
+    expect(html).toContain('href="/dashboard/fuel_types"');
+    expect(html).not.toContain('href="/dashboard/projects"');
+    expect(html).not.toContain('href="/dashboard/admin_usuarios"');
+  });
+
+  it("hides catalog-like modules without their read capability", () => {
+    const html = renderToStaticMarkup(
+      renderDashboardShell({
+        tenantName: "Tenant A",
+        userEmail: "project-reader@faena360.com",
+        roles: ["custom"],
+        effectiveCapabilities: ["web.portal.access", "projects:read"],
+      })
+    );
+
+    expect(html).toContain('href="/dashboard/projects"');
+    expect(html).not.toContain('href="/dashboard/clients"');
+    expect(html).not.toContain('href="/dashboard/categories"');
+    expect(html).not.toContain('href="/dashboard/fuel_types"');
   });
 
   it("renders a logout action in the authenticated sidebar", () => {
