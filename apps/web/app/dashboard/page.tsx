@@ -87,7 +87,7 @@ const DASHBOARD_MODULES: readonly DashboardModuleDefinition[] = [
   },
   {
     slug: "clients",
-    href: "/dashboard/clients",
+    href: "/dashboard/clientes",
     label: "Clientes",
     description: "Consultar clientes del tenant",
     canView: (capabilities) => hasCapability(capabilities, "clients:read"),

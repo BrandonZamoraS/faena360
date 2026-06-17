@@ -65,7 +65,6 @@ $$;
 
 -- Revoke from public to prevent clients from spoofing audit context
 revoke execute on function set_audit_context(uuid, text, uuid) from public;
-revoke execute on function set_audit_context(uuid, text) from public;
 
 -- --------------------------------------------------------
 -- Trigger function: audit_trigger()
