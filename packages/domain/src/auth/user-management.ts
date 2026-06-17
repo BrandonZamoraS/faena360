@@ -50,6 +50,7 @@ export type MutateTenantUserErrorCode =
   | "missing_tenant"
   | "missing_user"
   | "capability_denied"
+  | "duplicate_identifier"
   | "profile_update_failed"
   | "role_assignment_failed"
   | "audit_failed";
@@ -80,6 +81,17 @@ export interface UserManagementRepository {
     readonly email: string;
     readonly phone?: string;
   }): Promise<boolean>;
+
+  identifierExistsExcluding(input: {
+    readonly userId: string;
+    readonly email: string;
+    readonly phone: string;
+  }): Promise<boolean>;
+
+  getUserEmail(input: {
+    readonly userId: string;
+    readonly tenantId: string;
+  }): Promise<string>;
 
   createProfile(input: {
     readonly tenantId: string;

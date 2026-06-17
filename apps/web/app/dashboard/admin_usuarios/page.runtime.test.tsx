@@ -133,4 +133,74 @@ describe("admin_usuarios page shell", () => {
       canRunUserAdminAction(["users:read", "users:create"], "users:update")
     ).toBe(false);
   });
+
+  it("renders role checkboxes in update form when canManageRoles is true", () => {
+    const html = renderToStaticMarkup(
+      renderUserAdminShell({
+        tenantName: "Tenant A",
+        capabilities: ["users:update", "roles:read", "roles:update"],
+        roles,
+        users: [
+          {
+            user_id: "user-1",
+            tenant_id: "tenant-a",
+            email: "user@example.com",
+            full_name: "Tenant User",
+            phone: "15551112222",
+            status: "active",
+          },
+        ],
+      })
+    );
+
+    expect(html).toContain("administrador");
+    expect(html).toContain("supervisor");
+    expect(html).toContain("Guardar cambios");
+  });
+
+  it("hides role checkboxes in update form when canManageRoles is false", () => {
+    const html = renderToStaticMarkup(
+      renderUserAdminShell({
+        tenantName: "Tenant A",
+        capabilities: ["users:update"],
+        roles: [],
+        users: [
+          {
+            user_id: "user-1",
+            tenant_id: "tenant-a",
+            email: "user@example.com",
+            full_name: "Tenant User",
+            phone: null,
+            status: "active",
+          },
+        ],
+      })
+    );
+
+    expect(html).toContain("Guardar cambios");
+    expect(html).not.toContain("administrador");
+  });
+
+  it("renders roleIdsPresent hidden field when role controls are shown so empty role selection is submitted", () => {
+    const html = renderToStaticMarkup(
+      renderUserAdminShell({
+        tenantName: "Tenant A",
+        capabilities: ["users:update", "roles:read", "roles:update"],
+        roles,
+        users: [
+          {
+            user_id: "user-1",
+            tenant_id: "tenant-a",
+            email: "user@example.com",
+            full_name: "Tenant User",
+            phone: null,
+            status: "active",
+          },
+        ],
+      })
+    );
+
+    expect(html).toContain('name="roleIdsPresent"');
+    expect(html).toContain("Guardar cambios");
+  });
 });

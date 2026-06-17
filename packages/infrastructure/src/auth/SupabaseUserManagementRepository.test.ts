@@ -399,6 +399,40 @@ async function runRecordUserCreatedAuditUsesCurrentSchema(): Promise<void> {
   ).toBeTypeOf("string");
 }
 
+async function runIdentifierExistsExcludingPassesExcludeParamToRpc(): Promise<void> {
+  const calls: QueryCall[] = [];
+
+  const client = {
+    rpc: (functionName: string, args: Record<string, unknown>) => {
+      calls.push({ operation: "rpc", details: functionName });
+      calls.push({
+        operation: "rpc_args",
+        details: `email:${String(args.lookup_email)} phone:${String(args.lookup_phone)} exclude:${String(args.exclude_user_id)}`,
+      });
+
+      return { data: false, error: null };
+    },
+  } as unknown as SupabaseClient;
+
+  const repository = new SupabaseUserManagementRepository(client);
+
+  const exists = await repository.identifierExistsExcluding({
+    userId: "target-user-id",
+    email: "user@example.com",
+    phone: "+1 (555) 999-8888",
+  });
+
+  expect(exists).toBe(false);
+  expect(calls).toContainEqual({
+    operation: "rpc",
+    details: "user_profile_identifier_exists",
+  });
+  expect(calls).toContainEqual({
+    operation: "rpc_args",
+    details: "email:user@example.com phone:15559998888 exclude:target-user-id",
+  });
+}
+
 describe("SupabaseUserManagementRepository", () => {
   it("maps active list results to TenantUserSummary.user_id from user_profiles.id", async () => {
     await runTenantActiveUsersUseSchemaColumnsCheck();
@@ -434,5 +468,9 @@ describe("SupabaseUserManagementRepository", () => {
 
   it("soft deletes profiles by setting status inactive", async () => {
     await runDeactivateProfileUsesStatusInactive();
+  });
+
+  it("passes exclude_user_id to RPC for identifierExistsExcluding", async () => {
+    await runIdentifierExistsExcludingPassesExcludeParamToRpc();
   });
 });

@@ -74,6 +74,55 @@ export class SupabaseUserManagementRepository implements UserManagementRepositor
     return false;
   }
 
+  /**
+   * Verifica unicidad de teléfono excluyendo al propio usuario (para ediciones).
+   * Recibe el email desde Application para evitar consultas compensatorias.
+   */
+  public async identifierExistsExcluding(input: {
+    readonly userId: string;
+    readonly email: string;
+    readonly phone: string;
+  }): Promise<boolean> {
+    const normalizedEmail = normalizeIdentifierEmail(input.email);
+    const normalizedPhone = normalizeIdentifierPhone(input.phone);
+
+    const response = await this.client.rpc("user_profile_identifier_exists", {
+      lookup_email: normalizedEmail,
+      lookup_phone: normalizedPhone,
+      exclude_user_id: input.userId,
+    });
+
+    if (response.error) {
+      throw new Error(response.error.message);
+    }
+
+    if (response.data === true) {
+      return true;
+    }
+
+    return false;
+  }
+
+  public async getUserEmail(input: {
+    readonly userId: string;
+    readonly tenantId: string;
+  }): Promise<string> {
+    const { data, error } = await this.client
+      .from("user_profiles")
+      .select("email")
+      .eq("id", input.userId)
+      .eq("tenant_id", input.tenantId)
+      .single<{ email: string }>();
+
+    if (error || !data?.email) {
+      throw new Error(
+        error?.message ?? "Could not resolve user email for uniqueness check"
+      );
+    }
+
+    return data.email;
+  }
+
   public async createProfile(input: CreateProfileInput): Promise<string> {
     // El perfil local enlaza al auth_user con el tenant y habilita permisos.
     const profilePayload = {
