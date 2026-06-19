@@ -844,7 +844,11 @@ async function runUpdateUserRejectsDuplicatePhone(): Promise<void> {
   );
   assertEquals(
     calls.identifierExistsExcludingCalls[0],
-    { userId: "target-user-9", email: "target@example.com", phone: "15559998888" },
+    {
+      userId: "target-user-9",
+      email: "target@example.com",
+      phone: "15559998888",
+    },
     "Expected self-exclusion check with correct userId, email, and normalized phone"
   );
   assertEquals(
@@ -874,7 +878,11 @@ async function runUpdateUserSelfExclusionAllowsSamePhone(): Promise<void> {
   );
   assertEquals(
     calls.identifierExistsExcludingCalls[0],
-    { userId: "target-user-10", email: "target@example.com", phone: "15550001111" },
+    {
+      userId: "target-user-10",
+      email: "target@example.com",
+      phone: "15550001111",
+    },
     "Expected self-exclusion check with own userId to pass"
   );
   assertEquals(
