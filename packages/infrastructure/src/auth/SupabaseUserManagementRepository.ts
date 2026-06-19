@@ -86,11 +86,14 @@ export class SupabaseUserManagementRepository implements UserManagementRepositor
     const normalizedEmail = normalizeIdentifierEmail(input.email);
     const normalizedPhone = normalizeIdentifierPhone(input.phone);
 
-    const response = await this.client.rpc("user_profile_identifier_exists", {
-      lookup_email: normalizedEmail,
-      lookup_phone: normalizedPhone,
-      exclude_user_id: input.userId,
-    });
+    const response = await this.client.rpc(
+      "user_profile_identifier_exists_excluding",
+      {
+        lookup_email: normalizedEmail,
+        lookup_phone: normalizedPhone,
+        exclude_user_id: input.userId,
+      }
+    );
 
     if (response.error) {
       throw new Error(response.error.message);

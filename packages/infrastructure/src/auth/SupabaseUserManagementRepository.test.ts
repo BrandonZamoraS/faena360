@@ -425,7 +425,7 @@ async function runIdentifierExistsExcludingPassesExcludeParamToRpc(): Promise<vo
   expect(exists).toBe(false);
   expect(calls).toContainEqual({
     operation: "rpc",
-    details: "user_profile_identifier_exists",
+    details: "user_profile_identifier_exists_excluding",
   });
   expect(calls).toContainEqual({
     operation: "rpc_args",
