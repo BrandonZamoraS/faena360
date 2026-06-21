@@ -328,10 +328,15 @@ export function createUserManagementService(
         }
 
         if (dependencies.capabilityInvalidator) {
-          await dependencies.capabilityInvalidator.invalidate({
-            tenantId,
-            userId: normalizedInput.userId,
-          });
+          try {
+            await dependencies.capabilityInvalidator.invalidate({
+              tenantId,
+              userId: normalizedInput.userId,
+            });
+          } catch {
+            // Invalidation failure is non-fatal; the role change has already
+            // been persisted. Audit must still be recorded downstream.
+          }
         }
       }
 

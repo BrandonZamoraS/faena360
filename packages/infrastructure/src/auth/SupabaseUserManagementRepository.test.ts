@@ -209,6 +209,7 @@ async function runTenantActiveUsersUseSchemaColumnsCheck(): Promise<void> {
       full_name: "Tenant One",
       phone: null,
       status: "active" as const,
+      user_roles: [{ role_id: "role-1" }, { role_id: "role-2" }],
     },
   ];
 
@@ -224,9 +225,10 @@ async function runTenantActiveUsersUseSchemaColumnsCheck(): Promise<void> {
 
   expect(result).toHaveLength(1);
   expect(result[0]?.user_id).toBe("user-id-1");
+  expect(result[0]?.role_ids).toEqual(["role-1", "role-2"]);
   expect(
     calls.find((entry) => entry.operation === "select")?.details
-  ).toContain("id,tenant_id,email,full_name,phone,status");
+  ).toContain("user_roles(role_id)");
 }
 
 async function runCreateProfileUsesAuthUserColumnAndReturnsId(): Promise<void> {

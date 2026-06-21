@@ -182,7 +182,10 @@ export function renderUserAdminShell(input: UserAdminShellInput) {
                         />
                       </label>
                       {canManageRoles ? (
-                        <RoleCheckboxes roles={input.roles} />
+                        <RoleCheckboxes
+                          roles={input.roles}
+                          defaultRoleIds={user.role_ids}
+                        />
                       ) : null}
                       <button className="login-button self-end" type="submit">
                         Guardar cambios
@@ -210,9 +213,13 @@ export function renderUserAdminShell(input: UserAdminShellInput) {
 
 function RoleCheckboxes({
   roles,
+  defaultRoleIds,
 }: {
   readonly roles: readonly TenantRoleOption[];
+  readonly defaultRoleIds?: readonly string[];
 }) {
+  const defaultSet = new Set(defaultRoleIds ?? []);
+
   return (
     <fieldset className="space-y-2 md:col-span-2">
       <legend className="text-sm font-semibold">Roles</legend>
@@ -228,6 +235,7 @@ function RoleCheckboxes({
               name="roleIds"
               type="checkbox"
               value={role.id}
+              defaultChecked={defaultSet.has(role.id)}
             />
             {role.name}
           </label>

@@ -30,6 +30,7 @@ export interface TenantUserSummary {
   readonly full_name: string;
   readonly phone: string | null;
   readonly status: "active" | "inactive";
+  readonly role_ids: readonly string[];
 }
 
 /**

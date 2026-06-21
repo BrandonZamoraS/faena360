@@ -84,11 +84,9 @@ type UserManagementDependenciesOverrides = {
     readonly requireCapability?: UserManagementServiceDependencies["capabilityChecker"]["requireCapability"];
   };
   readonly capabilityInvalidator?: {
-    readonly invalidate?: UserManagementServiceDependencies["capabilityInvalidator"] extends {
-      invalidate: infer F;
-    }
-      ? F
-      : never;
+    readonly invalidate?: NonNullable<
+      UserManagementServiceDependencies["capabilityInvalidator"]
+    >["invalidate"];
   } | null;
 };
 
@@ -210,6 +208,7 @@ function createUserManagementServiceWithMocks(
             full_name: "Tenant user",
             phone: "+34 111 111 111",
             status: "active",
+            role_ids: [],
           } satisfies TenantUserSummary,
         ];
       },
@@ -929,6 +928,53 @@ async function runUpdateUserInvalidatesCapabilitiesCacheAfterReplaceRoles(): Pro
   );
 }
 
+async function runUpdateUserRecordsAuditEvenWhenInvalidationFails(): Promise<void> {
+  const calls = createCallsTracker();
+
+  const { service } = createUserManagementServiceWithMocks({
+    calls,
+    capabilityInvalidator: {
+      invalidate: async (scope: { tenantId: string; userId: string }) => {
+        calls.invalidatorCalls.push(scope);
+        throw new Error("Cache invalidation failed in test.");
+      },
+    },
+  });
+
+  const result = await service.updateUser(
+    { tenant_id: "tenant-13", user_id: "actor-13" },
+    {
+      userId: "target-user-13",
+      fullName: "Role Change User",
+      roleIds: ["role-z"],
+    }
+  );
+
+  assert(
+    result.ok === true,
+    "Expected updateUser to succeed even when invalidation fails."
+  );
+  assertEquals(
+    calls.replaceRoleCalls.length,
+    1,
+    "Expected one replaceRoles call"
+  );
+  assertEquals(
+    calls.invalidatorCalls.length,
+    1,
+    "Expected one invalidator call before failure"
+  );
+  assertEquals(
+    calls.auditCalls.at(-1),
+    {
+      action: "user_updated",
+      actorUserId: "actor-13",
+      targetUserId: "target-user-13",
+    },
+    "Expected audit to be recorded despite invalidation failure"
+  );
+}
+
 async function runUpdateUserSkipsInvalidationWhenInvalidatorUndefined(): Promise<void> {
   const calls = createCallsTracker();
 
@@ -1009,6 +1055,10 @@ describe("user management service", () => {
 
   it("invalidates capabilities cache after successful replaceRoles", async () => {
     await runUpdateUserInvalidatesCapabilitiesCacheAfterReplaceRoles();
+  });
+
+  it("records audit even when capability invalidation fails", async () => {
+    await runUpdateUserRecordsAuditEvenWhenInvalidationFails();
   });
 
   it("skips invalidation when capabilityInvalidator is undefined", async () => {

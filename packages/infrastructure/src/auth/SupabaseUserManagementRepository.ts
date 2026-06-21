@@ -12,6 +12,7 @@ interface SupabaseProfileRow {
   readonly full_name: string;
   readonly phone: string | null;
   readonly status: "active" | "inactive";
+  readonly user_roles?: readonly { readonly role_id: string }[];
 }
 
 interface CreateProfileInput {
@@ -255,7 +256,7 @@ export class SupabaseUserManagementRepository implements UserManagementRepositor
   }): Promise<readonly TenantUserSummary[]> {
     const response = await this.client
       .from("user_profiles")
-      .select("id,tenant_id,email,full_name,phone,status")
+      .select("id,tenant_id,email,full_name,phone,status,user_roles(role_id)")
       .eq("tenant_id", input.tenantId)
       .eq("status", "active");
 
@@ -270,6 +271,7 @@ export class SupabaseUserManagementRepository implements UserManagementRepositor
       full_name: row.full_name,
       phone: row.phone ?? null,
       status: row.status,
+      role_ids: (row.user_roles ?? []).map((ur) => ur.role_id),
     }));
   }
 

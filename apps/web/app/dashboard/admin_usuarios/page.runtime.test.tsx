@@ -31,6 +31,7 @@ describe("admin_usuarios page shell", () => {
             full_name: "Tenant User",
             phone: "15551112222",
             status: "active",
+            role_ids: ["role-admin"],
           },
         ],
       })
@@ -58,6 +59,7 @@ describe("admin_usuarios page shell", () => {
             full_name: "Tenant User",
             phone: null,
             status: "active",
+            role_ids: [],
           },
         ],
       })
@@ -81,6 +83,7 @@ describe("admin_usuarios page shell", () => {
             full_name: "Tenant User",
             phone: null,
             status: "active",
+            role_ids: [],
           },
         ],
       })
@@ -148,6 +151,7 @@ describe("admin_usuarios page shell", () => {
             full_name: "Tenant User",
             phone: "15551112222",
             status: "active",
+            role_ids: ["role-admin"],
           },
         ],
       })
@@ -156,6 +160,7 @@ describe("admin_usuarios page shell", () => {
     expect(html).toContain("administrador");
     expect(html).toContain("supervisor");
     expect(html).toContain("Guardar cambios");
+    expect(html).toContain('checked="" value="role-admin"');
   });
 
   it("hides role checkboxes in update form when canManageRoles is false", () => {
@@ -172,6 +177,7 @@ describe("admin_usuarios page shell", () => {
             full_name: "Tenant User",
             phone: null,
             status: "active",
+            role_ids: [],
           },
         ],
       })
@@ -195,6 +201,7 @@ describe("admin_usuarios page shell", () => {
             full_name: "Tenant User",
             phone: null,
             status: "active",
+            role_ids: [],
           },
         ],
       })
