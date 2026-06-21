@@ -20,8 +20,7 @@ type FuelTypePayload = {
   readonly nombre: string;
 };
 
-const FUEL_TYPE_COLUMNS =
-  "id,tenant_id,nombre,estado,created_at,updated_at";
+const FUEL_TYPE_COLUMNS = "id,tenant_id,nombre,estado,created_at,updated_at";
 
 export class SupabaseFuelTypeCatalogRepository implements FuelTypeCatalogRepository {
   public constructor(private readonly client: SupabaseClient) {}
@@ -40,11 +39,15 @@ export class SupabaseFuelTypeCatalogRepository implements FuelTypeCatalogReposit
       throw new Error(response.error.message);
     }
 
-    return (response.data as readonly SupabaseFuelTypeRow[]).map(mapFuelTypeRow);
+    return (response.data as readonly SupabaseFuelTypeRow[]).map(
+      mapFuelTypeRow
+    );
   }
 
   public async create(
-    input: FuelTypePayload & { readonly tenantId: string } & FuelTypeAuditContext
+    input: FuelTypePayload & {
+      readonly tenantId: string;
+    } & FuelTypeAuditContext
   ): Promise<{ readonly id: string }> {
     const response = await this.client.rpc("create_tipo_combustible", {
       p_nombre: input.nombre,
