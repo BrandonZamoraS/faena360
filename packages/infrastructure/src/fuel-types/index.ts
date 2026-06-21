@@ -1,0 +1,1 @@
+export { SupabaseFuelTypeCatalogRepository } from "./SupabaseFuelTypeCatalogRepository";
