@@ -57,7 +57,7 @@ export class SupabaseFuelTypeCatalogRepository implements FuelTypeCatalogReposit
     });
 
     if (response.error) {
-      throw new Error(response.error.message);
+      throw createRepositoryError(response.error);
     }
 
     const fuelTypeId = response.data as string | null;
@@ -83,7 +83,7 @@ export class SupabaseFuelTypeCatalogRepository implements FuelTypeCatalogReposit
     });
 
     if (response.error) {
-      throw new Error(response.error.message);
+      throw createRepositoryError(response.error);
     }
 
     return Boolean(response.data);
@@ -103,7 +103,7 @@ export class SupabaseFuelTypeCatalogRepository implements FuelTypeCatalogReposit
     });
 
     if (response.error) {
-      throw new Error(response.error.message);
+      throw createRepositoryError(response.error);
     }
 
     return Boolean(response.data);
@@ -119,4 +119,12 @@ function mapFuelTypeRow(row: SupabaseFuelTypeRow): FuelTypeCatalogSummary {
     created_at: row.created_at,
     updated_at: row.updated_at,
   };
+}
+
+function createRepositoryError(supabaseError: { message: string; code?: string }): Error {
+  const error = new Error(supabaseError.message) as unknown as { code: string };
+  if (supabaseError.code) {
+    error.code = supabaseError.code;
+  }
+  return error as unknown as Error;
 }

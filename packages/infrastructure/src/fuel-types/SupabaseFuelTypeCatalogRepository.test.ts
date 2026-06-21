@@ -216,4 +216,24 @@ describe("SupabaseFuelTypeCatalogRepository", () => {
       })
     ).resolves.toBe(false);
   });
+
+  it("preserves supabase error code when RPC fails", async () => {
+    const client = {
+      rpc: async () => ({
+        data: null,
+        error: { message: "duplicate key value", code: "23505" },
+      }),
+    } as unknown as SupabaseClient;
+
+    const repository = new SupabaseFuelTypeCatalogRepository(client);
+
+    await expect(
+      repository.create({
+        tenantId: "tenant-1",
+        actorId: "actor-1",
+        auditSource: "web",
+        nombre: "Gasolina 95",
+      })
+    ).rejects.toThrow("duplicate key value");
+  });
 });
