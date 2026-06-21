@@ -12,10 +12,10 @@ import {
 } from "@faena360/infrastructure";
 import { createWebSupabaseServiceClient } from "../../../lib/supabase";
 import {
-  APP_SESSION_COOKIE_NAME,
   createServerStateSessionRefresher,
   requireWebAccess,
 } from "../../../lib/auth/session";
+import { DashboardSidebar } from "../_components/dashboard-sidebar";
 
 type ClientCatalogShellInput = {
   readonly tenantName: string;
@@ -41,31 +41,10 @@ export function renderClientCatalogShell(input: ClientCatalogShellInput) {
   return (
     <main className="min-h-screen bg-[#f5fbf7] text-[#102118]">
       <div className="mx-auto flex min-h-screen max-w-7xl flex-col lg:flex-row">
-        <aside className="flex border-b border-[#dcebe1] bg-[#edf5ec] px-6 py-6 lg:w-72 lg:flex-col lg:border-b-0 lg:border-r">
-          <p className="text-sm font-semibold text-[#173b29]">Faena360</p>
-          <nav className="mt-8 space-y-2" aria-label="Módulos">
-            <a
-              className="block rounded-xl px-4 py-3 text-sm font-semibold text-[#173b29] hover:bg-white"
-              href="/dashboard"
-            >
-              Dashboard
-            </a>
-            <a
-              className="block rounded-xl bg-[#173b29] px-4 py-3 text-sm font-semibold text-white"
-              href="/dashboard/clientes"
-            >
-              Clientes
-            </a>
-          </nav>
-          <form action={logoutAction} className="mt-8 lg:mt-auto">
-            <button
-              className="w-full rounded-xl border border-[#d0e2d6] bg-white px-4 py-3 text-left text-sm font-semibold text-[#173b29] transition hover:bg-[#f7faf5]"
-              type="submit"
-            >
-              Cerrar sesión
-            </button>
-          </form>
-        </aside>
+        <DashboardSidebar
+          capabilities={input.capabilities}
+          activeHref="/dashboard/clientes"
+        />
 
         <section className="flex min-w-0 flex-1 flex-col gap-8 px-6 py-8">
           <header className="rounded-2xl border border-[#dcebe1] bg-white p-8">
@@ -239,13 +218,6 @@ function ClientDetail({
       <dd className="mt-1">{value ?? "Sin dato"}</dd>
     </div>
   );
-}
-
-export async function logoutAction() {
-  "use server";
-  const cookieStore = await cookies();
-  cookieStore.delete(APP_SESSION_COOKIE_NAME);
-  redirect("/");
 }
 
 async function getWebSession(): Promise<AppSession> {

@@ -187,6 +187,35 @@ describe("admin_usuarios page shell", () => {
     expect(html).not.toContain("administrador");
   });
 
+  it("highlights the active admin module in the sidebar and shows module visibility", () => {
+    const html = renderToStaticMarkup(
+      renderUserAdminShell({
+        tenantName: "Tenant A",
+        capabilities: [
+          "users:read",
+          "users:create",
+          "users:update",
+          "roles:read",
+          "roles:update",
+          "fuel_types:read",
+          "clients:read",
+        ],
+        roles,
+        users: [],
+      })
+    );
+
+    expect(html).toContain(
+      'class="block rounded-xl px-4 py-3 text-sm font-semibold text-[#173b29] transition hover:bg-white focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#2f7044]" href="/dashboard/clientes"'
+    );
+    expect(html).toContain(
+      'class="block rounded-xl bg-[#173b29] px-4 py-3 text-sm font-semibold text-white" href="/dashboard/admin_usuarios"'
+    );
+    expect(html).toContain(
+      'class="block rounded-xl px-4 py-3 text-sm font-semibold text-[#173b29] transition hover:bg-white focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#2f7044]" href="/dashboard/tipos_combustible"'
+    );
+  });
+
   it("renders roleIdsPresent hidden field when role controls are shown so empty role selection is submitted", () => {
     const html = renderToStaticMarkup(
       renderUserAdminShell({
