@@ -87,7 +87,7 @@ const DASHBOARD_MODULES: readonly DashboardModuleDefinition[] = [
   },
   {
     slug: "clients",
-    href: "/dashboard/clients",
+    href: "/dashboard/clientes",
     label: "Clientes",
     description: "Consultar clientes del tenant",
     canView: (capabilities) => hasCapability(capabilities, "clients:read"),
@@ -101,7 +101,7 @@ const DASHBOARD_MODULES: readonly DashboardModuleDefinition[] = [
   },
   {
     slug: "fuel_types",
-    href: "/dashboard/fuel_types",
+    href: "/dashboard/tipos_combustible",
     label: "Tipos de combustible",
     description: "Consultar tipos de combustible del tenant",
     canView: (capabilities) => hasCapability(capabilities, "fuel_types:read"),

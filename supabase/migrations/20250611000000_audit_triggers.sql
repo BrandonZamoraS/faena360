@@ -65,7 +65,6 @@ $$;
 
 -- Revoke from public to prevent clients from spoofing audit context
 revoke execute on function set_audit_context(uuid, text, uuid) from public;
-revoke execute on function set_audit_context(uuid, text) from public;
 
 -- --------------------------------------------------------
 -- Trigger function: audit_trigger()
@@ -98,7 +97,10 @@ begin
   elsif TG_TABLE_NAME = 'roles' then
     _tenant_id := coalesce(NEW.tenant_id, OLD.tenant_id);
   elsif TG_TABLE_NAME = 'role_capabilities' then
-    _tenant_id := coalesce(NEW.tenant_id, OLD.tenant_id);
+    select roles.tenant_id
+    into _tenant_id
+    from roles
+    where roles.id = coalesce(NEW.role_id, OLD.role_id);
   elsif TG_TABLE_NAME = 'user_capability_overrides' then
     _tenant_id := coalesce(NEW.tenant_id, OLD.tenant_id);
   elsif TG_TABLE_NAME = 'tenant_configurations' then

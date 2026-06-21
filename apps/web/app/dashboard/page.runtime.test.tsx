@@ -148,9 +148,9 @@ describe("dashboard shell", () => {
       })
     );
 
-    expect(html).toContain('href="/dashboard/clients"');
+    expect(html).toContain('href="/dashboard/clientes"');
     expect(html).toContain('href="/dashboard/categories"');
-    expect(html).toContain('href="/dashboard/fuel_types"');
+    expect(html).toContain('href="/dashboard/tipos_combustible"');
     expect(html).not.toContain('href="/dashboard/projects"');
     expect(html).not.toContain('href="/dashboard/admin_usuarios"');
   });
@@ -166,9 +166,9 @@ describe("dashboard shell", () => {
     );
 
     expect(html).toContain('href="/dashboard/projects"');
-    expect(html).not.toContain('href="/dashboard/clients"');
+    expect(html).not.toContain('href="/dashboard/clientes"');
     expect(html).not.toContain('href="/dashboard/categories"');
-    expect(html).not.toContain('href="/dashboard/fuel_types"');
+    expect(html).not.toContain('href="/dashboard/tipos_combustible"');
   });
 
   it("renders a logout action in the authenticated sidebar", () => {
