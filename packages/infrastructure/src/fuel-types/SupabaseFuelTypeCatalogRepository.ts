@@ -121,7 +121,10 @@ function mapFuelTypeRow(row: SupabaseFuelTypeRow): FuelTypeCatalogSummary {
   };
 }
 
-function createRepositoryError(supabaseError: { message: string; code?: string }): Error {
+function createRepositoryError(supabaseError: {
+  message: string;
+  code?: string;
+}): Error {
   const error = new Error(supabaseError.message) as unknown as { code: string };
   if (supabaseError.code) {
     error.code = supabaseError.code;
