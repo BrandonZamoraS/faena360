@@ -1,36 +1,34 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
-import type { AppSession } from "@faena360/domain";
+import type { AppSession, FuelTypeCatalogSummary } from "@faena360/domain";
+import {
+  CapabilityDeniedError,
+  createFuelTypeCatalogService,
+} from "@faena360/application";
+import {
+  SupabaseAppSessionRepository,
+  SupabaseFuelTypeCatalogRepository,
+} from "@faena360/infrastructure";
+import { createWebSupabaseServiceClient } from "../../../lib/supabase";
 import {
   createServerStateSessionRefresher,
   requireWebAccess,
 } from "../../../lib/auth/session";
-import { SupabaseAppSessionRepository } from "@faena360/infrastructure";
-import { createWebSupabaseServiceClient } from "../../../lib/supabase";
 import { DashboardSidebar } from "../_components/dashboard-sidebar";
-
-const FUEL_TYPES_READ_CAPABILITY = "fuel_types:read";
-const FUEL_TYPES_CREATE_CAPABILITY = "fuel_types:create";
-const FUEL_TYPES_UPDATE_CAPABILITY = "fuel_types:update";
-
-type FuelTypeSummary = {
-  readonly id: string;
-  readonly tenant_id: string;
-  readonly nombre: string;
-  readonly estado: "activo" | "oculto";
-  readonly created_at: string;
-  readonly updated_at: string;
-};
 
 type FuelTypeCatalogShellInput = {
   readonly tenantName: string;
   readonly capabilities: readonly string[];
-  readonly fuelTypes: readonly FuelTypeSummary[];
+  readonly fuelTypes: readonly FuelTypeCatalogSummary[];
   readonly createAction?: (formData: FormData) => Promise<void>;
   readonly updateAction?: (formData: FormData) => Promise<void>;
   readonly hideAction?: (formData: FormData) => Promise<void>;
 };
+
+const FUEL_TYPES_READ_CAPABILITY = "fuel_types:read";
+const FUEL_TYPES_CREATE_CAPABILITY = "fuel_types:create";
+const FUEL_TYPES_UPDATE_CAPABILITY = "fuel_types:update";
 
 export function renderFuelTypeCatalogShell(input: FuelTypeCatalogShellInput) {
   const canCreateFuelTypes = input.capabilities.includes(
@@ -215,6 +213,24 @@ export function canRunFuelTypeCatalogAction(
   );
 }
 
+function buildFuelTypeCatalogService(session: AppSession) {
+  const serviceClient = createWebSupabaseServiceClient();
+  return createFuelTypeCatalogService({
+    repository: new SupabaseFuelTypeCatalogRepository(serviceClient),
+    capabilityChecker: {
+      async requireCapability(_scope, capabilityCode) {
+        if (!session.effective_capabilities.includes(capabilityCode)) {
+          throw new CapabilityDeniedError(
+            session.user_id,
+            session.tenant_id,
+            capabilityCode
+          );
+        }
+      },
+    },
+  });
+}
+
 async function lookupTenantName(tenantId: string): Promise<string> {
   const { data, error } = await createWebSupabaseServiceClient()
     .from("tenants")
@@ -229,49 +245,14 @@ async function lookupTenantName(tenantId: string): Promise<string> {
   return data.name;
 }
 
-async function listActiveFuelTypes(
-  tenantId: string
-): Promise<FuelTypeSummary[]> {
-  const { data, error } = await createWebSupabaseServiceClient()
-    .from("tipos_combustible")
-    .select("id, tenant_id, nombre, estado, created_at, updated_at")
-    .eq("tenant_id", tenantId)
-    .eq("estado", "activo")
-    .order("nombre", { ascending: true });
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return (data ?? []) as FuelTypeSummary[];
-}
-
-function sanitizeFuelTypeName(formData: FormData): string {
-  const value = formData.get("nombre");
-  if (typeof value !== "string") {
-    return "";
-  }
-
-  return value.trim();
-}
-
-function getFuelTypeId(formData: FormData): string {
-  const value = formData.get("fuelTypeId");
+function getString(formData: FormData, key: string): string {
+  const value = formData.get(key);
   return typeof value === "string" ? value : "";
-}
-
-function hasConflictError(error: unknown) {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    (error as { code?: string }).code === "23505"
-  );
 }
 
 export async function createFuelTypeAction(formData: FormData) {
   "use server";
   const session = await getAuthorizedPageSession();
-
   if (
     !canRunFuelTypeCatalogAction(
       session.effective_capabilities,
@@ -281,20 +262,16 @@ export async function createFuelTypeAction(formData: FormData) {
     redirect("/dashboard");
   }
 
-  const nombre = sanitizeFuelTypeName(formData);
-  if (!nombre) {
-    throw new Error("missing_name");
-  }
-
-  const { error } = await createWebSupabaseServiceClient()
-    .from("tipos_combustible")
-    .insert({ tenant_id: session.tenant_id, nombre, estado: "activo" });
-
-  if (error) {
-    if (hasConflictError(error)) {
-      throw new Error("duplicate_active_name");
+  const service = buildFuelTypeCatalogService(session);
+  const result = await service.createFuelType(
+    { tenant_id: session.tenant_id, user_id: session.user_id },
+    {
+      nombre: getString(formData, "nombre"),
     }
-    throw new Error("mutation_failed");
+  );
+
+  if (!result.ok) {
+    throw new Error(result.code ?? "fuel_type_create_failed");
   }
 
   revalidatePath("/dashboard/tipos_combustible");
@@ -303,7 +280,6 @@ export async function createFuelTypeAction(formData: FormData) {
 export async function updateFuelTypeAction(formData: FormData) {
   "use server";
   const session = await getAuthorizedPageSession();
-
   if (
     !canRunFuelTypeCatalogAction(
       session.effective_capabilities,
@@ -313,35 +289,17 @@ export async function updateFuelTypeAction(formData: FormData) {
     redirect("/dashboard");
   }
 
-  const fuelTypeId = getFuelTypeId(formData);
-  const nombre = sanitizeFuelTypeName(formData);
-
-  if (!fuelTypeId) {
-    throw new Error("missing_fuel_type");
-  }
-
-  if (!nombre) {
-    throw new Error("missing_name");
-  }
-
-  const { data, error } = await createWebSupabaseServiceClient()
-    .from("tipos_combustible")
-    .update({ nombre })
-    .eq("tenant_id", session.tenant_id)
-    .eq("id", fuelTypeId)
-    .eq("estado", "activo")
-    .select("id")
-    .maybeSingle();
-
-  if (error) {
-    if (hasConflictError(error)) {
-      throw new Error("duplicate_active_name");
+  const service = buildFuelTypeCatalogService(session);
+  const result = await service.updateFuelType(
+    { tenant_id: session.tenant_id, user_id: session.user_id },
+    {
+      fuelTypeId: getString(formData, "fuelTypeId"),
+      nombre: getString(formData, "nombre"),
     }
-    throw new Error("mutation_failed");
-  }
+  );
 
-  if (!data) {
-    throw new Error("missing_fuel_type");
+  if (!result.ok) {
+    throw new Error(result.code ?? "fuel_type_update_failed");
   }
 
   revalidatePath("/dashboard/tipos_combustible");
@@ -350,7 +308,6 @@ export async function updateFuelTypeAction(formData: FormData) {
 export async function hideFuelTypeAction(formData: FormData) {
   "use server";
   const session = await getAuthorizedPageSession();
-
   if (
     !canRunFuelTypeCatalogAction(
       session.effective_capabilities,
@@ -360,28 +317,14 @@ export async function hideFuelTypeAction(formData: FormData) {
     redirect("/dashboard");
   }
 
-  const fuelTypeId = getFuelTypeId(formData);
-  if (!fuelTypeId) {
-    throw new Error("missing_fuel_type");
-  }
+  const service = buildFuelTypeCatalogService(session);
+  const result = await service.hideFuelType(
+    { tenant_id: session.tenant_id, user_id: session.user_id },
+    { fuelTypeId: getString(formData, "fuelTypeId") }
+  );
 
-  const { data, error } = await createWebSupabaseServiceClient()
-    .from("tipos_combustible")
-    .update({ estado: "oculto" })
-    .eq("tenant_id", session.tenant_id)
-    .eq("id", fuelTypeId)
-    .select("id")
-    .maybeSingle();
-
-  if (error) {
-    if (hasConflictError(error)) {
-      throw new Error("duplicate_active_name");
-    }
-    throw new Error("mutation_failed");
-  }
-
-  if (!data) {
-    throw new Error("missing_fuel_type");
+  if (!result.ok) {
+    throw new Error(result.code ?? "fuel_type_update_failed");
   }
 
   revalidatePath("/dashboard/tipos_combustible");
@@ -389,9 +332,13 @@ export async function hideFuelTypeAction(formData: FormData) {
 
 export default async function TiposCombustiblePage() {
   const session = await getAuthorizedPageSession();
+  const service = buildFuelTypeCatalogService(session);
   const [tenantName, fuelTypes] = await Promise.all([
     lookupTenantName(session.tenant_id),
-    listActiveFuelTypes(session.tenant_id),
+    service.listActiveFuelTypes({
+      tenant_id: session.tenant_id,
+      user_id: session.user_id,
+    }),
   ]);
 
   return renderFuelTypeCatalogShell({
