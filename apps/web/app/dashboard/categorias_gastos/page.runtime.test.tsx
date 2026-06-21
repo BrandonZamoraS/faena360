@@ -43,6 +43,8 @@ function createQueryBuilder() {
   return queryBuilder;
 }
 
+const defaultRpcSuccess = { data: true, error: null };
+
 vi.mock("../../../lib/auth/session", () => ({
   createServerStateSessionRefresher: vi.fn(),
   requireWebAccess: (...args: unknown[]) => requireWebAccessMock(...args),
@@ -99,6 +101,7 @@ beforeEach(() => {
   });
   createWebSupabaseServiceClientMock.mockReturnValue({
     from: vi.fn(() => createQueryBuilder()),
+    rpc: vi.fn().mockResolvedValue(defaultRpcSuccess),
   });
 });
 
@@ -294,18 +297,25 @@ describe("categorias_gastos runtime server guards", () => {
     formData.set("nombre", "Combustible");
     formData.set("descripcion", "Gastos del turno");
 
+    const rpcMock = vi
+      .fn()
+      .mockResolvedValue({ data: "d8eb0000-0000-0000-0000-000000000001", error: null });
     const queryBuilder = createQueryBuilder();
     const fromMock = vi.fn(() => queryBuilder);
-    createWebSupabaseServiceClientMock.mockReturnValue({ from: fromMock });
+    createWebSupabaseServiceClientMock.mockReturnValue({
+      from: fromMock,
+      rpc: rpcMock,
+    });
 
     await createExpenseCategoryAction(formData);
 
-    expect(fromMock).toHaveBeenCalledWith("categorias_gastos");
-    expect(queryBuilder.insert).toHaveBeenCalledWith({
-      tenant_id: "tenant-a",
-      nombre: "Combustible",
-      descripcion: "Gastos del turno",
-      estado: "activo",
+    expect(fromMock).not.toHaveBeenCalled();
+    expect(rpcMock).toHaveBeenCalledWith("create_categoria_gasto", {
+      p_actor_id: "user-no-create",
+      p_audit_source: "web",
+      p_tenant_id: "tenant-a",
+      p_nombre: "Combustible",
+      p_descripcion: "Gastos del turno",
     });
     expect(revalidatePathMock).toHaveBeenCalledWith(
       "/dashboard/categorias_gastos"
@@ -338,24 +348,30 @@ describe("categorias_gastos runtime server guards", () => {
     const formData = new FormData();
     formData.set("nombre", "Combustible");
 
+    const rpcMock = vi
+      .fn()
+      .mockResolvedValue({
+        data: null,
+        error: { code: "23505", message: "duplicate key value" },
+      });
     const queryBuilder = createQueryBuilder();
-    queryBuilder.insert.mockResolvedValue({
-      data: null,
-      error: { code: "23505", message: "duplicate key value" },
-    });
     const fromMock = vi.fn(() => queryBuilder);
-    createWebSupabaseServiceClientMock.mockReturnValue({ from: fromMock });
+    createWebSupabaseServiceClientMock.mockReturnValue({
+      from: fromMock,
+      rpc: rpcMock,
+    });
 
     await expect(createExpenseCategoryAction(formData)).rejects.toThrow(
       "duplicate_active_name"
     );
 
-    expect(fromMock).toHaveBeenCalledWith("categorias_gastos");
-    expect(queryBuilder.insert).toHaveBeenCalledWith({
-      tenant_id: "tenant-a",
-      nombre: "Combustible",
-      descripcion: null,
-      estado: "activo",
+    expect(fromMock).not.toHaveBeenCalled();
+    expect(rpcMock).toHaveBeenCalledWith("create_categoria_gasto", {
+      p_actor_id: "user-no-create",
+      p_audit_source: "web",
+      p_tenant_id: "tenant-a",
+      p_nombre: "Combustible",
+      p_descripcion: null,
     });
   });
 
@@ -419,22 +435,30 @@ describe("categorias_gastos runtime server guards", () => {
     formData.set("nombre", "Combustible actualizado");
     formData.set("descripcion", "Actualizado");
 
+    const rpcMock = vi
+      .fn()
+      .mockResolvedValue({
+        data: true,
+        error: null,
+      });
     const queryBuilder = createQueryBuilder();
-    queryBuilder.maybeSingle.mockResolvedValue({
-      data: { id: "cat-1" },
-      error: null,
-    });
     const fromMock = vi.fn(() => queryBuilder);
-    createWebSupabaseServiceClientMock.mockReturnValue({ from: fromMock });
+    createWebSupabaseServiceClientMock.mockReturnValue({
+      from: fromMock,
+      rpc: rpcMock,
+    });
 
     await updateExpenseCategoryAction(formData);
 
-    expect(fromMock).toHaveBeenCalledWith("categorias_gastos");
-    expect(queryBuilder.update).toHaveBeenCalledWith({
-      nombre: "Combustible actualizado",
-      descripcion: "Actualizado",
+    expect(fromMock).not.toHaveBeenCalled();
+    expect(rpcMock).toHaveBeenCalledWith("update_categoria_gasto", {
+      p_actor_id: "user-no-create",
+      p_audit_source: "web",
+      p_tenant_id: "tenant-a",
+      p_category_id: "cat-1",
+      p_nombre: "Combustible actualizado",
+      p_descripcion: "Actualizado",
     });
-    expect(queryBuilder.eq).toHaveBeenNthCalledWith(1, "tenant_id", "tenant-a");
     expect(revalidatePathMock).toHaveBeenCalledWith(
       "/dashboard/categorias_gastos"
     );
@@ -468,22 +492,31 @@ describe("categorias_gastos runtime server guards", () => {
     formData.set("categoryId", "cat-1");
     formData.set("nombre", "Combustible repetido");
 
+    const rpcMock = vi
+      .fn()
+      .mockResolvedValue({
+        data: false,
+        error: { code: "23505", message: "duplicate key value" },
+      });
     const queryBuilder = createQueryBuilder();
-    queryBuilder.maybeSingle.mockResolvedValue({
-      data: null,
-      error: { code: "23505", message: "duplicate key value" },
-    });
 
     const fromMock = vi.fn(() => queryBuilder);
-    createWebSupabaseServiceClientMock.mockReturnValue({ from: fromMock });
+    createWebSupabaseServiceClientMock.mockReturnValue({
+      from: fromMock,
+      rpc: rpcMock,
+    });
 
     await expect(updateExpenseCategoryAction(formData)).rejects.toThrow(
       "duplicate_active_name"
     );
 
-    expect(queryBuilder.update).toHaveBeenCalledWith({
-      nombre: "Combustible repetido",
-      descripcion: null,
+    expect(rpcMock).toHaveBeenCalledWith("update_categoria_gasto", {
+      p_actor_id: "user-no-create",
+      p_audit_source: "web",
+      p_tenant_id: "tenant-a",
+      p_category_id: "cat-1",
+      p_nombre: "Combustible repetido",
+      p_descripcion: null,
     });
   });
 
@@ -496,19 +529,28 @@ describe("categorias_gastos runtime server guards", () => {
     const formData = new FormData();
     formData.set("categoryId", "cat-1");
 
+    const rpcMock = vi
+      .fn()
+      .mockResolvedValue({
+        data: true,
+        error: null,
+      });
     const queryBuilder = createQueryBuilder();
-    queryBuilder.maybeSingle.mockResolvedValue({
-      data: { id: "cat-1" },
-      error: null,
-    });
     const fromMock = vi.fn(() => queryBuilder);
-    createWebSupabaseServiceClientMock.mockReturnValue({ from: fromMock });
+    createWebSupabaseServiceClientMock.mockReturnValue({
+      from: fromMock,
+      rpc: rpcMock,
+    });
 
     await hideExpenseCategoryAction(formData);
 
-    expect(fromMock).toHaveBeenCalledWith("categorias_gastos");
-    expect(queryBuilder.update).toHaveBeenCalledWith({ estado: "oculto" });
-    expect(queryBuilder.eq).toHaveBeenNthCalledWith(1, "tenant_id", "tenant-a");
+    expect(fromMock).not.toHaveBeenCalled();
+    expect(rpcMock).toHaveBeenCalledWith("hide_categoria_gasto", {
+      p_actor_id: "user-no-create",
+      p_audit_source: "web",
+      p_tenant_id: "tenant-a",
+      p_category_id: "cat-1",
+    });
     expect(revalidatePathMock).toHaveBeenCalledWith(
       "/dashboard/categorias_gastos"
     );

@@ -298,6 +298,90 @@ end $$;
 
 rollback to savepoint cg_test7;
 
+\echo '--- Test 8: RPC mutations preserve audit actor and source ---'
+savepoint cg_test8;
+set local role service_role;
+
+do $$
+declare
+  v_category_id uuid;
+  v_create_audit_count int;
+  v_update_audit_count int;
+  v_hide_audit_count int;
+begin
+  select public.create_categoria_gasto(
+    '33330000-0000-0000-0000-000000000001',
+    'web',
+    '11110000-0000-0000-0000-000000000001',
+    'Peajes',
+    'Gastos de autopista'
+  ) into v_category_id;
+
+  select count(*) into v_create_audit_count
+  from public.audit_log
+  where tenant_id = '11110000-0000-0000-0000-000000000001'
+    and actor_user_id = '33330000-0000-0000-0000-000000000001'
+    and source = 'web'
+    and action = 'categorias_gastos.create'
+    and new_value ->> 'id' = v_category_id::text;
+
+  if v_create_audit_count = 1 then
+    raise notice 'PASS: create RPC preserves audit actor/source';
+  else
+    raise exception 'FAIL: create RPC emitted % matching audit rows', v_create_audit_count;
+  end if;
+
+  if not public.update_categoria_gasto(
+    '33330000-0000-0000-0000-000000000001',
+    'web',
+    '11110000-0000-0000-0000-000000000001',
+    v_category_id,
+    'Peajes actualizados',
+    null
+  ) then
+    raise exception 'FAIL: update RPC did not update the category';
+  end if;
+
+  select count(*) into v_update_audit_count
+  from public.audit_log
+  where tenant_id = '11110000-0000-0000-0000-000000000001'
+    and actor_user_id = '33330000-0000-0000-0000-000000000001'
+    and source = 'web'
+    and action = 'categorias_gastos.update'
+    and new_value ->> 'nombre' = 'Peajes actualizados';
+
+  if v_update_audit_count = 1 then
+    raise notice 'PASS: update RPC preserves audit actor/source';
+  else
+    raise exception 'FAIL: update RPC emitted % matching audit rows', v_update_audit_count;
+  end if;
+
+  if not public.hide_categoria_gasto(
+    '33330000-0000-0000-0000-000000000001',
+    'web',
+    '11110000-0000-0000-0000-000000000001',
+    v_category_id
+  ) then
+    raise exception 'FAIL: hide RPC did not hide the category';
+  end if;
+
+  select count(*) into v_hide_audit_count
+  from public.audit_log
+  where tenant_id = '11110000-0000-0000-0000-000000000001'
+    and actor_user_id = '33330000-0000-0000-0000-000000000001'
+    and source = 'web'
+    and action = 'categorias_gastos.update'
+    and new_value ->> 'estado' = 'oculto';
+
+  if v_hide_audit_count = 1 then
+    raise notice 'PASS: hide RPC preserves audit actor/source';
+  else
+    raise exception 'FAIL: hide RPC emitted % matching audit rows', v_hide_audit_count;
+  end if;
+end $$;
+
+rollback to savepoint cg_test8;
+
 \echo 'All expense category catalog checks passed.';
 
 rollback;

@@ -297,16 +297,20 @@ export async function createExpenseCategoryAction(formData: FormData) {
   if (!nombre) throw new Error("missing_name");
   const descripcion = sanitizeOptionalText(formData, "descripcion");
 
-  const { error } = await createWebSupabaseServiceClient()
-    .from("categorias_gastos")
-    .insert({
-      tenant_id: session.tenant_id,
-      nombre,
-      descripcion,
-      estado: "activo",
-    });
+  const mutationResponse = await createWebSupabaseServiceClient().rpc(
+    "create_categoria_gasto",
+    {
+      p_actor_id: session.user_id,
+      p_audit_source: "web",
+      p_tenant_id: session.tenant_id,
+      p_nombre: nombre,
+      p_descripcion: descripcion,
+    }
+  );
 
-  if (error) assertNoConflict(error);
+  if (mutationResponse.error) {
+    assertNoConflict(mutationResponse.error);
+  }
 
   revalidatePath("/dashboard/categorias_gastos");
 }
@@ -331,17 +335,17 @@ export async function updateExpenseCategoryAction(formData: FormData) {
   if (!categoryId) throw new Error("missing_category");
   if (!nombre) throw new Error("missing_name");
 
-  const { data, error } = await createWebSupabaseServiceClient()
-    .from("categorias_gastos")
-    .update({ nombre, descripcion })
-    .eq("tenant_id", session.tenant_id)
-    .eq("id", categoryId)
-    .eq("estado", "activo")
-    .select("id")
-    .maybeSingle();
+  const response = await createWebSupabaseServiceClient().rpc("update_categoria_gasto", {
+    p_actor_id: session.user_id,
+    p_audit_source: "web",
+    p_tenant_id: session.tenant_id,
+    p_category_id: categoryId,
+    p_nombre: nombre,
+    p_descripcion: descripcion,
+  });
 
-  if (error) assertNoConflict(error);
-  if (!data) throw new Error("missing_category");
+  if (response.error) assertNoConflict(response.error);
+  if (!response.data) throw new Error("missing_category");
 
   revalidatePath("/dashboard/categorias_gastos");
 }
@@ -362,16 +366,15 @@ export async function hideExpenseCategoryAction(formData: FormData) {
   const categoryId = getCategoryId(formData);
   if (!categoryId) throw new Error("missing_category");
 
-  const { data, error } = await createWebSupabaseServiceClient()
-    .from("categorias_gastos")
-    .update({ estado: "oculto" })
-    .eq("tenant_id", session.tenant_id)
-    .eq("id", categoryId)
-    .select("id")
-    .maybeSingle();
+  const response = await createWebSupabaseServiceClient().rpc("hide_categoria_gasto", {
+    p_actor_id: session.user_id,
+    p_audit_source: "web",
+    p_tenant_id: session.tenant_id,
+    p_category_id: categoryId,
+  });
 
-  if (error) assertNoConflict(error);
-  if (!data) throw new Error("missing_category");
+  if (response.error) assertNoConflict(response.error);
+  if (!response.data) throw new Error("missing_category");
 
   revalidatePath("/dashboard/categorias_gastos");
 }
