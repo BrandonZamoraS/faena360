@@ -1,3 +1,4 @@
 export * from "./auth";
-export * from "./storage";
 export * from "./clients";
+export * from "./fuel-types";
+export * from "./storage";
