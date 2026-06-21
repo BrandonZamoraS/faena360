@@ -297,9 +297,10 @@ describe("categorias_gastos runtime server guards", () => {
     formData.set("nombre", "Combustible");
     formData.set("descripcion", "Gastos del turno");
 
-    const rpcMock = vi
-      .fn()
-      .mockResolvedValue({ data: "d8eb0000-0000-0000-0000-000000000001", error: null });
+    const rpcMock = vi.fn().mockResolvedValue({
+      data: "d8eb0000-0000-0000-0000-000000000001",
+      error: null,
+    });
     const queryBuilder = createQueryBuilder();
     const fromMock = vi.fn(() => queryBuilder);
     createWebSupabaseServiceClientMock.mockReturnValue({
@@ -348,12 +349,10 @@ describe("categorias_gastos runtime server guards", () => {
     const formData = new FormData();
     formData.set("nombre", "Combustible");
 
-    const rpcMock = vi
-      .fn()
-      .mockResolvedValue({
-        data: null,
-        error: { code: "23505", message: "duplicate key value" },
-      });
+    const rpcMock = vi.fn().mockResolvedValue({
+      data: null,
+      error: { code: "23505", message: "duplicate key value" },
+    });
     const queryBuilder = createQueryBuilder();
     const fromMock = vi.fn(() => queryBuilder);
     createWebSupabaseServiceClientMock.mockReturnValue({
@@ -435,12 +434,10 @@ describe("categorias_gastos runtime server guards", () => {
     formData.set("nombre", "Combustible actualizado");
     formData.set("descripcion", "Actualizado");
 
-    const rpcMock = vi
-      .fn()
-      .mockResolvedValue({
-        data: true,
-        error: null,
-      });
+    const rpcMock = vi.fn().mockResolvedValue({
+      data: true,
+      error: null,
+    });
     const queryBuilder = createQueryBuilder();
     const fromMock = vi.fn(() => queryBuilder);
     createWebSupabaseServiceClientMock.mockReturnValue({
@@ -492,12 +489,10 @@ describe("categorias_gastos runtime server guards", () => {
     formData.set("categoryId", "cat-1");
     formData.set("nombre", "Combustible repetido");
 
-    const rpcMock = vi
-      .fn()
-      .mockResolvedValue({
-        data: false,
-        error: { code: "23505", message: "duplicate key value" },
-      });
+    const rpcMock = vi.fn().mockResolvedValue({
+      data: false,
+      error: { code: "23505", message: "duplicate key value" },
+    });
     const queryBuilder = createQueryBuilder();
 
     const fromMock = vi.fn(() => queryBuilder);
@@ -529,12 +524,10 @@ describe("categorias_gastos runtime server guards", () => {
     const formData = new FormData();
     formData.set("categoryId", "cat-1");
 
-    const rpcMock = vi
-      .fn()
-      .mockResolvedValue({
-        data: true,
-        error: null,
-      });
+    const rpcMock = vi.fn().mockResolvedValue({
+      data: true,
+      error: null,
+    });
     const queryBuilder = createQueryBuilder();
     const fromMock = vi.fn(() => queryBuilder);
     createWebSupabaseServiceClientMock.mockReturnValue({
