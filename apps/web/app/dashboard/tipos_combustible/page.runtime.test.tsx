@@ -32,6 +32,8 @@ describe("tipos_combustible page shell", () => {
     expect(html).toContain("Tipos de combustible");
     expect(html).toContain("Crear tipo de combustible");
     expect(html).toContain("Diésel");
+    expect(html).toContain('value="Diésel"');
+    expect(html).not.toContain("Diésel actualizado");
     expect(html).toContain("Guardar cambios");
     expect(html).toContain("Ocultar tipo de combustible");
   });

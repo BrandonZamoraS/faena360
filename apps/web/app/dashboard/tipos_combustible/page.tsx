@@ -144,9 +144,7 @@ export function renderFuelTypeCatalogShell(input: FuelTypeCatalogShellInput) {
                         type="hidden"
                         value={fuelType.id}
                       />
-                      <FuelTypeNameField
-                        fuelTypeName={`${fuelType.nombre} actualizado`}
-                      />
+                      <FuelTypeNameField fuelTypeName={fuelType.nombre} />
                       <button
                         className="login-button md:col-span-2"
                         type="submit"

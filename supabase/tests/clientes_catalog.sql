@@ -318,6 +318,10 @@ begin
   if v_entry.old_value ? 'tenant_id' or v_entry.new_value ? 'tenant_id' or v_entry.old_value ? 'telefono' or v_entry.new_value ? 'telefono' then
     raise exception 'FAIL: audit UPDATE diff included unchanged fields';
   end if;
+
+  if v_entry.old_value ? 'created_at' or v_entry.new_value ? 'created_at' or v_entry.old_value ? 'updated_at' or v_entry.new_value ? 'updated_at' then
+    raise exception 'FAIL: audit UPDATE diff included automatic timestamp fields';
+  end if;
 end $$;
 
 rollback to savepoint clientes_test9;
