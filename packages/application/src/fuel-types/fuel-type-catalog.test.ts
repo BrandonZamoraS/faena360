@@ -190,6 +190,27 @@ describe("fuel type catalog service", () => {
     expect(calls.createCalls).toHaveLength(0);
   });
 
+  it("returns duplicate_active_name when repository throws unique violation", async () => {
+    const { service } = createFuelTypeCatalogServiceWithMocks({
+      repository: {
+        create: async () => {
+          const error = new Error(
+            "duplicate key value violates unique constraint"
+          ) as unknown as { code: string };
+          error.code = "23505";
+          throw error;
+        },
+      },
+    });
+
+    const createResult = await service.createFuelType(
+      { tenant_id: "tenant-1", user_id: "actor-1" },
+      { nombre: "Gasolina 95" }
+    );
+
+    expect(createResult).toEqual({ ok: false, code: "duplicate_active_name" });
+  });
+
   it("updates and hides fuel types through tenant-scoped repository calls", async () => {
     const { service, calls } = createFuelTypeCatalogServiceWithMocks();
 

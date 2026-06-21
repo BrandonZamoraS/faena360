@@ -110,7 +110,10 @@ export function createFuelTypeCatalogService({
           nombre,
         });
         return { ok: true, fuelTypeId: createdFuelType.id };
-      } catch {
+      } catch (error) {
+        if (isUniqueViolationError(error)) {
+          return { ok: false, code: "duplicate_active_name" };
+        }
         return { ok: false, code: "fuel_type_create_failed" };
       }
     },
@@ -156,7 +159,10 @@ export function createFuelTypeCatalogService({
         }
 
         return { ok: true };
-      } catch {
+      } catch (error) {
+        if (isUniqueViolationError(error)) {
+          return { ok: false, code: "duplicate_active_name" };
+        }
         return { ok: false, code: "fuel_type_update_failed" };
       }
     },
@@ -251,5 +257,13 @@ function containsTenantOverride(input: unknown): boolean {
     Object.prototype.hasOwnProperty.call(candidate, "tenant_id") ||
     Object.prototype.hasOwnProperty.call(candidate, "tenantId") ||
     Object.prototype.hasOwnProperty.call(candidate, "tenant")
+  );
+}
+
+function isUniqueViolationError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    (error as { code?: string }).code === "23505"
   );
 }
