@@ -4,30 +4,16 @@ import { SupabaseAppSessionRepository } from "@faena360/infrastructure";
 import type { AppSession } from "@faena360/domain";
 import { createWebSupabaseServiceClient } from "../../lib/supabase";
 import {
-  APP_SESSION_COOKIE_NAME,
   createServerStateSessionRefresher,
   requireWebAccess,
 } from "../../lib/auth/session";
+import { DashboardSidebar } from "./_components/dashboard-sidebar";
 
 type TenantLookup = (tenantId: string) => Promise<{
   readonly id: string;
   readonly name: string;
   readonly status: string;
 }>;
-
-export type CatalogValidationError = {
-  readonly field?: string;
-  readonly code: string;
-  readonly message: string;
-};
-
-type DashboardModuleDefinition = {
-  readonly slug: string;
-  readonly href: `/dashboard/${string}`;
-  readonly label: string;
-  readonly description: string;
-  readonly canView: (capabilities: readonly string[]) => boolean;
-};
 
 export type DashboardViewModel =
   | {
@@ -39,74 +25,6 @@ export type DashboardViewModel =
       readonly roles: readonly string[];
       readonly effectiveCapabilities: readonly string[];
     };
-
-const USER_READ_CAPABILITY = "users:read";
-const USER_ADMIN_MODULE_CAPABILITIES = ["users:create", "users:update"];
-
-function hasCapability(capabilities: readonly string[], capability: string) {
-  return capabilities.includes(capability);
-}
-
-function canAccessUserAdminModule(capabilities: readonly string[]) {
-  return (
-    hasCapability(capabilities, USER_READ_CAPABILITY) &&
-    USER_ADMIN_MODULE_CAPABILITIES.some((capability) =>
-      hasCapability(capabilities, capability)
-    )
-  );
-}
-
-const DASHBOARD_MODULES: readonly DashboardModuleDefinition[] = [
-  {
-    slug: "admin_usuarios",
-    href: "/dashboard/admin_usuarios",
-    label: "admin_usuarios",
-    description: "Crear y administrar usuarios",
-    canView: canAccessUserAdminModule,
-  },
-  {
-    slug: "projects",
-    href: "/dashboard/projects",
-    label: "Proyectos",
-    description: "Consultar proyectos del tenant",
-    canView: (capabilities) => hasCapability(capabilities, "projects:read"),
-  },
-  {
-    slug: "subprojects",
-    href: "/dashboard/subprojects",
-    label: "Subproyectos",
-    description: "Consultar subproyectos del tenant",
-    canView: (capabilities) => hasCapability(capabilities, "subprojects:read"),
-  },
-  {
-    slug: "machines",
-    href: "/dashboard/machines",
-    label: "Maquinaria",
-    description: "Consultar maquinaria del tenant",
-    canView: (capabilities) => hasCapability(capabilities, "machines:read"),
-  },
-  {
-    slug: "clients",
-    href: "/dashboard/clientes",
-    label: "Clientes",
-    description: "Consultar clientes del tenant",
-    canView: (capabilities) => hasCapability(capabilities, "clients:read"),
-  },
-  {
-    slug: "categories",
-    href: "/dashboard/categories",
-    label: "Categorías",
-    description: "Consultar categorías del tenant",
-    canView: (capabilities) => hasCapability(capabilities, "categories:read"),
-  },
-  {
-    slug: "fuel_types",
-    href: "/dashboard/tipos_combustible",
-    label: "Tipos de combustible",
-    description: "Consultar tipos de combustible del tenant",
-    canView: (capabilities) => hasCapability(capabilities, "fuel_types:read"),
-  },
-];
 
 export async function createDashboardViewModel(input: {
   readonly session: AppSession | null;
@@ -136,46 +54,16 @@ export async function createDashboardViewModel(input: {
 }
 
 export function renderDashboardShell(
-  viewModel: Exclude<DashboardViewModel, { redirectTo: "/" }>
+  viewModel: Exclude<DashboardViewModel, { redirectTo: "/" }>,
+  activeHref: "/dashboard" | `/dashboard/${string}` = "/dashboard"
 ) {
-  const visibleModules = DASHBOARD_MODULES.filter((module) =>
-    module.canView(viewModel.effectiveCapabilities)
-  );
-
   return (
     <main className="min-h-screen bg-[#f5fbf7] text-[#102118]">
       <div className="mx-auto flex min-h-screen max-w-7xl flex-col lg:flex-row">
-        <aside className="flex border-b border-[#dcebe1] bg-[#edf5ec] px-6 py-6 lg:w-72 lg:flex-col lg:border-b-0 lg:border-r">
-          <p className="text-sm font-semibold text-[#173b29]">Faena360</p>
-          <nav className="mt-8 space-y-2" aria-label="Módulos">
-            <a
-              className="block rounded-xl bg-[#173b29] px-4 py-3 text-sm font-semibold text-white"
-              href="/dashboard"
-            >
-              Dashboard
-            </a>
-            {visibleModules.map((module) => (
-              <a
-                key={module.slug}
-                className="block rounded-xl px-4 py-3 text-sm font-semibold text-[#173b29] transition hover:bg-white focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#2f7044]"
-                href={module.href}
-              >
-                <span className="block">{module.label}</span>
-                <span className="mt-1 block text-xs font-medium text-[#385346]">
-                  {module.description}
-                </span>
-              </a>
-            ))}
-          </nav>
-          <form action={logoutAction} className="mt-8 lg:mt-auto">
-            <button
-              className="w-full rounded-xl border border-[#d0e2d6] bg-white px-4 py-3 text-left text-sm font-semibold text-[#173b29] transition hover:bg-[#f7faf5]"
-              type="submit"
-            >
-              Cerrar sesión
-            </button>
-          </form>
-        </aside>
+        <DashboardSidebar
+          capabilities={viewModel.effectiveCapabilities}
+          activeHref={activeHref}
+        />
 
         <section className="flex min-w-0 flex-1 flex-col gap-8 px-6 py-8">
           <header className="rounded-[2rem] border border-[#dcebe1] bg-white p-8 shadow-sm">
@@ -208,13 +96,6 @@ export function renderDashboardShell(
       </div>
     </main>
   );
-}
-
-export async function logoutAction() {
-  "use server";
-  const cookieStore = await cookies();
-  cookieStore.delete(APP_SESSION_COOKIE_NAME);
-  redirect("/");
 }
 
 async function lookupTenant(tenantId: string) {

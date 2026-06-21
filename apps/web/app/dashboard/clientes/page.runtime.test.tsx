@@ -68,6 +68,30 @@ describe("clientes page shell", () => {
     expect(html).not.toContain("Crear cliente");
   });
 
+  it("highlights active client module and keeps non-visible modules hidden", () => {
+    const html = renderToStaticMarkup(
+      renderClientCatalogShell({
+        tenantName: "Tenant A",
+        capabilities: [
+          "clients:read",
+          "projects:read",
+          "users:create",
+          "users:update",
+          "fuel_types:read",
+        ],
+        clients: [],
+      })
+    );
+
+    expect(html).toContain(
+      'class="block rounded-xl bg-[#173b29] px-4 py-3 text-sm font-semibold text-white" href="/dashboard/clientes"'
+    );
+    expect(html).toContain(
+      'class="block rounded-xl px-4 py-3 text-sm font-semibold text-[#173b29] transition hover:bg-white focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#2f7044]" href="/dashboard/projects"'
+    );
+    expect(html).not.toContain('href="/dashboard/admin_usuarios"');
+  });
+
   it("gates page access and direct server actions by effective capabilities", () => {
     expect(canAccessClientCatalogPage(["clients:read"])).toBe(true);
     expect(

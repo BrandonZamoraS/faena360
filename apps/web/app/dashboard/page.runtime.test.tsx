@@ -91,6 +91,50 @@ describe("dashboard shell", () => {
     expect(html).toContain("No hay módulos operativos publicados todavía.");
   });
 
+  it("marks the dashboard route as active in shared sidebar", () => {
+    const html = renderToStaticMarkup(
+      renderDashboardShell({
+        tenantName: "Tenant A",
+        userEmail: "admin@faena360.com",
+        roles: ["admin"],
+        effectiveCapabilities: ["web.portal.access", "clients:read"],
+      })
+    );
+
+    expect(html).toContain(
+      'class="block rounded-xl bg-[#173b29] px-4 py-3 text-sm font-semibold text-white" href="/dashboard"'
+    );
+    expect(html).toContain(
+      'class="block rounded-xl px-4 py-3 text-sm font-semibold text-[#173b29] transition hover:bg-white focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#2f7044]" href="/dashboard/clientes"'
+    );
+  });
+
+  it("keeps module visibility and highlights the provided active route", () => {
+    const html = renderToStaticMarkup(
+      renderDashboardShell(
+        {
+          tenantName: "Tenant A",
+          userEmail: "admin@faena360.com",
+          roles: ["admin"],
+          effectiveCapabilities: [
+            "web.portal.access",
+            "clients:read",
+            "fuel_types:read",
+            "categories:read",
+          ],
+        },
+        "/dashboard/clientes"
+      )
+    );
+
+    expect(html).toContain(
+      'class="block rounded-xl bg-[#173b29] px-4 py-3 text-sm font-semibold text-white" href="/dashboard/clientes"'
+    );
+    expect(html).toContain(
+      'class="block rounded-xl px-4 py-3 text-sm font-semibold text-[#173b29] transition hover:bg-white focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#2f7044]" href="/dashboard/tipos_combustible"'
+    );
+  });
+
   it("shows the admin_usuarios module only when user write capabilities are present", () => {
     const adminHtml = renderToStaticMarkup(
       renderDashboardShell({

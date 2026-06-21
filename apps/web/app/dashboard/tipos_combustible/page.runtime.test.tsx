@@ -53,6 +53,26 @@ describe("tipos_combustible page shell", () => {
     expect(html).not.toContain("Ocultar tipo de combustible");
   });
 
+  it("highlights the active fuel type module in the sidebar", () => {
+    const html = renderToStaticMarkup(
+      renderFuelTypeCatalogShell({
+        tenantName: "Tenant A",
+        capabilities: ["fuel_types:read", "clients:read", "categories:read"],
+        fuelTypes: [],
+      })
+    );
+
+    expect(html).toContain(
+      'class="block rounded-xl px-4 py-3 text-sm font-semibold text-[#173b29] transition hover:bg-white focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#2f7044]" href="/dashboard/clientes"'
+    );
+    expect(html).toContain(
+      'class="block rounded-xl bg-[#173b29] px-4 py-3 text-sm font-semibold text-white" href="/dashboard/tipos_combustible"'
+    );
+    expect(html).toContain(
+      'class="block rounded-xl px-4 py-3 text-sm font-semibold text-[#173b29] transition hover:bg-white focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#2f7044]" href="/dashboard/categories"'
+    );
+  });
+
   it("hides shell without fuel_types read capability", () => {
     const html = renderToStaticMarkup(
       renderFuelTypeCatalogShell({
