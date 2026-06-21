@@ -83,7 +83,11 @@ const baselineSession = {
 
 const adminSession = {
   ...baselineSession,
-  effective_capabilities: ["categories:read", "categories:create", "categories:update"],
+  effective_capabilities: [
+    "categories:read",
+    "categories:create",
+    "categories:update",
+  ],
 };
 
 beforeEach(() => {
@@ -416,7 +420,10 @@ describe("categorias_gastos runtime server guards", () => {
     formData.set("descripcion", "Actualizado");
 
     const queryBuilder = createQueryBuilder();
-    queryBuilder.maybeSingle.mockResolvedValue({ data: { id: "cat-1" }, error: null });
+    queryBuilder.maybeSingle.mockResolvedValue({
+      data: { id: "cat-1" },
+      error: null,
+    });
     const fromMock = vi.fn(() => queryBuilder);
     createWebSupabaseServiceClientMock.mockReturnValue({ from: fromMock });
 
@@ -427,11 +434,7 @@ describe("categorias_gastos runtime server guards", () => {
       nombre: "Combustible actualizado",
       descripcion: "Actualizado",
     });
-    expect(queryBuilder.eq).toHaveBeenNthCalledWith(
-      1,
-      "tenant_id",
-      "tenant-a"
-    );
+    expect(queryBuilder.eq).toHaveBeenNthCalledWith(1, "tenant_id", "tenant-a");
     expect(revalidatePathMock).toHaveBeenCalledWith(
       "/dashboard/categorias_gastos"
     );
@@ -494,7 +497,10 @@ describe("categorias_gastos runtime server guards", () => {
     formData.set("categoryId", "cat-1");
 
     const queryBuilder = createQueryBuilder();
-    queryBuilder.maybeSingle.mockResolvedValue({ data: { id: "cat-1" }, error: null });
+    queryBuilder.maybeSingle.mockResolvedValue({
+      data: { id: "cat-1" },
+      error: null,
+    });
     const fromMock = vi.fn(() => queryBuilder);
     createWebSupabaseServiceClientMock.mockReturnValue({ from: fromMock });
 
@@ -502,11 +508,7 @@ describe("categorias_gastos runtime server guards", () => {
 
     expect(fromMock).toHaveBeenCalledWith("categorias_gastos");
     expect(queryBuilder.update).toHaveBeenCalledWith({ estado: "oculto" });
-    expect(queryBuilder.eq).toHaveBeenNthCalledWith(
-      1,
-      "tenant_id",
-      "tenant-a"
-    );
+    expect(queryBuilder.eq).toHaveBeenNthCalledWith(1, "tenant_id", "tenant-a");
     expect(revalidatePathMock).toHaveBeenCalledWith(
       "/dashboard/categorias_gastos"
     );
