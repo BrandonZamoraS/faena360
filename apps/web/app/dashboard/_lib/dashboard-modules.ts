@@ -59,10 +59,10 @@ export const DASHBOARD_MODULES: readonly DashboardModuleDefinition[] = [
     canView: (capabilities) => hasCapability(capabilities, "clients:read"),
   },
   {
-    slug: "categories",
-    href: "/dashboard/categories",
-    label: "Categorías",
-    description: "Consultar categorías del tenant",
+    slug: "categorias_gastos",
+    href: "/dashboard/categorias_gastos",
+    label: "Categorías de gastos",
+    description: "Consultar categorías de gasto del tenant",
     canView: (capabilities) => hasCapability(capabilities, "categories:read"),
   },
   {
