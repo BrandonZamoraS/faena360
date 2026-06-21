@@ -38,6 +38,9 @@ export interface UserManagementServiceDependencies {
       capabilityCode: string
     ): Promise<unknown>;
   };
+  readonly capabilityInvalidator?: {
+    invalidate(scope: CapabilityScope): Promise<void>;
+  };
 }
 
 const USERS_CREATE_CAPABILITY = "users:create" as const;
@@ -285,6 +288,23 @@ export function createUserManagementService(
         }
       }
 
+      if (normalizedInput.phone) {
+        const currentEmail = await repository.getUserEmail({
+          userId: normalizedInput.userId,
+          tenantId,
+        });
+
+        const phoneExists = await repository.identifierExistsExcluding({
+          userId: normalizedInput.userId,
+          email: currentEmail,
+          phone: normalizedInput.phone,
+        });
+
+        if (phoneExists) {
+          return { ok: false, code: "duplicate_identifier" };
+        }
+      }
+
       try {
         await repository.updateProfile({
           tenantId,
@@ -305,6 +325,18 @@ export function createUserManagementService(
           });
         } catch {
           return { ok: false, code: "role_assignment_failed" };
+        }
+
+        if (dependencies.capabilityInvalidator) {
+          try {
+            await dependencies.capabilityInvalidator.invalidate({
+              tenantId,
+              userId: normalizedInput.userId,
+            });
+          } catch {
+            // Invalidation failure is non-fatal; the role change has already
+            // been persisted. Audit must still be recorded downstream.
+          }
         }
       }
 

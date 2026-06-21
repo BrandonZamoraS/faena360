@@ -209,6 +209,7 @@ async function runTenantActiveUsersUseSchemaColumnsCheck(): Promise<void> {
       full_name: "Tenant One",
       phone: null,
       status: "active" as const,
+      user_roles: [{ role_id: "role-1" }, { role_id: "role-2" }],
     },
   ];
 
@@ -224,9 +225,10 @@ async function runTenantActiveUsersUseSchemaColumnsCheck(): Promise<void> {
 
   expect(result).toHaveLength(1);
   expect(result[0]?.user_id).toBe("user-id-1");
+  expect(result[0]?.role_ids).toEqual(["role-1", "role-2"]);
   expect(
     calls.find((entry) => entry.operation === "select")?.details
-  ).toContain("id,tenant_id,email,full_name,phone,status");
+  ).toContain("user_roles(role_id)");
 }
 
 async function runCreateProfileUsesAuthUserColumnAndReturnsId(): Promise<void> {
@@ -399,6 +401,40 @@ async function runRecordUserCreatedAuditUsesCurrentSchema(): Promise<void> {
   ).toBeTypeOf("string");
 }
 
+async function runIdentifierExistsExcludingPassesExcludeParamToRpc(): Promise<void> {
+  const calls: QueryCall[] = [];
+
+  const client = {
+    rpc: (functionName: string, args: Record<string, unknown>) => {
+      calls.push({ operation: "rpc", details: functionName });
+      calls.push({
+        operation: "rpc_args",
+        details: `email:${String(args.lookup_email)} phone:${String(args.lookup_phone)} exclude:${String(args.exclude_user_id)}`,
+      });
+
+      return { data: false, error: null };
+    },
+  } as unknown as SupabaseClient;
+
+  const repository = new SupabaseUserManagementRepository(client);
+
+  const exists = await repository.identifierExistsExcluding({
+    userId: "target-user-id",
+    email: "user@example.com",
+    phone: "+1 (555) 999-8888",
+  });
+
+  expect(exists).toBe(false);
+  expect(calls).toContainEqual({
+    operation: "rpc",
+    details: "user_profile_identifier_exists_excluding",
+  });
+  expect(calls).toContainEqual({
+    operation: "rpc_args",
+    details: "email:user@example.com phone:15559998888 exclude:target-user-id",
+  });
+}
+
 describe("SupabaseUserManagementRepository", () => {
   it("maps active list results to TenantUserSummary.user_id from user_profiles.id", async () => {
     await runTenantActiveUsersUseSchemaColumnsCheck();
@@ -434,5 +470,9 @@ describe("SupabaseUserManagementRepository", () => {
 
   it("soft deletes profiles by setting status inactive", async () => {
     await runDeactivateProfileUsesStatusInactive();
+  });
+
+  it("passes exclude_user_id to RPC for identifierExistsExcluding", async () => {
+    await runIdentifierExistsExcludingPassesExcludeParamToRpc();
   });
 });

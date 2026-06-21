@@ -31,6 +31,7 @@ describe("admin_usuarios page shell", () => {
             full_name: "Tenant User",
             phone: "15551112222",
             status: "active",
+            role_ids: ["role-admin"],
           },
         ],
       })
@@ -58,6 +59,7 @@ describe("admin_usuarios page shell", () => {
             full_name: "Tenant User",
             phone: null,
             status: "active",
+            role_ids: [],
           },
         ],
       })
@@ -81,6 +83,7 @@ describe("admin_usuarios page shell", () => {
             full_name: "Tenant User",
             phone: null,
             status: "active",
+            role_ids: [],
           },
         ],
       })
@@ -132,5 +135,79 @@ describe("admin_usuarios page shell", () => {
     expect(
       canRunUserAdminAction(["users:read", "users:create"], "users:update")
     ).toBe(false);
+  });
+
+  it("renders role checkboxes in update form when canManageRoles is true", () => {
+    const html = renderToStaticMarkup(
+      renderUserAdminShell({
+        tenantName: "Tenant A",
+        capabilities: ["users:update", "roles:read", "roles:update"],
+        roles,
+        users: [
+          {
+            user_id: "user-1",
+            tenant_id: "tenant-a",
+            email: "user@example.com",
+            full_name: "Tenant User",
+            phone: "15551112222",
+            status: "active",
+            role_ids: ["role-admin"],
+          },
+        ],
+      })
+    );
+
+    expect(html).toContain("administrador");
+    expect(html).toContain("supervisor");
+    expect(html).toContain("Guardar cambios");
+    expect(html).toContain('checked="" value="role-admin"');
+  });
+
+  it("hides role checkboxes in update form when canManageRoles is false", () => {
+    const html = renderToStaticMarkup(
+      renderUserAdminShell({
+        tenantName: "Tenant A",
+        capabilities: ["users:update"],
+        roles: [],
+        users: [
+          {
+            user_id: "user-1",
+            tenant_id: "tenant-a",
+            email: "user@example.com",
+            full_name: "Tenant User",
+            phone: null,
+            status: "active",
+            role_ids: [],
+          },
+        ],
+      })
+    );
+
+    expect(html).toContain("Guardar cambios");
+    expect(html).not.toContain("administrador");
+  });
+
+  it("renders roleIdsPresent hidden field when role controls are shown so empty role selection is submitted", () => {
+    const html = renderToStaticMarkup(
+      renderUserAdminShell({
+        tenantName: "Tenant A",
+        capabilities: ["users:update", "roles:read", "roles:update"],
+        roles,
+        users: [
+          {
+            user_id: "user-1",
+            tenant_id: "tenant-a",
+            email: "user@example.com",
+            full_name: "Tenant User",
+            phone: null,
+            status: "active",
+            role_ids: [],
+          },
+        ],
+      })
+    );
+
+    expect(html).toContain('name="roleIdsPresent"');
+    expect(html).toContain("Guardar cambios");
   });
 });

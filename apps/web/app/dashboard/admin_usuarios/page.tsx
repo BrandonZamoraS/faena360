@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import type { AppSession, TenantUserSummary } from "@faena360/domain";
 import { CapabilityDeniedError } from "@faena360/application";
 import { createUserManagementService } from "@faena360/application";
+import { InMemoryEffectiveCapabilitiesCache } from "@faena360/application";
 import {
   SupabaseAppSessionRepository,
   SupabaseAuthAdminAdapter,
@@ -180,6 +181,12 @@ export function renderUserAdminShell(input: UserAdminShellInput) {
                           defaultValue={user.phone ?? ""}
                         />
                       </label>
+                      {canManageRoles ? (
+                        <RoleCheckboxes
+                          roles={input.roles}
+                          defaultRoleIds={user.role_ids}
+                        />
+                      ) : null}
                       <button className="login-button self-end" type="submit">
                         Guardar cambios
                       </button>
@@ -206,12 +213,17 @@ export function renderUserAdminShell(input: UserAdminShellInput) {
 
 function RoleCheckboxes({
   roles,
+  defaultRoleIds,
 }: {
   readonly roles: readonly TenantRoleOption[];
+  readonly defaultRoleIds?: readonly string[];
 }) {
+  const defaultSet = new Set(defaultRoleIds ?? []);
+
   return (
     <fieldset className="space-y-2 md:col-span-2">
       <legend className="text-sm font-semibold">Roles</legend>
+      <input name="roleIdsPresent" type="hidden" value="1" />
       <div className="flex flex-wrap gap-3">
         {roles.map((role) => (
           <label
@@ -223,6 +235,7 @@ function RoleCheckboxes({
               name="roleIds"
               type="checkbox"
               value={role.id}
+              defaultChecked={defaultSet.has(role.id)}
             />
             {role.name}
           </label>
@@ -298,6 +311,8 @@ function canRenderRoleControls(capabilities: readonly string[]): boolean {
 
 function buildUserManagementService(session: AppSession) {
   const serviceClient = createWebSupabaseServiceClient();
+  const capabilitiesCache = new InMemoryEffectiveCapabilitiesCache();
+
   return createUserManagementService({
     authAdmin: new SupabaseAuthAdminAdapter({ client: serviceClient }),
     repository: new SupabaseUserManagementRepository(serviceClient),
@@ -310,6 +325,11 @@ function buildUserManagementService(session: AppSession) {
             capabilityCode
           );
         }
+      },
+    },
+    capabilityInvalidator: {
+      async invalidate(scope) {
+        await capabilitiesCache.invalidate(scope);
       },
     },
   });
@@ -399,12 +419,23 @@ export async function updateUserAction(formData: FormData) {
     redirect("/dashboard");
   }
   const service = buildUserManagementService(session);
+  const roleIds = formData
+    .getAll("roleIds")
+    .filter((value): value is string => typeof value === "string");
+
+  // When role checkboxes are rendered but all unchecked, the hidden field
+  // `roleIdsPresent` signals that the admin can manage roles and intends to
+  // clear them. Without this signal, `roleIds` is simply omitted — roles are
+  // left untouched (e.g. when the admin lacks the `roles:update` capability).
+  const hasRoleField = formData.has("roleIdsPresent");
+
   const result = await service.updateUser(
     { tenant_id: session.tenant_id, user_id: session.user_id },
     {
       userId: getString(formData, "userId"),
       fullName: getString(formData, "fullName"),
       phone: getString(formData, "phone"),
+      ...(hasRoleField ? { roleIds } : roleIds.length > 0 ? { roleIds } : {}),
     }
   );
 
