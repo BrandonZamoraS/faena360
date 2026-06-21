@@ -193,7 +193,7 @@ describe("dashboard shell", () => {
     );
 
     expect(html).toContain('href="/dashboard/clientes"');
-    expect(html).toContain('href="/dashboard/categories"');
+    expect(html).toContain('href="/dashboard/categorias_gastos"');
     expect(html).toContain('href="/dashboard/tipos_combustible"');
     expect(html).not.toContain('href="/dashboard/projects"');
     expect(html).not.toContain('href="/dashboard/admin_usuarios"');
@@ -211,7 +211,7 @@ describe("dashboard shell", () => {
 
     expect(html).toContain('href="/dashboard/projects"');
     expect(html).not.toContain('href="/dashboard/clientes"');
-    expect(html).not.toContain('href="/dashboard/categories"');
+    expect(html).not.toContain('href="/dashboard/categorias_gastos"');
     expect(html).not.toContain('href="/dashboard/tipos_combustible"');
   });
 

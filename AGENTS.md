@@ -38,3 +38,9 @@ This applies to reading 4+ files, multi-file edits, test execution, or any task 
 
 - Whenever you have questions, doubts, or need extra data about code, documentation, or requirements, you **MUST ask directly via chat**.
 - **NEVER** leave your questions, notes, or doubts written as comments inside files (code, markdown, etc.), as this clutters the files and prevents a quick resolution.
+
+## SQL Verification
+
+- The local database is temporary/non-critical for this project. When database facts are needed, agents should query the local database directly instead of guessing or relying only on docs.
+- Agents may run SQL verification commands such as `psql` when the user explicitly authorizes the command and the required environment variables are available.
+- Do not run destructive database setup/reset commands unless the user explicitly authorizes that specific command.
