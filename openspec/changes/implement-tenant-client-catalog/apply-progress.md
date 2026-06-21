@@ -2,7 +2,7 @@
 
 ## Status
 
-Standard SDD apply slices completed for the first, second, and third stacked-to-main work units.
+Standard SDD apply slices completed for the first, second, and third stacked-to-main work units, plus PR #54 Codex review fixes.
 
 ## Completed Work
 
@@ -26,13 +26,18 @@ Standard SDD apply slices completed for the first, second, and third stacked-to-
 - Updated the dashboard clients module link from `/dashboard/clients` to `/dashboard/clientes`.
 - Added runtime UI coverage for dashboard navigation, read-only clients list rendering, write-control visibility, empty state rendering, and direct action gate helpers.
 - Exported the client catalog infrastructure repository from the package root barrel so the web app can consume the previously completed repository slice.
+- Added DB-side `clients:*` capability enforcement to `clientes` RLS so direct authenticated Supabase API calls cannot bypass application guards.
+- Added a reusable SQL helper for current authenticated user capability checks using roles, overrides, and tenant-scoped local profiles, with deny overrides taking precedence.
+- Propagated client mutation audit context from the application service into the Supabase repository and set `set_audit_context()` before create/update/hide mutations.
+- Changed `audit_clientes_trigger()` UPDATE audit payloads to store only changed fields, matching the generic audit trigger behavior.
+- Expanded SQL verification coverage for capability-bypass prevention and client audit actor/source/update-diff behavior.
 
 ## Files Changed
 
-- `supabase/migrations/20260617000000_create_clientes.sql` — creates the `clientes` schema, RLS policies, update trigger, and client audit trigger.
-- `supabase/tests/clientes_catalog.sql` — documents and implements SQL checks for the database contract.
+- `supabase/migrations/20260617000000_create_clientes.sql` — creates the `clientes` schema, capability-enforced RLS policies, update trigger, and client audit trigger.
+- `supabase/tests/clientes_catalog.sql` — documents and implements SQL checks for the database contract, including capability-bypass and audit-context checks.
 - `packages/domain/src/clients/client-catalog.ts` — defines client catalog DTOs, repository port, and outcome/error contracts.
-- `packages/domain/src/clients/index.ts` and `packages/domain/src/index.ts` — export client catalog domain contracts.
+- `packages/domain/src/clients/index.ts` and `packages/domain/src/index.ts` — export client catalog domain contracts, including client audit context.
 - `packages/application/src/clients/client-catalog.ts` — implements list/create/update/hide use cases with effective capability checks and tenant spoofing protection.
 - `packages/application/src/clients/client-catalog.test.ts` — covers application behavior for the client catalog service.
 - `packages/application/src/clients/index.ts` and `packages/application/src/index.ts` — export client catalog application service.
@@ -75,6 +80,12 @@ Standard SDD apply slices completed for the first, second, and third stacked-to-
 | Review warning regression tests, GREEN | `pnpm vitest run "packages/application/src/clients/client-catalog.test.ts" "packages/infrastructure/src/clients/SupabaseClientCatalogRepository.test.ts"` | PASS: 2 files, 10 tests |
 | Review warning touched-file formatting | `pnpm exec prettier --write "packages/domain/src/clients/client-catalog.ts" "packages/application/src/clients/client-catalog.ts" "packages/application/src/clients/client-catalog.test.ts" "packages/infrastructure/src/clients/SupabaseClientCatalogRepository.ts" "packages/infrastructure/src/clients/SupabaseClientCatalogRepository.test.ts"` | PASS: touched files formatted |
 | Review warning workspace typecheck | `pnpm -r typecheck` | PASS: domain, shared, application, infrastructure, web |
+| PR #54 Codex audit-context regression tests, RED | `pnpm vitest run "packages/application/src/clients/client-catalog.test.ts" "packages/infrastructure/src/clients/SupabaseClientCatalogRepository.test.ts"` | FAIL as expected before fix: repository calls lacked `actorId`/`auditSource` and `set_audit_context` RPC calls |
+| PR #54 Codex audit-context regression tests, GREEN | `pnpm vitest run "packages/application/src/clients/client-catalog.test.ts" "packages/infrastructure/src/clients/SupabaseClientCatalogRepository.test.ts"` | PASS: 2 files, 10 tests |
+| PR #54 Codex workspace typecheck | `pnpm -r typecheck` | PASS: domain, shared, application, infrastructure, web |
+| PR #54 Codex workspace lint | `pnpm lint` | PASS: apps/web ESLint |
+| PR #54 Codex touched TS formatting | `pnpm exec prettier --write ...touched TS files...` | PASS: TS files unchanged/formatted; SQL files skipped because no Prettier SQL parser is configured |
+| PR #54 Codex SQL verification prepared | `supabase db reset` then `psql -v ON_ERROR_STOP=1 $DATABASE_URL -f supabase/tests/clientes_catalog.sql` | Not run; requires explicit approval |
 
 ## Remaining Tasks
 

@@ -1,5 +1,6 @@
 export type {
   ClienteEstado,
+  ClientAuditContext,
   ClientCatalogErrorCode,
   ClientCatalogRepository,
   ClientCatalogSummary,

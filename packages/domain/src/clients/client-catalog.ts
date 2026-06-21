@@ -1,4 +1,11 @@
+import type { AuditSource } from "../auth/audit";
+
 export type ClienteEstado = "activo" | "oculto";
+
+export interface ClientAuditContext {
+  readonly actorId: string;
+  readonly auditSource: AuditSource;
+}
 
 export interface ClientCatalogSummary {
   readonly id: string;
@@ -55,6 +62,8 @@ export interface ClientCatalogRepository {
 
   create(input: {
     readonly tenantId: string;
+    readonly actorId: string;
+    readonly auditSource: AuditSource;
     readonly nombre: string;
     readonly telefono?: string;
     readonly correo?: string;
@@ -65,6 +74,8 @@ export interface ClientCatalogRepository {
   update(input: {
     readonly tenantId: string;
     readonly clientId: string;
+    readonly actorId: string;
+    readonly auditSource: AuditSource;
     readonly nombre: string;
     readonly telefono?: string;
     readonly correo?: string;
@@ -75,5 +86,7 @@ export interface ClientCatalogRepository {
   hide(input: {
     readonly tenantId: string;
     readonly clientId: string;
+    readonly actorId: string;
+    readonly auditSource: AuditSource;
   }): Promise<boolean>;
 }

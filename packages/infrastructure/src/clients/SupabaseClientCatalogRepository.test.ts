@@ -3,6 +3,11 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { SupabaseClientCatalogRepository } from "./SupabaseClientCatalogRepository";
 
+interface RpcCall {
+  readonly functionName: string;
+  readonly args: unknown;
+}
+
 interface QueryCall {
   readonly operation: string;
   readonly details: string;
@@ -99,94 +104,99 @@ describe("SupabaseClientCatalogRepository", () => {
     });
   });
 
-  it("creates clients with session tenant and activo state", async () => {
-    const calls: QueryCall[] = [];
-    let insertPayload: unknown;
+  it("creates clients through one atomic RPC that carries audit context", async () => {
+    const rpcCalls: RpcCall[] = [];
     const client = {
-      from: (table: string) =>
-        createMockQuery(
-          { data: { id: "client-id-1" }, error: null },
-          calls,
-          table,
-          (values) => {
-            insertPayload = values;
-          }
-        ),
+      rpc: async (functionName: string, args: unknown) => {
+        rpcCalls.push({ functionName, args });
+        return { data: "client-id-1", error: null };
+      },
     } as unknown as SupabaseClient;
 
     const repository = new SupabaseClientCatalogRepository(client);
     const result = await repository.create({
       tenantId: "tenant-1",
+      actorId: "actor-1",
+      auditSource: "web",
       nombre: "Cliente Uno",
       telefono: "+54 11 5555-4444",
     });
 
     expect(result).toEqual({ id: "client-id-1" });
-    expect(insertPayload).toMatchObject({
-      tenant_id: "tenant-1",
-      nombre: "Cliente Uno",
-      telefono: "+54 11 5555-4444",
-      estado: "activo",
-    });
+    expect(rpcCalls).toEqual([
+      {
+        functionName: "create_cliente",
+        args: {
+          p_actor_id: "actor-1",
+          p_audit_source: "web",
+          p_tenant_id: "tenant-1",
+          p_nombre: "Cliente Uno",
+          p_telefono: "+54 11 5555-4444",
+          p_correo: null,
+          p_identificacion: null,
+          p_direccion: null,
+        },
+      },
+    ]);
   });
 
-  it("updates and hides clients with tenant and client filters", async () => {
-    const calls: QueryCall[] = [];
-    const payloads: unknown[] = [];
+  it("updates and hides clients through one atomic RPC per mutation", async () => {
+    const rpcCalls: RpcCall[] = [];
     const client = {
-      from: (table: string) =>
-        createMockQuery(
-          { data: null, error: null, count: 1 },
-          calls,
-          table,
-          (values) => {
-            payloads.push(values);
-          }
-        ),
+      rpc: async (functionName: string, args: unknown) => {
+        rpcCalls.push({ functionName, args });
+        return { data: true, error: null };
+      },
     } as unknown as SupabaseClient;
 
     const repository = new SupabaseClientCatalogRepository(client);
     const updateResult = await repository.update({
       tenantId: "tenant-1",
       clientId: "client-id-1",
+      actorId: "actor-1",
+      auditSource: "web",
       nombre: "Cliente Editado",
       correo: "cliente@example.com",
     });
     const hideResult = await repository.hide({
       tenantId: "tenant-1",
       clientId: "client-id-1",
+      actorId: "actor-1",
+      auditSource: "web",
     });
 
     expect(updateResult).toBe(true);
     expect(hideResult).toBe(true);
-    expect(payloads).toEqual([
+    expect(rpcCalls).toEqual([
       {
-        nombre: "Cliente Editado",
-        telefono: null,
-        correo: "cliente@example.com",
-        identificacion: null,
-        direccion: null,
+        functionName: "update_cliente",
+        args: {
+          p_actor_id: "actor-1",
+          p_audit_source: "web",
+          p_tenant_id: "tenant-1",
+          p_client_id: "client-id-1",
+          p_nombre: "Cliente Editado",
+          p_telefono: null,
+          p_correo: "cliente@example.com",
+          p_identificacion: null,
+          p_direccion: null,
+        },
       },
-      { estado: "oculto" },
+      {
+        functionName: "hide_cliente",
+        args: {
+          p_actor_id: "actor-1",
+          p_audit_source: "web",
+          p_tenant_id: "tenant-1",
+          p_client_id: "client-id-1",
+        },
+      },
     ]);
-    expect(calls).toContainEqual({
-      operation: "eq",
-      details: "clientes:tenant_id=tenant-1",
-    });
-    expect(calls).toContainEqual({
-      operation: "eq",
-      details: "clientes:id=client-id-1",
-    });
-    expect(calls).toContainEqual({
-      operation: "updateOptions",
-      details: '{"count":"exact"}',
-    });
   });
 
   it("returns false when update and hide affect no tenant client", async () => {
     const client = {
-      from: (table: string) =>
-        createMockQuery({ data: null, error: null, count: 0 }, [], table),
+      rpc: async () => ({ data: false, error: null }),
     } as unknown as SupabaseClient;
 
     const repository = new SupabaseClientCatalogRepository(client);
@@ -195,11 +205,18 @@ describe("SupabaseClientCatalogRepository", () => {
       repository.update({
         tenantId: "tenant-1",
         clientId: "missing-client",
+        actorId: "actor-1",
+        auditSource: "web",
         nombre: "Cliente",
       })
     ).resolves.toBe(false);
     await expect(
-      repository.hide({ tenantId: "tenant-1", clientId: "cross-tenant-client" })
+      repository.hide({
+        tenantId: "tenant-1",
+        clientId: "cross-tenant-client",
+        actorId: "actor-1",
+        auditSource: "web",
+      })
     ).resolves.toBe(false);
   });
 });

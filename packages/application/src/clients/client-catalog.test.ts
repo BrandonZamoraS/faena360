@@ -3,6 +3,7 @@ import type {
   ClientCatalogRepository,
   ClientCatalogSummary,
   CreateClientInput,
+  AuditSource,
 } from "@faena360/domain";
 
 import {
@@ -20,6 +21,8 @@ interface MockCalls {
   readonly listActiveCalls: string[];
   readonly createCalls: Array<{
     readonly tenantId: string;
+    readonly actorId: string;
+    readonly auditSource: AuditSource;
     readonly nombre: string;
     readonly telefono?: string;
     readonly correo?: string;
@@ -29,6 +32,8 @@ interface MockCalls {
   readonly updateCalls: Array<{
     readonly tenantId: string;
     readonly clientId: string;
+    readonly actorId: string;
+    readonly auditSource: AuditSource;
     readonly nombre: string;
     readonly telefono?: string;
     readonly correo?: string;
@@ -38,6 +43,8 @@ interface MockCalls {
   readonly hideCalls: Array<{
     readonly tenantId: string;
     readonly clientId: string;
+    readonly actorId: string;
+    readonly auditSource: AuditSource;
   }>;
 }
 
@@ -173,6 +180,8 @@ describe("client catalog service", () => {
     expect(result).toEqual({ ok: true, clientId: "client-id-1" });
     expect(calls.createCalls[0]).toEqual({
       tenantId: "tenant-2",
+      actorId: "actor-2",
+      auditSource: "web",
       nombre: "Cliente Dos",
       telefono: "+54 11 5555-4444",
       correo: "contacto@cliente.com",
@@ -225,11 +234,15 @@ describe("client catalog service", () => {
     expect(calls.updateCalls[0]).toMatchObject({
       tenantId: "tenant-3",
       clientId: "client-id-3",
+      actorId: "actor-3",
+      auditSource: "web",
       nombre: "Cliente Tres",
     });
     expect(calls.hideCalls[0]).toEqual({
       tenantId: "tenant-3",
       clientId: "client-id-3",
+      actorId: "actor-3",
+      auditSource: "web",
     });
   });
 

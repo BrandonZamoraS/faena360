@@ -113,6 +113,8 @@ export function createClientCatalogService({
       try {
         const createdClient = await repository.create({
           tenantId,
+          actorId: session.user_id,
+          auditSource: "web",
           ...normalizedInput,
         });
         return { ok: true, clientId: createdClient.id };
@@ -153,6 +155,8 @@ export function createClientCatalogService({
         const updated = await repository.update({
           tenantId,
           clientId,
+          actorId: session.user_id,
+          auditSource: "web",
           ...normalizedInput,
         });
         if (!updated) {
@@ -189,7 +193,12 @@ export function createClientCatalogService({
       }
 
       try {
-        const hidden = await repository.hide({ tenantId, clientId });
+        const hidden = await repository.hide({
+          tenantId,
+          clientId,
+          actorId: session.user_id,
+          auditSource: "web",
+        });
         if (!hidden) {
           return { ok: false, code: "missing_client" };
         }

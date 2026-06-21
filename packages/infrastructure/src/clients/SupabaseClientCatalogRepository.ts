@@ -1,6 +1,7 @@
 import { type SupabaseClient } from "@supabase/supabase-js";
 
 import type {
+  ClientAuditContext,
   ClientCatalogRepository,
   ClientCatalogSummary,
   ClienteEstado,
@@ -50,64 +51,66 @@ export class SupabaseClientCatalogRepository implements ClientCatalogRepository 
   }
 
   public async create(
-    input: ClientPayload & { readonly tenantId: string }
+    input: ClientPayload & { readonly tenantId: string } & ClientAuditContext
   ): Promise<{ readonly id: string }> {
-    const response = await this.client
-      .from("clientes")
-      .insert({
-        tenant_id: input.tenantId,
-        ...toClientFields(input),
-        estado: "activo" as const,
-      })
-      .select("id")
-      .single();
+    const response = await this.client.rpc("create_cliente", {
+      ...toClientRpcFields(input),
+      p_actor_id: input.actorId,
+      p_audit_source: input.auditSource,
+      p_tenant_id: input.tenantId,
+    });
 
     if (response.error) {
       throw new Error(response.error.message);
     }
 
-    const data = response.data as { id?: string } | null;
-    if (!data?.id) {
+    const clientId = response.data as string | null;
+    if (!clientId) {
       throw new Error("Client creation did not return id.");
     }
 
-    return { id: data.id };
+    return { id: clientId };
   }
 
   public async update(
     input: ClientPayload & {
       readonly tenantId: string;
       readonly clientId: string;
-    }
+    } & ClientAuditContext
   ): Promise<boolean> {
-    const response = await this.client
-      .from("clientes")
-      .update(toClientFields(input), { count: "exact" })
-      .eq("tenant_id", input.tenantId)
-      .eq("id", input.clientId);
+    const response = await this.client.rpc("update_cliente", {
+      ...toClientRpcFields(input),
+      p_actor_id: input.actorId,
+      p_audit_source: input.auditSource,
+      p_tenant_id: input.tenantId,
+      p_client_id: input.clientId,
+    });
 
     if (response.error) {
       throw new Error(response.error.message);
     }
 
-    return (response.count ?? 0) > 0;
+    return Boolean(response.data);
   }
 
   public async hide(input: {
     readonly tenantId: string;
     readonly clientId: string;
+    readonly actorId: string;
+    readonly auditSource: ClientAuditContext["auditSource"];
   }): Promise<boolean> {
-    const response = await this.client
-      .from("clientes")
-      .update({ estado: "oculto" as const }, { count: "exact" })
-      .eq("tenant_id", input.tenantId)
-      .eq("id", input.clientId);
+    const response = await this.client.rpc("hide_cliente", {
+      p_actor_id: input.actorId,
+      p_audit_source: input.auditSource,
+      p_tenant_id: input.tenantId,
+      p_client_id: input.clientId,
+    });
 
     if (response.error) {
       throw new Error(response.error.message);
     }
 
-    return (response.count ?? 0) > 0;
+    return Boolean(response.data);
   }
 }
 
@@ -126,12 +129,12 @@ function mapClientRow(row: SupabaseClientRow): ClientCatalogSummary {
   };
 }
 
-function toClientFields(input: ClientPayload) {
+function toClientRpcFields(input: ClientPayload) {
   return {
-    nombre: input.nombre,
-    telefono: input.telefono ?? null,
-    correo: input.correo ?? null,
-    identificacion: input.identificacion ?? null,
-    direccion: input.direccion ?? null,
+    p_nombre: input.nombre,
+    p_telefono: input.telefono ?? null,
+    p_correo: input.correo ?? null,
+    p_identificacion: input.identificacion ?? null,
+    p_direccion: input.direccion ?? null,
   };
 }
