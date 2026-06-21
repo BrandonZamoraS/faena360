@@ -39,7 +39,9 @@ export function DashboardSidebar({
           return (
             <a
               key={module.slug}
-              className={isActive ? DASHBOARD_NAV_ACTIVE_CLASS : DASHBOARD_NAV_BASE_CLASS}
+              className={
+                isActive ? DASHBOARD_NAV_ACTIVE_CLASS : DASHBOARD_NAV_BASE_CLASS
+              }
               href={module.href}
             >
               <span className="block">{module.label}</span>

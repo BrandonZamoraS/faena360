@@ -124,7 +124,7 @@ describe("dashboard shell", () => {
           ],
         },
         "/dashboard/clientes"
-    )
+      )
     );
 
     expect(html).toContain(
