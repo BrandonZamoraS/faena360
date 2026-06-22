@@ -36,7 +36,9 @@ export interface ProjectCatalogServiceDependencies {
 }
 
 export interface ProjectCatalogService {
-  listVisibleProjects(session: TenantSessionScope): Promise<readonly ProjectCatalogSummary[]>;
+  listVisibleProjects(
+    session: TenantSessionScope
+  ): Promise<readonly ProjectCatalogSummary[]>;
 
   createProject(
     session: TenantSessionScope,
@@ -63,7 +65,10 @@ export interface ProjectCatalogService {
     input: ReopenProjectInput
   ): Promise<MutateProjectOutcome>;
 
-  hideProject(session: TenantSessionScope, input: HideProjectInput): Promise<MutateProjectOutcome>;
+  hideProject(
+    session: TenantSessionScope,
+    input: HideProjectInput
+  ): Promise<MutateProjectOutcome>;
 }
 
 const PROJECTS_READ_CAPABILITY = "projects:read" as const;
@@ -131,10 +136,16 @@ export function createProjectCatalogService({
       if (!normalized.fecha_inicio) {
         return { ok: false, code: "missing_fecha_inicio" };
       }
-      if (!normalized.forma_cobro || !ALLOWED_FORMAS_COBRO.has(normalized.forma_cobro)) {
+      if (
+        !normalized.forma_cobro ||
+        !ALLOWED_FORMAS_COBRO.has(normalized.forma_cobro)
+      ) {
         return { ok: false, code: "invalid_forma_cobro" };
       }
-      if (normalized.forma_cobro === "monto_fijo" && normalized.monto_fijo === undefined) {
+      if (
+        normalized.forma_cobro === "monto_fijo" &&
+        normalized.monto_fijo === undefined
+      ) {
         return { ok: false, code: "missing_monto_fijo" };
       }
 
@@ -201,10 +212,16 @@ export function createProjectCatalogService({
       if (!normalized.fecha_inicio) {
         return { ok: false, code: "missing_fecha_inicio" };
       }
-      if (!normalized.forma_cobro || !ALLOWED_FORMAS_COBRO.has(normalized.forma_cobro)) {
+      if (
+        !normalized.forma_cobro ||
+        !ALLOWED_FORMAS_COBRO.has(normalized.forma_cobro)
+      ) {
         return { ok: false, code: "invalid_forma_cobro" };
       }
-      if (normalized.forma_cobro === "monto_fijo" && normalized.monto_fijo === undefined) {
+      if (
+        normalized.forma_cobro === "monto_fijo" &&
+        normalized.monto_fijo === undefined
+      ) {
         return { ok: false, code: "missing_monto_fijo" };
       }
 
@@ -434,7 +451,12 @@ async function requireMutationCapability(
   capabilityCode: string
 ): Promise<MutateProjectOutcome> {
   try {
-    await requireActorCapability(capabilityChecker, session, tenantId, capabilityCode);
+    await requireActorCapability(
+      capabilityChecker,
+      session,
+      tenantId,
+      capabilityCode
+    );
     return { ok: true };
   } catch (error) {
     if (error instanceof CapabilityDeniedError) {
@@ -486,9 +508,7 @@ function normalizeProjectInput(input: CreateProjectInput | UpdateProjectInput) {
   };
 }
 
-function normalizeProjectForma(
-  forma: string
-): ProjectFormaCobro | undefined {
+function normalizeProjectForma(forma: string): ProjectFormaCobro | undefined {
   return ALLOWED_FORMAS_COBRO.has(forma as ProjectFormaCobro)
     ? (forma as ProjectFormaCobro)
     : undefined;
@@ -589,13 +609,13 @@ function mapTransitionError(
 }
 
 function isDuplicateNameMessage(message: string): boolean {
-  return message.includes("duplicate key value") || message.includes("duplicate key value violates unique constraint");
+  return (
+    message.includes("duplicate key value") ||
+    message.includes("duplicate key value violates unique constraint")
+  );
 }
 
-function isDuplicateNameError(
-  error: unknown,
-  message: string
-): boolean {
+function isDuplicateNameError(error: unknown, message: string): boolean {
   return isUniqueViolationCode(error) || isDuplicateNameMessage(message);
 }
 

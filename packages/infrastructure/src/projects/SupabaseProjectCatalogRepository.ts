@@ -32,13 +32,12 @@ type ProjectMutationPayload = {
 const PROJECT_COLUMNS =
   "id,tenant_id,nombre,cliente_id,ubicacion,fecha_inicio,fecha_finalizacion,forma_cobro,monto_fijo,estado,created_at,updated_at";
 
-export class SupabaseProjectCatalogRepository
-  implements ProjectCatalogRepository
-{
+export class SupabaseProjectCatalogRepository implements ProjectCatalogRepository {
   public constructor(private readonly client: SupabaseClient) {}
 
-  public async listVisible(input: { readonly tenantId: string })
-    : Promise<readonly ProjectCatalogSummary[]> {
+  public async listVisible(input: {
+    readonly tenantId: string;
+  }): Promise<readonly ProjectCatalogSummary[]> {
     const response = await this.client
       .from("proyectos")
       .select(PROJECT_COLUMNS)
@@ -52,19 +51,17 @@ export class SupabaseProjectCatalogRepository
     return (response.data as readonly SupabaseProjectRow[]).map(mapProjectRow);
   }
 
-  public async create(
-    input: {
-      readonly tenantId: string;
-      readonly actorId: string;
-      readonly auditSource: ProjectAuditContext["auditSource"];
-      readonly nombre: string;
-      readonly cliente_id: string;
-      readonly ubicacion: string;
-      readonly fecha_inicio: string;
-      readonly forma_cobro: ProjectFormaCobro;
-      readonly monto_fijo?: number;
-    }
-  ): Promise<{ readonly id: string }> {
+  public async create(input: {
+    readonly tenantId: string;
+    readonly actorId: string;
+    readonly auditSource: ProjectAuditContext["auditSource"];
+    readonly nombre: string;
+    readonly cliente_id: string;
+    readonly ubicacion: string;
+    readonly fecha_inicio: string;
+    readonly forma_cobro: ProjectFormaCobro;
+    readonly monto_fijo?: number;
+  }): Promise<{ readonly id: string }> {
     const response = await this.client.rpc("create_proyecto", {
       p_actor_id: input.actorId,
       p_audit_source: input.auditSource,
@@ -89,21 +86,19 @@ export class SupabaseProjectCatalogRepository
     return { id: projectId };
   }
 
-  public async update(
-    input: {
-      readonly tenantId: string;
-      readonly projectId: string;
-      readonly actorId: string;
-      readonly auditSource: ProjectAuditContext["auditSource"];
-      readonly nombre: string;
-      readonly cliente_id: string;
-      readonly ubicacion: string;
-      readonly fecha_inicio: string;
-      readonly forma_cobro: ProjectFormaCobro;
-      readonly monto_fijo?: number;
-      readonly fecha_finalizacion?: string | null;
-    }
-  ): Promise<boolean> {
+  public async update(input: {
+    readonly tenantId: string;
+    readonly projectId: string;
+    readonly actorId: string;
+    readonly auditSource: ProjectAuditContext["auditSource"];
+    readonly nombre: string;
+    readonly cliente_id: string;
+    readonly ubicacion: string;
+    readonly fecha_inicio: string;
+    readonly forma_cobro: ProjectFormaCobro;
+    readonly monto_fijo?: number;
+    readonly fecha_finalizacion?: string | null;
+  }): Promise<boolean> {
     const response = await this.client.rpc("update_proyecto", {
       p_actor_id: input.actorId,
       p_audit_source: input.auditSource,

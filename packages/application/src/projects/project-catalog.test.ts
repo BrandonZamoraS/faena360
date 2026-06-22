@@ -41,13 +41,15 @@ describe("project catalog service", () => {
     };
 
     const capabilityChecker = {
-      requireCapability: overrides?.requireCapability ?? (async () => undefined),
+      requireCapability:
+        overrides?.requireCapability ?? (async () => undefined),
     };
 
     return {
       calls,
       service: createProjectCatalogService({
-        repository: repository as ProjectCatalogServiceDependencies["repository"],
+        repository:
+          repository as ProjectCatalogServiceDependencies["repository"],
         capabilityChecker: {
           requireCapability: async (scope, capabilityCode) => {
             calls.push(`${scope.userId}|${scope.tenantId}|${capabilityCode}`);
@@ -163,7 +165,11 @@ describe("project catalog service", () => {
   });
 
   it("maps update and hide capability failures", async () => {
-    const denied = new CapabilityDeniedError("actor-1", "tenant-1", "projects:update");
+    const denied = new CapabilityDeniedError(
+      "actor-1",
+      "tenant-1",
+      "projects:update"
+    );
     const { service } = createService({
       requireCapability: async () => {
         throw denied;
@@ -181,13 +187,19 @@ describe("project catalog service", () => {
         forma_cobro: "por_horas",
       }
     );
-    const pause = await service.pauseProject({ tenant_id: "tenant-1", user_id: "actor-1" }, {
-      projectId: "project-id-1",
-      force: true,
-    });
-    const hide = await service.hideProject({ tenant_id: "tenant-1", user_id: "actor-1" }, {
-      projectId: "project-id-1",
-    });
+    const pause = await service.pauseProject(
+      { tenant_id: "tenant-1", user_id: "actor-1" },
+      {
+        projectId: "project-id-1",
+        force: true,
+      }
+    );
+    const hide = await service.hideProject(
+      { tenant_id: "tenant-1", user_id: "actor-1" },
+      {
+        projectId: "project-id-1",
+      }
+    );
 
     expect(update).toEqual({ ok: false, code: "capability_denied" });
     expect(pause).toEqual({ ok: false, code: "capability_denied" });
@@ -198,10 +210,14 @@ describe("project catalog service", () => {
     const { service } = createService({
       repository: {
         pause: async () => {
-          throw new Error("Project has 1 open jornadas. Use force=true to proceed.");
+          throw new Error(
+            "Project has 1 open jornadas. Use force=true to proceed."
+          );
         },
         finish: async () => {
-          throw new Error("Cannot finish a project that is not active or paused");
+          throw new Error(
+            "Cannot finish a project that is not active or paused"
+          );
         },
         reopen: async () => {
           throw new Error("Reopen target state must be activo or pausado");

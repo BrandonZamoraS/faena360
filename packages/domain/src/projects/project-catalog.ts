@@ -33,7 +33,10 @@ export interface CreateProjectInput {
   readonly monto_fijo?: number;
 }
 
-export interface UpdateProjectInput extends Omit<CreateProjectInput, "cliente_id"> {
+export interface UpdateProjectInput extends Omit<
+  CreateProjectInput,
+  "cliente_id"
+> {
   readonly projectId: string;
   readonly cliente_id: string;
   readonly fecha_finalizacion?: string | null;
@@ -95,37 +98,35 @@ export interface MutateProjectOutcome {
 }
 
 export interface ProjectCatalogRepository {
-  listVisible(input: { readonly tenantId: string }): Promise<readonly ProjectCatalogSummary[]>;
+  listVisible(input: {
+    readonly tenantId: string;
+  }): Promise<readonly ProjectCatalogSummary[]>;
 
-  create(
-    input: {
-      readonly tenantId: string;
-      readonly actorId: string;
-      readonly auditSource: AuditSource;
-      readonly nombre: string;
-      readonly cliente_id: string;
-      readonly ubicacion: string;
-      readonly fecha_inicio: string;
-      readonly forma_cobro: ProjectFormaCobro;
-      readonly monto_fijo?: number;
-    }
-  ): Promise<{ readonly id: string }>;
+  create(input: {
+    readonly tenantId: string;
+    readonly actorId: string;
+    readonly auditSource: AuditSource;
+    readonly nombre: string;
+    readonly cliente_id: string;
+    readonly ubicacion: string;
+    readonly fecha_inicio: string;
+    readonly forma_cobro: ProjectFormaCobro;
+    readonly monto_fijo?: number;
+  }): Promise<{ readonly id: string }>;
 
-  update(
-    input: {
-      readonly tenantId: string;
-      readonly projectId: string;
-      readonly actorId: string;
-      readonly auditSource: AuditSource;
-      readonly nombre: string;
-      readonly cliente_id: string;
-      readonly ubicacion: string;
-      readonly fecha_inicio: string;
-      readonly forma_cobro: ProjectFormaCobro;
-      readonly monto_fijo?: number;
-      readonly fecha_finalizacion?: string | null;
-    }
-  ): Promise<boolean>;
+  update(input: {
+    readonly tenantId: string;
+    readonly projectId: string;
+    readonly actorId: string;
+    readonly auditSource: AuditSource;
+    readonly nombre: string;
+    readonly cliente_id: string;
+    readonly ubicacion: string;
+    readonly fecha_inicio: string;
+    readonly forma_cobro: ProjectFormaCobro;
+    readonly monto_fijo?: number;
+    readonly fecha_finalizacion?: string | null;
+  }): Promise<boolean>;
 
   pause(input: {
     readonly tenantId: string;
@@ -145,15 +146,13 @@ export interface ProjectCatalogRepository {
     readonly reason?: string;
   }): Promise<boolean>;
 
-  reopen(
-    input: {
-      readonly tenantId: string;
-      readonly projectId: string;
-      readonly actorId: string;
-      readonly auditSource: AuditSource;
-      readonly target_estado: ProjectEstado;
-    }
-  ): Promise<boolean>;
+  reopen(input: {
+    readonly tenantId: string;
+    readonly projectId: string;
+    readonly actorId: string;
+    readonly auditSource: AuditSource;
+    readonly target_estado: ProjectEstado;
+  }): Promise<boolean>;
 
   hide(input: {
     readonly tenantId: string;

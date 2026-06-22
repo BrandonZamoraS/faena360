@@ -103,7 +103,10 @@ describe("SupabaseProjectCatalogRepository", () => {
     const result = await repository.listVisible({ tenantId: "tenant-1" });
 
     expect(result).toHaveLength(1);
-    expect(calls).toContainEqual({ operation: "eq", details: "proyectos:tenant_id=tenant-1" });
+    expect(calls).toContainEqual({
+      operation: "eq",
+      details: "proyectos:tenant_id=tenant-1",
+    });
     expect(calls).toContainEqual({
       operation: "neq",
       details: "proyectos:estado!=oculto",

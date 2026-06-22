@@ -380,7 +380,9 @@ function ProjectFields({ project, clients }: ProjectFieldsProps) {
           type="number"
           step="0.01"
           min="0.01"
-          defaultValue={project?.monto_fijo != null ? project.monto_fijo.toString() : ""}
+          defaultValue={
+            project?.monto_fijo != null ? project.monto_fijo.toString() : ""
+          }
         />
       </label>
     </>

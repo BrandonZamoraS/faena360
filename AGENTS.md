@@ -44,6 +44,9 @@ This applies to reading 4+ files, multi-file edits, test execution, or any task 
 - Always use the GitHub MCP server for GitHub operations (issues, labels, pull requests, reviews, checks, releases) instead of shelling out to `gh` or guessing from local state.
 - If the GitHub MCP server is unavailable because Docker Desktop is not running, try to start Docker Desktop and retry the MCP operation.
 - If Docker Desktop cannot be started from the agent environment, tell the user immediately and ask them to start Docker Desktop manually before continuing GitHub work.
+- After creating or updating a PR, always check the PR checks through GitHub MCP.
+- If checks are still queued or in progress, wait 90 seconds and check them again before reporting status.
+- If any check fails, inspect the failing check details/logs, identify the root cause, and either fix it or report the exact blocker with evidence.
 
 ## SQL Verification
 
