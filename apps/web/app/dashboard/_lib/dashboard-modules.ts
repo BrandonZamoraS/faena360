@@ -31,8 +31,8 @@ export const DASHBOARD_MODULES: readonly DashboardModuleDefinition[] = [
     canView: canAccessUserAdminModule,
   },
   {
-    slug: "projects",
-    href: "/dashboard/projects",
+    slug: "proyectos",
+    href: "/dashboard/proyectos",
     label: "Proyectos",
     description: "Consultar proyectos del tenant",
     canView: (capabilities) => hasCapability(capabilities, "projects:read"),
