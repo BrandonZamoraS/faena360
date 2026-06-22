@@ -316,6 +316,8 @@ savepoint proyectos_test6;
 set local role service_role;
 
 do $$
+declare
+  v_fecha_finalizacion date;
 begin
   if pause_proyecto(
     'bbbb2000-0000-0000-0000-000000000001',
@@ -337,6 +339,14 @@ begin
     null
   ) is not true then
     raise exception 'FAIL: finish_proyecto should succeed for paused project';
+  end if;
+
+  select fecha_finalizacion into v_fecha_finalizacion
+  from proyectos
+  where id = 'eeee2000-0000-0000-0000-000000000001';
+
+  if v_fecha_finalizacion is null then
+    raise exception 'FAIL: finish_proyecto should set fecha_finalizacion';
   end if;
 
   if reopen_proyecto(

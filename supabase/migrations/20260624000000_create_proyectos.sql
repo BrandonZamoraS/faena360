@@ -637,7 +637,9 @@ begin
   end if;
 
   update public.proyectos
-  set estado = 'finalizado'
+  set
+    estado = 'finalizado',
+    fecha_finalizacion = coalesce(fecha_finalizacion, current_date)
   where tenant_id = p_tenant_id
     and id = p_project_id
     and estado in ('activo', 'pausado');

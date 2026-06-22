@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import {
+  assertFinishConfirmation,
   canAccessProjectCatalogPage,
   canRunProjectCatalogAction,
   renderProjectCatalogShell,
@@ -123,6 +124,46 @@ describe("proyectos page shell", () => {
     expect(html).not.toContain("Crear proyecto");
     expect(html).not.toContain('select name="cliente_id"');
     expect(html).not.toContain("Guardar cambios");
+  });
+
+  it("renders lifecycle controls independently from update permission", () => {
+    const html = renderToStaticMarkup(
+      renderProjectCatalogShell({
+        tenantName: "Tenant Demo",
+        capabilities: ["projects:read", "projects:finish", "projects:hide"],
+        projects,
+        clients,
+      })
+    );
+
+    expect(html).not.toContain("Guardar cambios");
+    expect(html).toContain("Finalizar proyecto");
+    expect(html).toContain("Ocultar proyecto");
+  });
+
+  it("preserves finalized project dates in edit submissions", () => {
+    const html = renderToStaticMarkup(
+      renderProjectCatalogShell({
+        tenantName: "Tenant Demo",
+        capabilities: ["projects:read", "projects:update", "clients:read"],
+        projects,
+        clients,
+      })
+    );
+
+    expect(html).toContain('name="fecha_finalizacion"');
+    expect(html).toContain('value="2026-06-15"');
+  });
+
+  it("requires confirmation before finishing a project", () => {
+    expect(() => assertFinishConfirmation(new FormData())).toThrow(
+      "missing_finish_confirmation"
+    );
+
+    const formData = new FormData();
+    formData.set("confirmation", "true");
+
+    expect(() => assertFinishConfirmation(formData)).not.toThrow();
   });
 
   it("highlights the active project module in the sidebar", () => {

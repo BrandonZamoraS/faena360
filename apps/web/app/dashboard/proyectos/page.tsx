@@ -198,96 +198,99 @@ export function renderProjectCatalogShell(input: ProjectCatalogShellInput) {
                   </dl>
 
                   {canUpdate ? (
-                    <>
+                    <form
+                      action={input.updateAction}
+                      className="mt-5 grid gap-4 md:grid-cols-2"
+                    >
+                      <input
+                        name="projectId"
+                        type="hidden"
+                        value={project.id}
+                      />
+                      <input
+                        name="fecha_finalizacion"
+                        type="hidden"
+                        value={project.fecha_finalizacion ?? ""}
+                      />
+                      <ProjectFields
+                        project={project}
+                        clients={input.clients}
+                      />
+                      <button
+                        className="login-button md:col-span-2"
+                        type="submit"
+                      >
+                        Guardar cambios
+                      </button>
+                    </form>
+                  ) : null}
+
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    {canPause && project.estado === "activo" ? (
+                      <ProjectLifecycleActionCard
+                        action={input.pauseAction}
+                        projectId={project.id}
+                        variant="pause"
+                      />
+                    ) : null}
+
+                    {canFinish && project.estado !== "finalizado" ? (
+                      <ProjectLifecycleActionCard
+                        action={input.finishAction}
+                        projectId={project.id}
+                        variant="finish"
+                      />
+                    ) : null}
+
+                    {canReopen && project.estado === "finalizado" ? (
                       <form
-                        action={input.updateAction}
-                        className="mt-5 grid gap-4 md:grid-cols-2"
+                        action={input.reopenAction}
+                        className="space-y-3 rounded-xl border border-[#dbedff] p-4"
                       >
                         <input
                           name="projectId"
                           type="hidden"
                           value={project.id}
                         />
-                        <ProjectFields
-                          project={project}
-                          clients={input.clients}
-                        />
+                        <label className="space-y-2 text-sm font-medium">
+                          <span>Reabrir como</span>
+                          <select
+                            className="login-input"
+                            name="targetEstado"
+                            defaultValue="activo"
+                          >
+                            <option value="activo">Activo</option>
+                            <option value="pausado">Pausado</option>
+                          </select>
+                        </label>
                         <button
-                          className="login-button md:col-span-2"
+                          className="rounded-xl bg-[#e8f7ff] px-3 py-2 text-sm font-semibold text-[#005f8a]"
                           type="submit"
                         >
-                          Guardar cambios
+                          Reabrir proyecto
                         </button>
                       </form>
+                    ) : null}
 
-                      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                        {canPause && project.estado === "activo" ? (
-                          <ProjectLifecycleActionCard
-                            action={input.pauseAction}
-                            projectId={project.id}
-                            variant="pause"
-                          />
-                        ) : null}
-
-                        {canFinish && project.estado !== "finalizado" ? (
-                          <ProjectLifecycleActionCard
-                            action={input.finishAction}
-                            projectId={project.id}
-                            variant="finish"
-                          />
-                        ) : null}
-
-                        {canReopen && project.estado === "finalizado" ? (
-                          <form
-                            action={input.reopenAction}
-                            className="space-y-3 rounded-xl border border-[#dbedff] p-4"
-                          >
-                            <input
-                              name="projectId"
-                              type="hidden"
-                              value={project.id}
-                            />
-                            <label className="space-y-2 text-sm font-medium">
-                              <span>Reabrir como</span>
-                              <select
-                                className="login-input"
-                                name="targetEstado"
-                                defaultValue="activo"
-                              >
-                                <option value="activo">Activo</option>
-                                <option value="pausado">Pausado</option>
-                              </select>
-                            </label>
-                            <button
-                              className="rounded-xl bg-[#e8f7ff] px-3 py-2 text-sm font-semibold text-[#005f8a]"
-                              type="submit"
-                            >
-                              Reabrir proyecto
-                            </button>
-                          </form>
-                        ) : null}
-
-                        {canHide ? (
-                          <form
-                            action={input.hideAction}
-                            className="space-y-3 rounded-xl border border-[#f5d0d0] p-4"
-                          >
-                            <input
-                              name="projectId"
-                              type="hidden"
-                              value={project.id}
-                            />
-                            <button
-                              className="rounded-xl bg-[#fff1f0] px-3 py-2 text-sm font-semibold text-[#8a1f16]"
-                              type="submit"
-                            >
-                              Ocultar proyecto
-                            </button>
-                          </form>
-                        ) : null}
-                      </div>
-                    </>
-                  ) : null}
+                    {canHide ? (
+                      <form
+                        action={input.hideAction}
+                        className="space-y-3 rounded-xl border border-[#f5d0d0] p-4"
+                      >
+                        <input
+                          name="projectId"
+                          type="hidden"
+                          value={project.id}
+                        />
+                        <button
+                          className="rounded-xl bg-[#fff1f0] px-3 py-2 text-sm font-semibold text-[#8a1f16]"
+                          type="submit"
+                        >
+                          Ocultar proyecto
+                        </button>
+                      </form>
+                    ) : null}
+                  </div>
                 </article>
               );
             })}
@@ -414,7 +417,12 @@ function ProjectLifecycleActionCard({
         <span>{isPause ? "Forzar pausa" : "Forzar finalización"}</span>
       </label>
       <label className="flex items-center gap-2 text-sm font-medium">
-        <input type="checkbox" name="confirmation" value="true" />
+        <input
+          type="checkbox"
+          name="confirmation"
+          value="true"
+          required={!isPause}
+        />
         <span>
           {isPause
             ? "Confirmo que debo anular las jornadas abiertas afectadas"
@@ -564,12 +572,23 @@ function getBoolean(formData: FormData, key: string): boolean {
   return value === "on" || value === "true" || value === "1";
 }
 
+function getOptionalString(formData: FormData, key: string): string | null {
+  const value = getString(formData, key).trim();
+  return value === "" ? null : value;
+}
+
 function assertForcedConfirmation(
   formData: FormData,
   code: "missing_force_confirmation"
 ): void {
   if (getBoolean(formData, "force") && !getBoolean(formData, "confirmation")) {
     throw new Error(code);
+  }
+}
+
+export function assertFinishConfirmation(formData: FormData): void {
+  if (!getBoolean(formData, "confirmation")) {
+    throw new Error("missing_finish_confirmation");
   }
 }
 
@@ -634,7 +653,7 @@ export async function updateProjectAction(formData: FormData) {
       fecha_inicio: getFechaInicio(formData),
       forma_cobro: getString(formData, "forma_cobro"),
       monto_fijo: getMontoFijo(formData),
-      fecha_finalizacion: null,
+      fecha_finalizacion: getOptionalString(formData, "fecha_finalizacion"),
     }
   );
 
@@ -649,7 +668,7 @@ export async function pauseProjectAction(formData: FormData) {
   "use server";
   const session = await getAuthorizedPageSession();
 
-  assertForcedConfirmation(formData, "missing_force_confirmation");
+  assertFinishConfirmation(formData);
 
   if (
     !canRunProjectCatalogAction(
