@@ -35,6 +35,7 @@ values
   ('projects:create', 'Projects Create', 'Allows creating projects.'),
   ('projects:finish', 'Projects Finish', 'Allows finishing projects.'),
   ('projects:pause', 'Projects Pause', 'Allows pausing projects.'),
+  ('projects:hide', 'Projects Hide', 'Allows hiding projects.'),
   ('projects:read', 'Projects Read', 'Allows reading projects.'),
   ('projects:reopen', 'Projects Reopen', 'Allows reopening projects.'),
   ('projects:update', 'Projects Update', 'Allows updating projects.'),

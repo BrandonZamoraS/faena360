@@ -87,7 +87,7 @@ describe("clientes page shell", () => {
       'class="block rounded-xl bg-[#173b29] px-4 py-3 text-sm font-semibold text-white" href="/dashboard/clientes"'
     );
     expect(html).toContain(
-      'class="block rounded-xl px-4 py-3 text-sm font-semibold text-[#173b29] transition hover:bg-white focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#2f7044]" href="/dashboard/projects"'
+      'class="block rounded-xl px-4 py-3 text-sm font-semibold text-[#173b29] transition hover:bg-white focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#2f7044]" href="/dashboard/proyectos"'
     );
     expect(html).not.toContain('href="/dashboard/admin_usuarios"');
   });
