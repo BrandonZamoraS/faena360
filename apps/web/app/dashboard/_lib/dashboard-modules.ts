@@ -45,8 +45,8 @@ export const DASHBOARD_MODULES: readonly DashboardModuleDefinition[] = [
     canView: (capabilities) => hasCapability(capabilities, "subprojects:read"),
   },
   {
-    slug: "machines",
-    href: "/dashboard/machines",
+    slug: "maquinas",
+    href: "/dashboard/maquinas",
     label: "Maquinaria",
     description: "Consultar maquinaria del tenant",
     canView: (capabilities) => hasCapability(capabilities, "machines:read"),
