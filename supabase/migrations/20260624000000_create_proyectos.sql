@@ -440,7 +440,7 @@ begin
       cliente_id = p_cliente_id,
       ubicacion = p_ubicacion,
       fecha_inicio = p_fecha_inicio,
-      fecha_finalizacion = p_fecha_finalizacion,
+      fecha_finalizacion = coalesce(p_fecha_finalizacion, fecha_finalizacion),
       forma_cobro = p_forma_cobro,
       monto_fijo = p_monto_fijo
   where tenant_id = p_tenant_id

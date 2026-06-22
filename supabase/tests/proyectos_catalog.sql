@@ -349,6 +349,30 @@ begin
     raise exception 'FAIL: finish_proyecto should set fecha_finalizacion';
   end if;
 
+  if update_proyecto(
+    'bbbb2000-0000-0000-0000-000000000001',
+    'sql-test',
+    'aaaa2000-0000-0000-0000-000000000001',
+    'eeee2000-0000-0000-0000-000000000001',
+    'Proyecto Base A Editado',
+    'cccc2000-0000-0000-0000-000000000001',
+    'Sector A',
+    '2026-06-01',
+    'monto_fijo',
+    1500,
+    null
+  ) is not true then
+    raise exception 'FAIL: update_proyecto should update finalized project metadata';
+  end if;
+
+  select fecha_finalizacion into v_fecha_finalizacion
+  from proyectos
+  where id = 'eeee2000-0000-0000-0000-000000000001';
+
+  if v_fecha_finalizacion is null then
+    raise exception 'FAIL: update_proyecto should preserve existing fecha_finalizacion when omitted';
+  end if;
+
   if reopen_proyecto(
     'bbbb2000-0000-0000-0000-000000000001',
     'sql-test',

@@ -668,7 +668,7 @@ export async function pauseProjectAction(formData: FormData) {
   "use server";
   const session = await getAuthorizedPageSession();
 
-  assertFinishConfirmation(formData);
+  assertForcedConfirmation(formData, "missing_force_confirmation");
 
   if (
     !canRunProjectCatalogAction(
@@ -700,7 +700,7 @@ export async function finishProjectAction(formData: FormData) {
   "use server";
   const session = await getAuthorizedPageSession();
 
-  assertForcedConfirmation(formData, "missing_force_confirmation");
+  assertFinishConfirmation(formData);
 
   if (
     !canRunProjectCatalogAction(
