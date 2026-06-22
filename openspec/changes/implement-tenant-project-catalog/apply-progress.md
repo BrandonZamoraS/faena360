@@ -27,4 +27,5 @@
 - `npx vitest run apps/web/app/dashboard/proyectos/page.runtime.test.tsx packages/application/src/projects/project-catalog.test.ts packages/infrastructure/src/projects/SupabaseProjectCatalogRepository.test.ts` passed: 3 files, 15 tests.
 - `npx tsc -p packages/application/tsconfig.json --noEmit` passed with no output.
 - `npx tsc -p apps/web/tsconfig.json --noEmit` passed with no output after fixing optional form/action and client service typing.
-- SQL fixture was authored but not executed because no approved database URL/environment was provided; exact command: `psql -v ON_ERROR_STOP=1 $DATABASE_URL -f supabase/tests/proyectos_catalog.sql`.
+- `supabase db reset` passed against the local disposable database.
+- `psql -v ON_ERROR_STOP=1 $DATABASE_URL -f supabase/tests/proyectos_catalog.sql` passed against `postgresql://postgres:postgres@127.0.0.1:54322/postgres`, covering tenant isolation, direct mutation denial, lifecycle RPCs, forced transitions, and rollback.

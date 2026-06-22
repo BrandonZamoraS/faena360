@@ -13,13 +13,34 @@ create table public.proyectos (
   estado text not null default 'activo' check (estado in ('activo', 'pausado', 'finalizado', 'oculto')),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  constraint proyectos_cliente_tenant_fk check (
-    tenant_id = (select tenant_id from clientes where id = cliente_id)
-  ),
   constraint proyectos_monto_fijo_for_monto_fijo_forma check (
     forma_cobro <> 'monto_fijo' or (monto_fijo is not null and monto_fijo > 0)
   )
 );
+
+create or replace function public.validate_proyecto_cliente_tenant()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  if not exists (
+    select 1
+    from public.clientes c
+    where c.id = new.cliente_id
+      and c.tenant_id = new.tenant_id
+  ) then
+    raise exception 'Referenced client must belong to the same tenant' using errcode = '23514';
+  end if;
+
+  return new;
+end;
+$$;
+
+create trigger proyectos_cliente_tenant_trigger
+  before insert or update of tenant_id, cliente_id on public.proyectos
+  for each row
+  execute function public.validate_proyecto_cliente_tenant();
 
 create index idx_proyectos_tenant_id on public.proyectos (tenant_id);
 create index idx_proyectos_tenant_cliente_id on public.proyectos (tenant_id, cliente_id);
@@ -744,7 +765,7 @@ as $$
 declare
   _actor_id uuid := nullif(current_setting('app.current_actor_id', true), '')::uuid;
   _source text := coalesce(nullif(current_setting('app.audit_source', true), ''), 'system');
-  _target_id uuid := nullif(current_setting('app.audit_target_id', true), '')::uuid;
+  _target_id uuid := null;
   _action text;
   _old_value jsonb := null;
   _new_value jsonb := null;
@@ -782,7 +803,7 @@ begin
     new_value,
     occurred_at
   ) values (
-    NEW.tenant_id,
+    coalesce(NEW.tenant_id, OLD.tenant_id),
     _actor_id,
     _target_id,
     _action,

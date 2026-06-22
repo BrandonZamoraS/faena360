@@ -7,7 +7,7 @@
 - worktree: `C:\Users\abran\Documents\GitHub\faena360\.worktrees\issue-49-tenant-project-catalog`
 - branch: `issue-49-tenant-project-catalog`
 - base: `origin/development`
-- verdict: `PASS WITH WARNINGS`
+- verdict: `PASS`
 
 ### Artifacts reviewed
 
@@ -39,7 +39,8 @@
 | `npx vitest run apps/web/app/dashboard/proyectos/page.runtime.test.tsx packages/application/src/projects/project-catalog.test.ts packages/infrastructure/src/projects/SupabaseProjectCatalogRepository.test.ts` | PASS | `3` files passed, `15` tests passed. |
 | `npx tsc -p packages/application/tsconfig.json --noEmit` | PASS | Exit 0, no output. |
 | `npx tsc -p apps/web/tsconfig.json --noEmit` | PASS | Exit 0, no output. |
-| `psql -v ON_ERROR_STOP=1 $DATABASE_URL -f supabase/tests/proyectos_catalog.sql` | BLOCKED | `DATABASE_URL` is not present in this worktree environment; SQL fixture remains authored/unexecuted. |
+| `supabase db reset` | PASS | Local disposable DB reset applied all migrations through `20260624000000_create_proyectos.sql` and seeded successfully. |
+| `psql -v ON_ERROR_STOP=1 $DATABASE_URL -f supabase/tests/proyectos_catalog.sql` | PASS | Local DB URL `postgresql://postgres:postgres@127.0.0.1:54322/postgres`; fixture completed through Test 8 and rolled back. |
 
 ### Spec compliance matrix
 
@@ -52,7 +53,7 @@
 | Forced finish with open jornadas requires reason and annuls affected jornadas | PASS | SQL fixture explicitly asserts reason requirement and annulment behavior. |
 | Finalizing a project also finalizes related subprojects | PASS | Migration function updates `subproyectos.estado = 'finalizado'`; SQL fixture asserts cascade. |
 | Supervisor/read-only sees list without write controls | PASS | Runtime test covers read-only rendering with no create/edit/lifecycle controls. |
-| Direct mutation denial / tenant-isolated SQL rules | UNVERIFIED | SQL fixture exists, but live `psql` execution is blocked by missing `DATABASE_URL`. |
+| Direct mutation denial / tenant-isolated SQL rules | PASS | SQL fixture ran against the local Supabase DB after reset and covered RLS, direct mutation denial, tenant isolation, lifecycle RPCs, forced transitions, and rollback. |
 
 ### Correctness vs design
 
@@ -71,12 +72,12 @@
 
 #### WARNING
 
-- SQL acceptance coverage is still not runtime-verified in this environment because `DATABASE_URL` is missing, so tenant isolation, direct mutation denial, and live RPC behavior remain unexecuted here.
+- None.
 
 #### SUGGESTION
 
-- Run `psql -v ON_ERROR_STOP=1 $DATABASE_URL -f supabase/tests/proyectos_catalog.sql` in an approved environment before merge if you want full database-level acceptance evidence, especially for RLS and direct-mutation denial.
+- None.
 
 ### Final verdict
 
-`PASS WITH WARNINGS` — no CRITICAL issues remain. Ready for commit/PR once the team accepts the missing live SQL execution evidence or supplies an approved database environment.
+`PASS` — runtime, typecheck, migration reset, and SQL fixture evidence are all green against the local disposable database.
