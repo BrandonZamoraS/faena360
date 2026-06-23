@@ -89,6 +89,29 @@ describe("POST /api/webhooks/whatsapp/identify", () => {
     });
   });
 
+  it("rejects present non-string message types before identity resolution", async () => {
+    const identify = vi.fn();
+
+    const response = await handleWhatsappIdentifyPost(
+      buildSignedRequest({
+        phone: "+54 9 11 1234 5678",
+        text: "Hola",
+        timestamp: "2026-06-22T10:00:00Z",
+        provider: "meta",
+        provider_message_id: "wamid.123",
+        type: 123,
+      }),
+      { service: { identify } }
+    );
+
+    expect(response.status).toBe(400);
+    expect(identify).not.toHaveBeenCalled();
+    await expect(response.json()).resolves.toMatchObject({
+      userIdentified: false,
+      errorCode: "PAYLOAD_INVALIDO",
+    });
+  });
+
   it("maps representative business denials to controlled 403 responses", async () => {
     const response = await handleWhatsappIdentifyPost(
       buildSignedRequest({

@@ -45,6 +45,34 @@ describe("WhatsappIdentifyServiceImpl", () => {
     });
   });
 
+  it("returns effective capabilities from every assigned role after the WhatsApp role check passes", async () => {
+    const service = new WhatsappIdentifyServiceImpl(
+      createRepository({
+        listRoleAssignments: async () => [
+          { roleId: "role-1", roleName: "operador", isWebAccess: false },
+          { roleId: "role-2", roleName: "supervisor", isWebAccess: true },
+        ],
+        listCapabilitiesForRoles: async ({ roleIds }) =>
+          roleIds.includes("role-2")
+            ? ["whatsapp.channel.access", "projects:read"]
+            : ["whatsapp.channel.access"],
+      })
+    );
+
+    await expect(
+      service.identify({
+        phone: "+54 9 11 1234-5678",
+        requiredCapability: "whatsapp.channel.access",
+      })
+    ).resolves.toMatchObject({
+      ok: true,
+      user: {
+        roles: ["operador", "supervisor"],
+        capabilities: ["projects:read", "whatsapp.channel.access"],
+      },
+    });
+  });
+
   it.each([
     [
       "USUARIO_NO_REGISTRADO",

@@ -10,10 +10,11 @@
 
 The following variables MUST be configured for every environment. Build and deploy will fail explicitly if any are missing.
 
-| Variable                        | Scope  | Description                       |
-| ------------------------------- | ------ | --------------------------------- |
-| `NEXT_PUBLIC_SUPABASE_URL`      | Public | Supabase project URL              |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public | Supabase anonymous/public API key |
+| Variable                        | Scope       | Description                                    |
+| ------------------------------- | ----------- | ---------------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`      | Public      | Supabase project URL                           |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public      | Supabase anonymous/public API key              |
+| `WEBHOOK_WHATSAPP_SECRET`       | Server-only | Shared secret used to verify n8n webhook HMACs |
 
 ## File Locations
 
@@ -50,7 +51,7 @@ And these as **repository secrets**:
 - `VERCEL_ORG_ID`
 - `VERCEL_PROJECT_ID`
 
-`SUPABASE_SERVICE_ROLE_KEY` is intentionally out of scope for this change. Add it only when server-side Supabase operations are implemented.
+`SUPABASE_SERVICE_ROLE_KEY` and `WEBHOOK_WHATSAPP_SECRET` are server-only secrets. They must be configured in Vercel for environments that use server-side Supabase operations or the WhatsApp identify webhook.
 
 ## Health Endpoint
 

@@ -10,6 +10,7 @@ function validateEnv() {
   const required = [
     "NEXT_PUBLIC_SUPABASE_URL",
     "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+    "WEBHOOK_WHATSAPP_SECRET",
   ];
   const missing: string[] = [];
   for (const key of required) {

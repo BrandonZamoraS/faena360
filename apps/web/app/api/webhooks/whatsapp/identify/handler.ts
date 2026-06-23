@@ -88,6 +88,7 @@ function parsePayload(payload: unknown): PayloadParseResult {
     Number.isNaN(Date.parse(timestamp)) ||
     !provider ||
     !providerMessageId ||
+    type === null ||
     (type && type !== "text")
   ) {
     return { ok: false, errorCode: "PAYLOAD_INVALIDO" };
@@ -101,7 +102,9 @@ function readRequiredString(value: unknown): string | null {
     : null;
 }
 
-function readOptionalString(value: unknown): string | undefined {
+function readOptionalString(value: unknown): string | null | undefined {
+  if (value === undefined || value === null) return undefined;
+  if (typeof value !== "string") return null;
   return typeof value === "string" && value.trim().length > 0
     ? value.trim()
     : undefined;

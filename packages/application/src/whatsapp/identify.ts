@@ -96,7 +96,7 @@ export class WhatsappIdentifyServiceImpl implements WhatsappIdentifyService {
     const capabilities = applyCapabilityOverrides(
       await this.repository.listCapabilitiesForRoles({
         tenantId: record.tenantId,
-        roleIds: operationalRoles.map((role) => role.roleId),
+        roleIds: roles.map((role) => role.roleId),
       }),
       await this.repository.listUserCapabilityOverrides({
         tenantId: record.tenantId,
@@ -112,7 +112,7 @@ export class WhatsappIdentifyServiceImpl implements WhatsappIdentifyService {
         userId: record.userId,
         userName: record.userName,
         tenantId: record.tenantId,
-        roles: operationalRoles.map((role) => role.roleName).sort(),
+        roles: roles.map((role) => role.roleName).sort(),
         capabilities: [...capabilities].sort(),
       },
     };
