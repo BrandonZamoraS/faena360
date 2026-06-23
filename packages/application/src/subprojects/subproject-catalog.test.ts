@@ -336,7 +336,11 @@ describe("subproject catalog service", () => {
 
     const update = await service.updateSubproject(
       { tenant_id: "tenant-1", user_id: "actor-1" },
-      { subprojectId: "missing-id", proyecto_id: "proj-id-1", nombre: "No existe" }
+      {
+        subprojectId: "missing-id",
+        proyecto_id: "proj-id-1",
+        nombre: "No existe",
+      }
     );
     const hide = await service.hideSubproject(
       { tenant_id: "tenant-1", user_id: "actor-1" },
