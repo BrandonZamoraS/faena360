@@ -196,6 +196,11 @@ export function renderSubprojectCatalogShell(
                       className="mt-5 grid gap-4 md:grid-cols-2"
                     >
                       <input name="subprojectId" type="hidden" value={sub.id} />
+                      <input
+                        name="proyecto_id"
+                        type="hidden"
+                        value={sub.proyecto_id}
+                      />
                       <SubprojectFields
                         subproject={sub}
                         projects={input.projects}
@@ -606,6 +611,7 @@ export async function updateSubprojectAction(formData: FormData) {
     { tenant_id: session.tenant_id, user_id: session.user_id },
     {
       subprojectId: getString(formData, "subprojectId").trim(),
+      proyecto_id: getString(formData, "proyecto_id").trim(),
       nombre: getString(formData, "nombre").trim(),
       ubicacion: getOptionalString(formData, "ubicacion"),
       forma_cobro: (getOptionalString(formData, "forma_cobro") ?? undefined) as

@@ -32,6 +32,7 @@ export interface CreateSubprojectInput {
 
 export interface UpdateSubprojectInput {
   readonly subprojectId: string;
+  readonly proyecto_id: string;
   readonly nombre: string;
   readonly ubicacion?: string;
   readonly forma_cobro?: SubprojectFormaCobro;

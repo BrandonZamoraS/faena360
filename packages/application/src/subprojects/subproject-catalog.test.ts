@@ -234,6 +234,7 @@ describe("subproject catalog service", () => {
       { tenant_id: "tenant-1", user_id: "actor-1" },
       {
         subprojectId: "sub-id-1",
+        proyecto_id: "proj-id-1",
         nombre: "Fase Editada",
       }
     );
@@ -335,7 +336,7 @@ describe("subproject catalog service", () => {
 
     const update = await service.updateSubproject(
       { tenant_id: "tenant-1", user_id: "actor-1" },
-      { subprojectId: "missing-id", nombre: "No existe" }
+      { subprojectId: "missing-id", proyecto_id: "proj-id-1", nombre: "No existe" }
     );
     const hide = await service.hideSubproject(
       { tenant_id: "tenant-1", user_id: "actor-1" },
@@ -344,6 +345,53 @@ describe("subproject catalog service", () => {
 
     expect(update).toEqual({ ok: false, code: "missing_project" });
     expect(hide).toEqual({ ok: false, code: "missing_project" });
+  });
+
+  it("validates fixed-amount sum guard blocks overage on update", async () => {
+    const { service } = createService({
+      repository: {
+        getParentFixedAmount: async () => 1000,
+        getSubprojectFixedAmountSum: async () => 800,
+      },
+    });
+
+    const result = await service.updateSubproject(
+      { tenant_id: "tenant-1", user_id: "actor-1" },
+      {
+        subprojectId: "sub-id-1",
+        proyecto_id: "proj-id-1",
+        nombre: "Fase Editada",
+        forma_cobro: "monto_fijo",
+        monto_fijo: 300,
+      }
+    );
+
+    expect(result).toEqual({
+      ok: false,
+      code: "fixed_amount_exceeds_parent",
+    });
+  });
+
+  it("allows update when fixed-amount sum is within parent limit", async () => {
+    const { service } = createService({
+      repository: {
+        getParentFixedAmount: async () => 1000,
+        getSubprojectFixedAmountSum: async () => 500,
+      },
+    });
+
+    const result = await service.updateSubproject(
+      { tenant_id: "tenant-1", user_id: "actor-1" },
+      {
+        subprojectId: "sub-id-1",
+        proyecto_id: "proj-id-1",
+        nombre: "Fase Editada",
+        forma_cobro: "monto_fijo",
+        monto_fijo: 400,
+      }
+    );
+
+    expect(result).toEqual({ ok: true });
   });
 
   it("maps create/update repository errors", async () => {

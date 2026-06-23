@@ -132,7 +132,7 @@ describe("subprojects page shell", () => {
 
     expect(html).toContain("Catálogo visible en modo lectura.");
     expect(html).not.toContain("Crear subproyecto");
-    expect(html).not.toContain('name="proyecto_id"');
+    expect(html).not.toContain("Proyecto padre");
   });
 
   it("renders lifecycle controls independently from update permission", () => {
