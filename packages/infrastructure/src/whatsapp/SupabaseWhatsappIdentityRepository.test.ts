@@ -42,7 +42,9 @@ describe("SupabaseWhatsappIdentityRepository", () => {
 
     const repository = new SupabaseWhatsappIdentityRepository(client);
 
-    await expect(repository.findByNormalizedPhone({ phone: "5491112345678" })).resolves.toEqual({
+    await expect(
+      repository.findByNormalizedPhone({ phone: "5491112345678" })
+    ).resolves.toEqual({
       userId: "user-1",
       userName: "Juan Pérez",
       tenantId: "tenant-1",

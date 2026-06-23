@@ -15,7 +15,9 @@ export type WhatsappIdentifyRouteDependencies = {
 };
 
 function buildService(): WhatsappIdentifyService {
-  return new WhatsappIdentifyServiceImpl(new SupabaseWhatsappIdentityRepository(createWebSupabaseServiceClient()));
+  return new WhatsappIdentifyServiceImpl(
+    new SupabaseWhatsappIdentityRepository(createWebSupabaseServiceClient())
+  );
 }
 
 export async function handleWhatsappIdentifyPost(
@@ -24,7 +26,13 @@ export async function handleWhatsappIdentifyPost(
 ): Promise<NextResponse> {
   try {
     const rawBody = await request.text();
-    if (!(dependencies.verifySignature ?? verifyWhatsappWebhookSignature)({ headers: request.headers, rawBody })) return errorResponse(401, "WEBHOOK_NO_AUTORIZADO");
+    if (
+      !(dependencies.verifySignature ?? verifyWhatsappWebhookSignature)({
+        headers: request.headers,
+        rawBody,
+      })
+    )
+      return errorResponse(401, "WEBHOOK_NO_AUTORIZADO");
 
     let payload: unknown;
     try {
@@ -34,10 +42,21 @@ export async function handleWhatsappIdentifyPost(
     }
 
     const parsed = parsePayload(payload);
-    if (!parsed.ok) return errorResponse(mapErrorCodeToStatus(parsed.errorCode), parsed.errorCode);
+    if (!parsed.ok)
+      return errorResponse(
+        mapErrorCodeToStatus(parsed.errorCode),
+        parsed.errorCode
+      );
 
-    const outcome = await (dependencies.service ?? buildService()).identify({ phone: parsed.phone, requiredCapability: REQUIRED_CAPABILITY });
-    if (!outcome.ok) return errorResponse(mapErrorCodeToStatus(outcome.errorCode), outcome.errorCode);
+    const outcome = await (dependencies.service ?? buildService()).identify({
+      phone: parsed.phone,
+      requiredCapability: REQUIRED_CAPABILITY,
+    });
+    if (!outcome.ok)
+      return errorResponse(
+        mapErrorCodeToStatus(outcome.errorCode),
+        outcome.errorCode
+      );
 
     return NextResponse.json({
       userIdentified: true,
@@ -53,7 +72,8 @@ export async function handleWhatsappIdentifyPost(
 }
 
 function parsePayload(payload: unknown): PayloadParseResult {
-  if (!payload || typeof payload !== "object") return { ok: false, errorCode: "PAYLOAD_INVALIDO" };
+  if (!payload || typeof payload !== "object")
+    return { ok: false, errorCode: "PAYLOAD_INVALIDO" };
   const candidate = payload as Record<string, unknown>;
   const phone = readPhone(candidate.phone);
   const text = readRequiredString(candidate.text);
@@ -62,23 +82,35 @@ function parsePayload(payload: unknown): PayloadParseResult {
   const providerMessageId = readRequiredString(candidate.provider_message_id);
   const type = readOptionalString(candidate.type);
   if (!phone.ok) return phone;
-  if (!text || !timestamp || Number.isNaN(Date.parse(timestamp)) || !provider || !providerMessageId || (type && type !== "text")) {
+  if (
+    !text ||
+    !timestamp ||
+    Number.isNaN(Date.parse(timestamp)) ||
+    !provider ||
+    !providerMessageId ||
+    (type && type !== "text")
+  ) {
     return { ok: false, errorCode: "PAYLOAD_INVALIDO" };
   }
   return { ok: true, phone: phone.phone };
 }
 
 function readRequiredString(value: unknown): string | null {
-  return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
+  return typeof value === "string" && value.trim().length > 0
+    ? value.trim()
+    : null;
 }
 
 function readOptionalString(value: unknown): string | undefined {
-  return typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined;
+  return typeof value === "string" && value.trim().length > 0
+    ? value.trim()
+    : undefined;
 }
 
 function readPhone(value: unknown): PayloadParseResult {
   if (value == null) return { ok: false, errorCode: "USUARIO_NO_REGISTRADO" };
-  if (typeof value !== "string") return { ok: false, errorCode: "PAYLOAD_INVALIDO" };
+  if (typeof value !== "string")
+    return { ok: false, errorCode: "PAYLOAD_INVALIDO" };
 
   const phone = value.trim();
   if (!phone || phone.replace(/\D/g, "").length === 0) {
@@ -90,10 +122,14 @@ function readPhone(value: unknown): PayloadParseResult {
 
 function mapErrorCodeToStatus(code: string): number {
   switch (code) {
-    case "USUARIO_NO_REGISTRADO": return 404;
-    case "WEBHOOK_NO_AUTORIZADO": return 401;
-    case "PAYLOAD_INVALIDO": return 400;
-    default: return 403;
+    case "USUARIO_NO_REGISTRADO":
+      return 404;
+    case "WEBHOOK_NO_AUTORIZADO":
+      return 401;
+    case "PAYLOAD_INVALIDO":
+      return 400;
+    default:
+      return 403;
   }
 }
 

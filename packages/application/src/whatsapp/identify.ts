@@ -1,6 +1,10 @@
 import { applyCapabilityOverrides, type UserCapabilityOverride } from "../auth";
 
-const OPERATIONAL_ROLE_NAMES = new Set(["operador", "mantenimiento", "repartidor_de_combustible"]);
+const OPERATIONAL_ROLE_NAMES = new Set([
+  "operador",
+  "mantenimiento",
+  "repartidor_de_combustible",
+]);
 
 export type WhatsappIdentifyErrorCode =
   | "USUARIO_NO_REGISTRADO"
@@ -29,10 +33,21 @@ export interface WhatsappIdentityRecord {
 }
 
 export interface WhatsappIdentityRepository {
-  findByNormalizedPhone(input: { readonly phone: string }): Promise<WhatsappIdentityRecord | null>;
-  listRoleAssignments(input: { readonly tenantId: string; readonly userId: string }): Promise<readonly WhatsappIdentityRole[]>;
-  listCapabilitiesForRoles(input: { readonly tenantId: string; readonly roleIds: readonly string[] }): Promise<readonly string[]>;
-  listUserCapabilityOverrides(input: { readonly tenantId: string; readonly userId: string }): Promise<readonly UserCapabilityOverride[]>;
+  findByNormalizedPhone(input: {
+    readonly phone: string;
+  }): Promise<WhatsappIdentityRecord | null>;
+  listRoleAssignments(input: {
+    readonly tenantId: string;
+    readonly userId: string;
+  }): Promise<readonly WhatsappIdentityRole[]>;
+  listCapabilitiesForRoles(input: {
+    readonly tenantId: string;
+    readonly roleIds: readonly string[];
+  }): Promise<readonly string[]>;
+  listUserCapabilityOverrides(input: {
+    readonly tenantId: string;
+    readonly userId: string;
+  }): Promise<readonly UserCapabilityOverride[]>;
 }
 
 export type WhatsappIdentifyOutcome =
@@ -55,24 +70,41 @@ export interface WhatsappIdentifyService {
 export class WhatsappIdentifyServiceImpl implements WhatsappIdentifyService {
   constructor(private readonly repository: WhatsappIdentityRepository) {}
 
-  async identify(input: WhatsappIdentifyInput): Promise<WhatsappIdentifyOutcome> {
+  async identify(
+    input: WhatsappIdentifyInput
+  ): Promise<WhatsappIdentifyOutcome> {
     const phone = normalizePhone(input.phone);
     if (!phone) return { ok: false, errorCode: "USUARIO_NO_REGISTRADO" };
 
     const record = await this.repository.findByNormalizedPhone({ phone });
     if (!record) return { ok: false, errorCode: "USUARIO_NO_REGISTRADO" };
-    if (record.userStatus !== "active") return { ok: false, errorCode: "USUARIO_INACTIVO" };
-    if (record.tenantStatus !== "active") return { ok: false, errorCode: "TENANT_INVALIDO" };
+    if (record.userStatus !== "active")
+      return { ok: false, errorCode: "USUARIO_INACTIVO" };
+    if (record.tenantStatus !== "active")
+      return { ok: false, errorCode: "TENANT_INVALIDO" };
 
-    const roles = await this.repository.listRoleAssignments({ tenantId: record.tenantId, userId: record.userId });
-    const operationalRoles = roles.filter((role) => !role.isWebAccess && OPERATIONAL_ROLE_NAMES.has(role.roleName));
-    if (operationalRoles.length === 0) return { ok: false, errorCode: "ROL_NO_WHATSAPP" };
+    const roles = await this.repository.listRoleAssignments({
+      tenantId: record.tenantId,
+      userId: record.userId,
+    });
+    const operationalRoles = roles.filter(
+      (role) => !role.isWebAccess && OPERATIONAL_ROLE_NAMES.has(role.roleName)
+    );
+    if (operationalRoles.length === 0)
+      return { ok: false, errorCode: "ROL_NO_WHATSAPP" };
 
     const capabilities = applyCapabilityOverrides(
-      await this.repository.listCapabilitiesForRoles({ tenantId: record.tenantId, roleIds: operationalRoles.map((role) => role.roleId) }),
-      await this.repository.listUserCapabilityOverrides({ tenantId: record.tenantId, userId: record.userId })
+      await this.repository.listCapabilitiesForRoles({
+        tenantId: record.tenantId,
+        roleIds: operationalRoles.map((role) => role.roleId),
+      }),
+      await this.repository.listUserCapabilityOverrides({
+        tenantId: record.tenantId,
+        userId: record.userId,
+      })
     );
-    if (!capabilities.has(input.requiredCapability)) return { ok: false, errorCode: "PERMISO_DENEGADO" };
+    if (!capabilities.has(input.requiredCapability))
+      return { ok: false, errorCode: "PERMISO_DENEGADO" };
 
     return {
       ok: true,

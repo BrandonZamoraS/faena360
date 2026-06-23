@@ -129,7 +129,9 @@ const SUPERVISOR_CAPABILITY_KEYS = [
   "reports:read",
 ];
 
-const WHATSAPP_OPERATIONAL_CAPABILITY_KEYS = ["whatsapp.channel.access"] as const;
+const WHATSAPP_OPERATIONAL_CAPABILITY_KEYS = [
+  "whatsapp.channel.access",
+] as const;
 
 /**
  * Documented capability grants are intentionally represented as key names only.
