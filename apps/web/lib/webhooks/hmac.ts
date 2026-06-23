@@ -36,6 +36,7 @@ function isUsableSecret(value: string | undefined): value is string {
   return (
     normalized.length > 0 &&
     !normalized.includes("placeholder") &&
+    normalized !== "ci-check-webhook-secret" &&
     normalized !== "replace-with-a-strong-shared-secret"
   );
 }

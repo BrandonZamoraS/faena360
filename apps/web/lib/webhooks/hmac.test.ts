@@ -48,6 +48,7 @@ describe("verifyWhatsappWebhookSignature", () => {
     "",
     "placeholder-webhook-whatsapp-secret",
     "replace-with-a-strong-shared-secret",
+    "ci-check-webhook-secret",
   ])("rejects unusable configured secret %s", (configuredSecret) => {
     expect(
       verifyWhatsappWebhookSignature({
