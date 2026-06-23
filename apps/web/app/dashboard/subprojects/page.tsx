@@ -86,9 +86,7 @@ export function renderSubprojectCatalogShell(
   );
 
   const canReadParentProjects = canReadProjects(input.capabilities);
-  const projectById = new Map(
-    input.projects.map((p) => [p.id, p.nombre])
-  );
+  const projectById = new Map(input.projects.map((p) => [p.id, p.nombre]));
 
   return (
     <main className="min-h-screen bg-[#f5fbf7] text-[#102118]">
@@ -144,8 +142,7 @@ export function renderSubprojectCatalogShell(
 
             {input.subprojects.map((sub) => {
               const projectName = canReadParentProjects
-                ? (projectById.get(sub.proyecto_id) ??
-                  "Proyecto no encontrado")
+                ? (projectById.get(sub.proyecto_id) ?? "Proyecto no encontrado")
                 : null;
 
               return (
@@ -198,11 +195,7 @@ export function renderSubprojectCatalogShell(
                       action={input.updateAction}
                       className="mt-5 grid gap-4 md:grid-cols-2"
                     >
-                      <input
-                        name="subprojectId"
-                        type="hidden"
-                        value={sub.id}
-                      />
+                      <input name="subprojectId" type="hidden" value={sub.id} />
                       <SubprojectFields
                         subproject={sub}
                         projects={input.projects}
@@ -394,15 +387,9 @@ function SubprojectLifecycleFinishCard({
         <span>Forzar finalización</span>
       </label>
       <label className="flex items-center gap-2 text-sm font-medium">
-        <input
-          type="checkbox"
-          name="confirmation"
-          value="true"
-          required
-        />
+        <input type="checkbox" name="confirmation" value="true" required />
         <span>
-          Confirmo la finalización y la anulación de jornadas abiertas
-          afectadas
+          Confirmo la finalización y la anulación de jornadas abiertas afectadas
         </span>
       </label>
       <label className="space-y-2 text-sm font-medium">
@@ -550,7 +537,10 @@ function getBoolean(formData: FormData, key: string): boolean {
   return value === "on" || value === "true" || value === "1";
 }
 
-function getOptionalString(formData: FormData, key: string): string | undefined {
+function getOptionalString(
+  formData: FormData,
+  key: string
+): string | undefined {
   const value = getString(formData, key).trim();
   return value === "" ? undefined : value;
 }
@@ -584,8 +574,9 @@ export async function createSubprojectAction(formData: FormData) {
       proyecto_id: getString(formData, "proyecto_id").trim(),
       nombre: getString(formData, "nombre").trim(),
       ubicacion: getOptionalString(formData, "ubicacion"),
-      forma_cobro: (getOptionalString(formData, "forma_cobro") ??
-        undefined) as SubprojectFormaCobro | undefined,
+      forma_cobro: (getOptionalString(formData, "forma_cobro") ?? undefined) as
+        | SubprojectFormaCobro
+        | undefined,
       monto_fijo: getMontoFijo(formData),
     }
   );
@@ -617,8 +608,9 @@ export async function updateSubprojectAction(formData: FormData) {
       subprojectId: getString(formData, "subprojectId").trim(),
       nombre: getString(formData, "nombre").trim(),
       ubicacion: getOptionalString(formData, "ubicacion"),
-      forma_cobro: (getOptionalString(formData, "forma_cobro") ??
-        undefined) as SubprojectFormaCobro | undefined,
+      forma_cobro: (getOptionalString(formData, "forma_cobro") ?? undefined) as
+        | SubprojectFormaCobro
+        | undefined,
       monto_fijo: getMontoFijo(formData),
     }
   );

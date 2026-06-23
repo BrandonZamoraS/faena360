@@ -203,11 +203,7 @@ describe("subprojects page shell", () => {
     const html = renderToStaticMarkup(
       renderSubprojectCatalogShell({
         tenantName: "Tenant Demo",
-        capabilities: [
-          "subprojects:read",
-          "projects:read",
-          "fuel_types:read",
-        ],
+        capabilities: ["subprojects:read", "projects:read", "fuel_types:read"],
         subprojects: [],
         projects,
       })
