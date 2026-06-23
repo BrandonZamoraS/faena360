@@ -36,6 +36,7 @@ describe("subproject catalog service", () => {
       hide: async () => true,
       getParentFixedAmount: async () => 1000,
       getSubprojectFixedAmountSum: async () => 300,
+      getProjectId: async () => "proj-id-1",
       ...overrides?.repository,
     };
 
@@ -396,6 +397,41 @@ describe("subproject catalog service", () => {
     );
 
     expect(result).toEqual({ ok: true });
+  });
+
+  it("uses server-sourced proyecto_id for fixed-amount guard on update, not client-supplied", async () => {
+    // Capture the proyecto_id used in the sum check.
+    let capturedProyectoId: string | undefined;
+    const { service } = createService({
+      repository: {
+        getProjectId: async () => "proj-srv-999",
+        getParentFixedAmount: async () => 1000,
+        getSubprojectFixedAmountSum: async (_tenantId, proyecto_id, _exclude) => {
+          capturedProyectoId = proyecto_id;
+          return 800;
+        },
+      },
+    });
+
+    // Client sends a manipulated proyecto_id in the hidden field.
+    const result = await service.updateSubproject(
+      { tenant_id: "tenant-1", user_id: "actor-1" },
+      {
+        subprojectId: "sub-id-1",
+        proyecto_id: "proj-evil-123", // manipulated
+        nombre: "Fase Editada",
+        forma_cobro: "monto_fijo",
+        monto_fijo: 300,
+      }
+    );
+
+    // Should have been blocked by sum guard using server-sourced ID.
+    expect(result).toEqual({
+      ok: false,
+      code: "fixed_amount_exceeds_parent",
+    });
+    // The guard must have used the server-sourced value, not the manipulated one.
+    expect(capturedProyectoId).toBe("proj-srv-999");
   });
 
   it("maps create/update repository errors", async () => {

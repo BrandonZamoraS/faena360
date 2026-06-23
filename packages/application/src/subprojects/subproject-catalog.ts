@@ -220,16 +220,21 @@ export function createSubprojectCatalogService({
         return { ok: false, code: "missing_nombre" };
       }
 
+      // 🔒 Fetch server-sourced proyecto_id to prevent client manipulation.
+      const actualProyectoId = await repository.getProjectId(tenantId, subprojectId);
+      if (!actualProyectoId) {
+        return { ok: false, code: "missing_project" };
+      }
+
       // Fixed-amount sum guard (exclude current subproject from sum)
       if (
         normalized.forma_cobro === "monto_fijo" &&
-        normalized.monto_fijo !== undefined &&
-        normalized.proyecto_id
+        normalized.monto_fijo !== undefined
       ) {
         const exceeded = await checkFixedAmountSum(
           repository,
           tenantId,
-          normalized.proyecto_id,
+          actualProyectoId,
           normalized.monto_fijo,
           subprojectId
         );

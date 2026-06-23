@@ -207,6 +207,29 @@ export class SupabaseSubprojectCatalogRepository implements SubprojectCatalogRep
   }
 
   /**
+   * Returns the authoritative proyecto_id for a subproject (server-sourced).
+   * Used to validate against client-supplied proyecto_id in update flows.
+   */
+  public async getProjectId(
+    tenantId: string,
+    subprojectId: string
+  ): Promise<string | null> {
+    const response = await this.client
+      .from("subproyectos")
+      .select("proyecto_id")
+      .eq("tenant_id", tenantId)
+      .eq("id", subprojectId)
+      .maybeSingle();
+
+    if (response.error) {
+      throw new Error(response.error.message);
+    }
+
+    const row = response.data as { proyecto_id: string } | null;
+    return row?.proyecto_id ?? null;
+  }
+
+  /**
    * Returns the sum of monto_fijo for all non-hidden sibling subprojects
    * under the same proyecto_id. Optionally excludes a specific subproject
    * (used for update operations to avoid double-counting).

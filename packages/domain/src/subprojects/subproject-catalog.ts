@@ -133,4 +133,7 @@ export interface SubprojectCatalogRepository {
     readonly actorId: string;
     readonly auditSource: AuditSource;
   }): Promise<boolean>;
+
+  /** Returns the authoritative proyecto_id for a subproject (server-sourced, not client-supplied). */
+  getProjectId(tenantId: string, subprojectId: string): Promise<string | null>;
 }

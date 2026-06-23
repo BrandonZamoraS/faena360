@@ -113,7 +113,10 @@ declare
   v_subproject_id uuid;
   v_parent_ubicacion text;
   v_parent_forma_cobro text;
+  v_parent_monto_fijo numeric;
   v_parent_estado text;
+  v_effective_forma_cobro text;
+  v_effective_monto_fijo numeric;
 begin
   if not public.app_user_has_capability(p_actor_id, p_tenant_id, 'subprojects:create') then
     raise exception 'Actor lacks subprojects:create capability' using errcode = '42501';
@@ -124,8 +127,8 @@ begin
   perform set_config('app.audit_target_id', '', true);
 
   -- Resolve parent project fields for inheritance.
-  select ubicacion, forma_cobro, estado
-    into v_parent_ubicacion, v_parent_forma_cobro, v_parent_estado
+  select ubicacion, forma_cobro, monto_fijo, estado
+    into v_parent_ubicacion, v_parent_forma_cobro, v_parent_monto_fijo, v_parent_estado
   from public.proyectos
   where id = p_proyecto_id
     and tenant_id = p_tenant_id;
@@ -136,6 +139,16 @@ begin
 
   if v_parent_estado = 'finalizado' then
     raise exception 'Cannot create subprojects under a finalized project';
+  end if;
+
+  -- Resolve effective forma_cobro and monto_fijo with inheritance.
+  v_effective_forma_cobro := coalesce(p_forma_cobro, v_parent_forma_cobro);
+  v_effective_monto_fijo := p_monto_fijo;
+
+  -- If forma_cobro is inherited as 'monto_fijo' but no monto_fijo provided,
+  -- also inherit the parent's monto_fijo to satisfy the CHECK constraint.
+  if v_effective_forma_cobro = 'monto_fijo' and v_effective_monto_fijo is null then
+    v_effective_monto_fijo := v_parent_monto_fijo;
   end if;
 
   insert into public.subproyectos (
@@ -151,8 +164,8 @@ begin
     p_proyecto_id,
     p_nombre,
     coalesce(p_ubicacion, v_parent_ubicacion),
-    coalesce(p_forma_cobro, v_parent_forma_cobro),
-    p_monto_fijo,
+    v_effective_forma_cobro,
+    v_effective_monto_fijo,
     'activo'
   ) returning id into v_subproject_id;
 
@@ -201,7 +214,130 @@ begin
 end;
 $$;
 
+-- Helper: count open jornadas for a specific subproject.
+-- Uses dynamic SQL to tolerate optional subproject_id column in jornadas.
+create or replace function public.count_open_jornadas_for_subproyecto(
+  p_tenant_id uuid,
+  p_subproject_id uuid
+)
+returns bigint
+language plpgsql
+set search_path = public
+as $$
+declare
+  v_count bigint := 0;
+  v_has_subproject_id boolean := false;
+  v_has_estado boolean := false;
+begin
+  if to_regclass('public.jornadas') is null then
+    return 0;
+  end if;
+
+  select exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'jornadas'
+      and column_name = 'subproject_id'
+  ) into v_has_subproject_id;
+
+  select exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'jornadas'
+      and column_name = 'estado'
+  ) into v_has_estado;
+
+  if not v_has_subproject_id or not v_has_estado then
+    return 0;
+  end if;
+
+  execute
+    'select count(*) from public.jornadas where tenant_id = $1 and subproject_id = $2 and estado = ''abierta'''
+    into v_count
+    using p_tenant_id, p_subproject_id;
+
+  return coalesce(v_count, 0);
+end;
+$$;
+
+-- Helper: invalidate open jornadas for a specific subproject.
+-- Uses dynamic SQL for the optional reason column.
+create or replace function public.invalidate_open_jornadas_for_subproyecto(
+  p_tenant_id uuid,
+  p_subproject_id uuid,
+  p_reason text
+)
+returns bigint
+language plpgsql
+set search_path = public
+as $$
+declare
+  v_count bigint := 0;
+  v_reason_column text;
+  v_has_subproject_id boolean := false;
+  v_has_estado boolean := false;
+  v_sql text;
+begin
+  if to_regclass('public.jornadas') is null then
+    return 0;
+  end if;
+
+  select exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'jornadas'
+      and column_name = 'subproject_id'
+  ) into v_has_subproject_id;
+
+  select exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'jornadas'
+      and column_name = 'estado'
+  ) into v_has_estado;
+
+  if not v_has_subproject_id or not v_has_estado then
+    return 0;
+  end if;
+
+  select candidate.column_name
+    into v_reason_column
+  from unnest(
+    ARRAY[
+      'motivo_anulacion',
+      'razon_anulacion',
+      'motivo_cancelacion',
+      'observaciones_anulacion'
+    ]::text[]
+  ) as candidate(column_name)
+  join information_schema.columns c
+    on c.table_schema = 'public'
+   and c.table_name = 'jornadas'
+   and c.column_name = candidate.column_name
+  limit 1;
+
+  v_sql :=
+    'update public.jornadas set estado = ''anulada''' ||
+    coalesce(format(', %I = $3', v_reason_column), '') ||
+    ' where tenant_id = $1 and estado = ''abierta'' and subproject_id = $2';
+
+  if v_reason_column is not null then
+    execute v_sql using p_tenant_id, p_subproject_id, p_reason;
+  else
+    execute v_sql using p_tenant_id, p_subproject_id;
+  end if;
+
+  get diagnostics v_count = row_count;
+  return v_count;
+end;
+$$;
+
 -- RPC: finish_subproyecto
+-- Counts open jornadas; blocks unless force=true with reason; invalidates them.
 create or replace function public.finish_subproyecto(
   p_actor_id uuid,
   p_audit_source text,
@@ -218,6 +354,7 @@ as $$
 declare
   v_updated_count integer;
   v_current_estado text;
+  v_open_jornadas bigint;
 begin
   if not public.app_user_has_capability(p_actor_id, p_tenant_id, 'subprojects:finish') then
     raise exception 'Actor lacks subprojects:finish capability' using errcode = '42501';
@@ -234,6 +371,25 @@ begin
 
   if v_current_estado not in ('activo', 'pausado') then
     raise exception 'Cannot finish a subproject that is not active or paused';
+  end if;
+
+  -- Count and validate open jornadas for this subproject.
+  v_open_jornadas := public.count_open_jornadas_for_subproyecto(p_tenant_id, p_subproject_id);
+
+  if v_open_jornadas > 0 then
+    if not p_force then
+      raise exception 'Subproject has % open jornadas. Use force=true to proceed.', v_open_jornadas;
+    end if;
+
+    if coalesce(trim(p_reason), '') = '' then
+      raise exception 'Forced finish requires a reason';
+    end if;
+
+    perform public.invalidate_open_jornadas_for_subproyecto(
+      p_tenant_id,
+      p_subproject_id,
+      p_reason
+    );
   end if;
 
   perform set_config('app.current_actor_id', p_actor_id::text, true);
@@ -352,16 +508,22 @@ revoke execute on function public.update_subproyecto(uuid, text, uuid, uuid, tex
 revoke execute on function public.finish_subproyecto(uuid, text, uuid, uuid, boolean, text) from public;
 revoke execute on function public.reopen_subproyecto(uuid, text, uuid, uuid, text) from public;
 revoke execute on function public.hide_subproyecto(uuid, text, uuid, uuid) from public;
+revoke execute on function public.count_open_jornadas_for_subproyecto(uuid, uuid) from public;
+revoke execute on function public.invalidate_open_jornadas_for_subproyecto(uuid, uuid, text) from public;
 revoke execute on function public.create_subproyecto(uuid, text, uuid, uuid, text, text, text, numeric) from anon, authenticated;
 revoke execute on function public.update_subproyecto(uuid, text, uuid, uuid, text, text, text, numeric) from anon, authenticated;
 revoke execute on function public.finish_subproyecto(uuid, text, uuid, uuid, boolean, text) from anon, authenticated;
 revoke execute on function public.reopen_subproyecto(uuid, text, uuid, uuid, text) from anon, authenticated;
 revoke execute on function public.hide_subproyecto(uuid, text, uuid, uuid) from anon, authenticated;
+revoke execute on function public.count_open_jornadas_for_subproyecto(uuid, uuid) from anon, authenticated;
+revoke execute on function public.invalidate_open_jornadas_for_subproyecto(uuid, uuid, text) from anon, authenticated;
 grant execute on function public.create_subproyecto(uuid, text, uuid, uuid, text, text, text, numeric) to service_role;
 grant execute on function public.update_subproyecto(uuid, text, uuid, uuid, text, text, text, numeric) to service_role;
 grant execute on function public.finish_subproyecto(uuid, text, uuid, uuid, boolean, text) to service_role;
 grant execute on function public.reopen_subproyecto(uuid, text, uuid, uuid, text) to service_role;
 grant execute on function public.hide_subproyecto(uuid, text, uuid, uuid) to service_role;
+grant execute on function public.count_open_jornadas_for_subproyecto(uuid, uuid) to service_role;
+grant execute on function public.invalidate_open_jornadas_for_subproyecto(uuid, uuid, text) to service_role;
 
 -- Audit trigger.
 create or replace function public.audit_subproyectos_trigger()
