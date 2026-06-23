@@ -406,7 +406,11 @@ describe("subproject catalog service", () => {
       repository: {
         getProjectId: async () => "proj-srv-999",
         getParentFixedAmount: async () => 1000,
-        getSubprojectFixedAmountSum: async (_tenantId, proyecto_id, _exclude) => {
+        getSubprojectFixedAmountSum: async (
+          _tenantId,
+          proyecto_id,
+          _exclude
+        ) => {
           capturedProyectoId = proyecto_id;
           return 800;
         },

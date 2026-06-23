@@ -221,7 +221,10 @@ export function createSubprojectCatalogService({
       }
 
       // 🔒 Fetch server-sourced proyecto_id to prevent client manipulation.
-      const actualProyectoId = await repository.getProjectId(tenantId, subprojectId);
+      const actualProyectoId = await repository.getProjectId(
+        tenantId,
+        subprojectId
+      );
       if (!actualProyectoId) {
         return { ok: false, code: "missing_project" };
       }
