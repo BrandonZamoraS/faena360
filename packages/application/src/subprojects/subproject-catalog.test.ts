@@ -527,11 +527,8 @@ describe("subproject catalog service", () => {
     const { service } = createService({
       repository: {
         getParentFixedAmount: async () => 1000,
-        getSubprojectFixedAmountSum: async (
-          _tenantId,
-          _proyectoId,
-          _exclude
-        ) => 800,
+        getSubprojectFixedAmountSum: async (_tenantId, _proyectoId, _exclude) =>
+          800,
       },
     });
 
