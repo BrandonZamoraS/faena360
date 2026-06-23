@@ -70,6 +70,13 @@ create policy "subproyectos tenant isolation - SELECT"
   using (
     tenant_id = public.current_app_tenant_id()
     and estado <> 'oculto'
+    and not exists (
+      select 1
+      from public.proyectos p
+      where p.id = subproyectos.proyecto_id
+        and p.tenant_id = subproyectos.tenant_id
+        and p.estado = 'oculto'
+    )
     and public.current_app_user_has_capability('subprojects:read')
   );
 
@@ -202,9 +209,13 @@ begin
 
   update public.subproyectos
   set nombre = p_nombre,
-      ubicacion = p_ubicacion,
-      forma_cobro = p_forma_cobro,
-      monto_fijo = p_monto_fijo
+      ubicacion = coalesce(p_ubicacion, (select ubicacion from public.proyectos where id = subproyectos.proyecto_id)),
+      forma_cobro = coalesce(p_forma_cobro, (select forma_cobro from public.proyectos where id = subproyectos.proyecto_id)),
+      monto_fijo = case
+        when p_forma_cobro = 'monto_fijo' then p_monto_fijo
+        when p_forma_cobro is null and (select forma_cobro from public.proyectos where id = subproyectos.proyecto_id) = 'monto_fijo' then coalesce(p_monto_fijo, (select monto_fijo from public.proyectos where id = subproyectos.proyecto_id))
+        else null
+      end
   where tenant_id = p_tenant_id
     and id = p_subproject_id
     and estado <> 'oculto';

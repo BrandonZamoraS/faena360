@@ -50,7 +50,8 @@ values
 insert into roles (id, tenant_id, name)
 values
   ('dddd3000-0000-0000-0000-000000000001', 'aaaa3000-0000-0000-0000-000000000001', 'Subproject Admin'),
-  ('dddd3000-0000-0000-0000-000000000002', 'aaaa3000-0000-0000-0000-000000000001', 'Subproject Supervisor');
+  ('dddd3000-0000-0000-0000-000000000002', 'aaaa3000-0000-0000-0000-000000000001', 'Subproject Supervisor'),
+  ('dddd3000-0000-0000-0000-000000000003', 'aaaa3000-0000-0000-0000-000000000002', 'Subproject Supervisor B');
 
 insert into role_capabilities (role_id, capability_id)
 select 'dddd3000-0000-0000-0000-000000000001', c.id
@@ -69,10 +70,15 @@ select 'dddd3000-0000-0000-0000-000000000002', c.id
 from capabilities c
 where c.key = 'subprojects:read';
 
+insert into role_capabilities (role_id, capability_id)
+select 'dddd3000-0000-0000-0000-000000000003', c.id
+from capabilities c
+where c.key = 'subprojects:read';
+
 insert into user_roles (tenant_id, user_id, role_id)
 values
   ('aaaa3000-0000-0000-0000-000000000001', 'bbbb3000-0000-0000-0000-000000000001', 'dddd3000-0000-0000-0000-000000000001'),
-  ('aaaa3000-0000-0000-0000-000000000002', 'bbbb3000-0000-0000-0000-000000000002', 'dddd3000-0000-0000-0000-000000000002');
+  ('aaaa3000-0000-0000-0000-000000000002', 'bbbb3000-0000-0000-0000-000000000002', 'dddd3000-0000-0000-0000-000000000003');
 
 insert into proyectos (id, tenant_id, nombre, cliente_id, ubicacion, fecha_inicio, fecha_finalizacion, forma_cobro, monto_fijo, estado)
 values
