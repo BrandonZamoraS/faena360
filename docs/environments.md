@@ -8,7 +8,7 @@
 
 ## Required Variables
 
-The following variables MUST be configured for every environment. Build and deploy will fail explicitly if any are missing.
+The following variables MUST be configured for every environment that serves the related functionality. Public Supabase variables are validated during build. Server-only webhook secrets are validated at the webhook boundary and placeholder values are rejected.
 
 | Variable                        | Scope       | Description                                    |
 | ------------------------------- | ----------- | ---------------------------------------------- |

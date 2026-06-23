@@ -43,4 +43,19 @@ describe("verifyWhatsappWebhookSignature", () => {
       })
     ).toBe(false);
   });
+
+  it.each([
+    "",
+    "placeholder-webhook-whatsapp-secret",
+    "replace-with-a-strong-shared-secret",
+  ])("rejects unusable configured secret %s", (configuredSecret) => {
+    expect(
+      verifyWhatsappWebhookSignature({
+        headers: buildHeaders(validSignature),
+        rawBody,
+        secret: configuredSecret,
+        now: Number(timestamp),
+      })
+    ).toBe(false);
+  });
 });

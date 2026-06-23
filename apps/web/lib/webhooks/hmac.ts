@@ -12,7 +12,8 @@ export function verifyWhatsappWebhookSignature(input: {
   const signature = input.headers.get("X-Faena-Signature");
   const issuedAt = timestamp ? parseTimestamp(timestamp) : null;
 
-  if (!secret || !timestamp || !signature || issuedAt === null) return false;
+  if (!isUsableSecret(secret) || !timestamp || !signature || issuedAt === null)
+    return false;
   if (
     Math.abs((input.now ?? Date.now()) - issuedAt) > (input.maxAgeMs ?? 300_000)
   )
@@ -26,6 +27,16 @@ export function verifyWhatsappWebhookSignature(input: {
   const computed = Buffer.from(expected, "hex");
   return (
     received.length === computed.length && timingSafeEqual(received, computed)
+  );
+}
+
+function isUsableSecret(value: string | undefined): value is string {
+  if (!value) return false;
+  const normalized = value.trim().toLowerCase();
+  return (
+    normalized.length > 0 &&
+    !normalized.includes("placeholder") &&
+    normalized !== "replace-with-a-strong-shared-secret"
   );
 }
 
