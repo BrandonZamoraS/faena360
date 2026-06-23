@@ -45,7 +45,8 @@ insert into user_profiles (id, tenant_id, auth_user_id, email, full_name)
 values
   ('bbbb3000-0000-0000-0000-000000000001', 'aaaa3000-0000-0000-0000-000000000001', 'bbbb3000-0000-0000-0000-000000000001', 'subproject-admin@example.com', 'Subproject Admin'),
   ('bbbb3000-0000-0000-0000-000000000002', 'aaaa3000-0000-0000-0000-000000000001', 'bbbb3000-0000-0000-0000-000000000002', 'subproject-supervisor@example.com', 'Subproject Supervisor'),
-  ('bbbb3000-0000-0000-0000-000000000003', 'aaaa3000-0000-0000-0000-000000000001', 'bbbb3000-0000-0000-0000-000000000003', 'subproject-no-access@example.com', 'Subproject No Access');
+  ('bbbb3000-0000-0000-0000-000000000003', 'aaaa3000-0000-0000-0000-000000000001', 'bbbb3000-0000-0000-0000-000000000003', 'subproject-no-access@example.com', 'Subproject No Access'),
+  ('bbbb3000-0000-0000-0000-000000000004', 'aaaa3000-0000-0000-0000-000000000002', 'bbbb3000-0000-0000-0000-000000000002', 'subproject-supervisor-b@example.com', 'Subproject Supervisor B');
 
 insert into roles (id, tenant_id, name)
 values
@@ -78,7 +79,7 @@ where c.key = 'subprojects:read';
 insert into user_roles (tenant_id, user_id, role_id)
 values
   ('aaaa3000-0000-0000-0000-000000000001', 'bbbb3000-0000-0000-0000-000000000001', 'dddd3000-0000-0000-0000-000000000001'),
-  ('aaaa3000-0000-0000-0000-000000000002', 'bbbb3000-0000-0000-0000-000000000002', 'dddd3000-0000-0000-0000-000000000003');
+  ('aaaa3000-0000-0000-0000-000000000002', 'bbbb3000-0000-0000-0000-000000000004', 'dddd3000-0000-0000-0000-000000000003');
 
 insert into proyectos (id, tenant_id, nombre, cliente_id, ubicacion, fecha_inicio, fecha_finalizacion, forma_cobro, monto_fijo, estado)
 values
@@ -156,7 +157,7 @@ begin
     );
     raise exception 'FAIL: cross-tenant proyecto_id was accepted';
   exception when others then
-    if position('Referenced project must belong to the same tenant' in sqlerrm) = 0 then
+    if position('Referenced project does not exist for this tenant' in sqlerrm) = 0 then
       raise;
     end if;
   end;

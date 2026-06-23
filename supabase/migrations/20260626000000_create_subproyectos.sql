@@ -592,10 +592,6 @@ begin
     now()
   );
 
-  perform set_config('app.current_actor_id', '', false);
-  perform set_config('app.audit_source', '', false);
-  perform set_config('app.audit_target_id', '', false);
-
   if TG_OP = 'DELETE' then
     return OLD;
   end if;

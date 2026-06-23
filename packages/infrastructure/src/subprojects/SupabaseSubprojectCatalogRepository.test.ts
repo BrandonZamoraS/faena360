@@ -44,6 +44,13 @@ function createMockQuery<T>(
       });
       return query;
     },
+    not: (column: string, _operator: string, filter: string) => {
+      calls.push({
+        operation: "not",
+        details: `${table}:${column} not.in(${filter})`,
+      });
+      return query;
+    },
     maybeSingle: async () => ({
       data: response.data,
       error: response.error,
@@ -56,9 +63,22 @@ function createMockQuery<T>(
 describe("SupabaseSubprojectCatalogRepository", () => {
   it("lists visible subprojects for the requested tenant and excludes hidden", async () => {
     const calls: QueryCall[] = [];
+    let fromCount = 0;
     const client = {
       from: (table: string) => {
-        expect(table).toBe("subproyectos");
+        fromCount++;
+        // First call: fetch hidden project IDs (always returns empty for this test).
+        if (fromCount === 1) {
+          return createMockQuery(
+            {
+              data: [] as readonly { id: string }[],
+              error: null,
+            },
+            calls,
+            table
+          );
+        }
+        // Second call: the actual subproject query.
         return createMockQuery(
           {
             data: [
@@ -87,6 +107,7 @@ describe("SupabaseSubprojectCatalogRepository", () => {
     const result = await repository.listVisible({ tenantId: "tenant-1" });
 
     expect(result).toHaveLength(1);
+    // Verify the subproject query was issued with correct filters.
     expect(calls).toContainEqual({
       operation: "eq",
       details: "subproyectos:tenant_id=tenant-1",
@@ -94,6 +115,15 @@ describe("SupabaseSubprojectCatalogRepository", () => {
     expect(calls).toContainEqual({
       operation: "neq",
       details: "subproyectos:estado!=oculto",
+    });
+    // Verify the hidden-parents filter ran (lookup against proyectos).
+    expect(calls).toContainEqual({
+      operation: "eq",
+      details: "proyectos:tenant_id=tenant-1",
+    });
+    expect(calls).toContainEqual({
+      operation: "eq",
+      details: "proyectos:estado=oculto",
     });
   });
 

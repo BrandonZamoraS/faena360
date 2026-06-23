@@ -140,16 +140,32 @@ export function createSubprojectCatalogService({
         return { ok: false, code: "missing_parent_project" };
       }
 
-      // Fixed-amount sum guard
+      // Fixed-amount sum guard — must also trigger when forma_cobro/monto_fijo
+      // are inherited from a parent that uses monto_fijo billing.
+      let effectiveFormaCobro = normalized.forma_cobro;
+      let effectiveMontoFijo = normalized.monto_fijo;
+
+      if (!effectiveFormaCobro && normalized.proyecto_id) {
+        const parentMonto = await repository.getParentFixedAmount(
+          tenantId,
+          normalized.proyecto_id
+        );
+        if (parentMonto !== null) {
+          // Parent uses monto_fijo billing — RPC will inherit both.
+          effectiveFormaCobro = "monto_fijo";
+          effectiveMontoFijo = effectiveMontoFijo ?? parentMonto;
+        }
+      }
+
       if (
-        normalized.forma_cobro === "monto_fijo" &&
-        normalized.monto_fijo !== undefined
+        effectiveFormaCobro === "monto_fijo" &&
+        effectiveMontoFijo !== undefined
       ) {
         const exceeded = await checkFixedAmountSum(
           repository,
           tenantId,
           normalized.proyecto_id,
-          normalized.monto_fijo
+          effectiveMontoFijo
         );
         if (exceeded) {
           return { ok: false, code: "fixed_amount_exceeds_parent" };

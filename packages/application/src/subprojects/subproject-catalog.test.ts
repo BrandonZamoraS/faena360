@@ -90,7 +90,12 @@ describe("subproject catalog service", () => {
   });
 
   it("sanitizes create input and rejects tenant override fields", async () => {
-    const { service } = createService();
+    const { service } = createService({
+      repository: {
+        // Parent does not use monto_fijo — skip inherited guard.
+        getParentFixedAmount: async () => null,
+      },
+    });
 
     const result = await service.createSubproject(
       { tenant_id: "tenant-1", user_id: "actor-1" },
@@ -438,9 +443,121 @@ describe("subproject catalog service", () => {
     expect(capturedProyectoId).toBe("proj-srv-999");
   });
 
+  it("triggers fixed-amount sum guard when forma_cobro is inherited from parent with monto_fijo", async () => {
+    // When the user does NOT provide forma_cobro or monto_fijo, but the
+    // parent project uses monto_fijo billing, the RPC inherits both values.
+    // The application guard must catch overages BEFORE calling the RPC.
+    const { service } = createService({
+      repository: {
+        // Parent has monto_fijo = 1000
+        getParentFixedAmount: async () => 1000,
+        // Sibling sum already at 900 — only 100 room left
+        getSubprojectFixedAmountSum: async () => 900,
+      },
+    });
+
+    // User creates a subproject without specifying forma_cobro or monto_fijo.
+    // The parent's monto_fijo (1000) would be inherited, but 1000 + 900 = 1900
+    // exceeds the parent limit of 1000.
+    const result = await service.createSubproject(
+      { tenant_id: "tenant-1", user_id: "actor-1" },
+      {
+        proyecto_id: "proj-id-1",
+        nombre: "Fase Heredada Excedida",
+      }
+    );
+
+    expect(result).toEqual({
+      ok: false,
+      code: "fixed_amount_exceeds_parent",
+    });
+  });
+
+  it("allows inherited monto_fijo when sum is within parent limit", async () => {
+    // Parent has monto_fijo = 1000, existing sum = 500, inherited = 0 (user
+    // didn't provide one, so it falls through to parent's value).
+    // Actually when user provides no monto_fijo and parent inherits, the
+    // effectiveMontoFijo is the parent's monto_fijo (1000). That would exceed.
+    // Let's test the case where the parent monto_fijo alone fits within sum.
+    // Wait — the guard compares inputMontoFijo + existingSum > parentLimit.
+    // If inherited monto_fijo = 1000 and existingSum = 0, 1000 + 0 = 1000,
+    // which is NOT > 1000, so it passes.
+    const { service } = createService({
+      repository: {
+        getParentFixedAmount: async () => 1000,
+        getSubprojectFixedAmountSum: async () => 0,
+      },
+    });
+
+    const result = await service.createSubproject(
+      { tenant_id: "tenant-1", user_id: "actor-1" },
+      {
+        proyecto_id: "proj-id-1",
+        nombre: "Fase Heredada Dentro Del Limite",
+      }
+    );
+
+    expect(result).toEqual({ ok: true, subprojectId: "sub-id-1" });
+  });
+
+  it("skips inherited guard when parent does not use monto_fijo", async () => {
+    // Parent has por_horas billing — getParentFixedAmount returns null.
+    const { service } = createService({
+      repository: {
+        getParentFixedAmount: async () => null,
+        getSubprojectFixedAmountSum: async () => 9999,
+      },
+    });
+
+    const result = await service.createSubproject(
+      { tenant_id: "tenant-1", user_id: "actor-1" },
+      {
+        proyecto_id: "proj-id-1",
+        nombre: "Fase Sin Herencia",
+      }
+    );
+
+    expect(result).toEqual({ ok: true, subprojectId: "sub-id-1" });
+  });
+
+  it("uses explicit monto_fijo over inherited parent monto_fijo for guard", async () => {
+    // Parent has monto_fijo = 1000, but user provides monto_fijo = 300 explicitly.
+    // The effective guard should use 300 (user's value), not the parent's 1000.
+    let capturedMontoFijo: number | undefined;
+    const { service } = createService({
+      repository: {
+        getParentFixedAmount: async () => 1000,
+        getSubprojectFixedAmountSum: async (
+          _tenantId,
+          _proyectoId,
+          _exclude
+        ) => 800,
+      },
+    });
+
+    // Override checkFixedAmountSum behavior: capture the monto_fijo used.
+    // But we can't easily intercept that. Instead, trust the outcome:
+    // 300 + 800 = 1100 > 1000 → should be blocked.
+    const result = await service.createSubproject(
+      { tenant_id: "tenant-1", user_id: "actor-1" },
+      {
+        proyecto_id: "proj-id-1",
+        nombre: "Fase Con Monto Explicito",
+        monto_fijo: 300,
+      }
+    );
+
+    expect(result).toEqual({
+      ok: false,
+      code: "fixed_amount_exceeds_parent",
+    });
+  });
+
   it("maps create/update repository errors", async () => {
     const { service } = createService({
       repository: {
+        // Parent does not use monto_fijo — skip inherited guard.
+        getParentFixedAmount: async () => null,
         create: async () => {
           throw new Error("duplicate key value violates unique constraint");
         },

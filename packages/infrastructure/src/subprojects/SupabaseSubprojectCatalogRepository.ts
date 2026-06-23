@@ -31,11 +31,34 @@ export class SupabaseSubprojectCatalogRepository implements SubprojectCatalogRep
   public async listVisible(input: {
     readonly tenantId: string;
   }): Promise<readonly SubprojectCatalogSummary[]> {
-    const response = await this.client
+    // Query hidden project IDs so we can exclude subprojects whose parent is
+    // hidden. This is necessary because service_role bypasses RLS, which
+    // normally excludes subprojects under hidden parents.
+    const hiddenProjectsResponse = await this.client
+      .from("proyectos")
+      .select("id")
+      .eq("tenant_id", input.tenantId)
+      .eq("estado", "oculto");
+
+    if (hiddenProjectsResponse.error) {
+      throw new Error(hiddenProjectsResponse.error.message);
+    }
+
+    const hiddenProjectIds = (
+      hiddenProjectsResponse.data as readonly { id: string }[]
+    ).map((p) => p.id);
+
+    let query = this.client
       .from("subproyectos")
       .select(SUBPROJECT_COLUMNS)
       .eq("tenant_id", input.tenantId)
       .neq("estado", "oculto");
+
+    if (hiddenProjectIds.length > 0) {
+      query = query.not("proyecto_id", "in", `(${hiddenProjectIds.join(",")})`);
+    }
+
+    const response = await query;
 
     if (response.error) {
       throw new Error(response.error.message);
