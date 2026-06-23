@@ -48,3 +48,4 @@ jobs:
           # Real environment values are injected only in deployment workflows.
           NEXT_PUBLIC_SUPABASE_URL: https://ci-check.supabase.co
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-check-anon-key
+          WEBHOOK_WHATSAPP_SECRET: ci-check-webhook-secret

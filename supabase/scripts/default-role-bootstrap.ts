@@ -129,6 +129,10 @@ const SUPERVISOR_CAPABILITY_KEYS = [
   "reports:read",
 ];
 
+const WHATSAPP_OPERATIONAL_CAPABILITY_KEYS = [
+  "whatsapp.channel.access",
+] as const;
+
 /**
  * Documented capability grants are intentionally represented as key names only.
  *
@@ -138,9 +142,9 @@ const SUPERVISOR_CAPABILITY_KEYS = [
 export const DEFAULT_ROLE_CAPABILITY_KEYS = {
   administrador: ADMIN_CAPABILITY_KEYS,
   supervisor: SUPERVISOR_CAPABILITY_KEYS,
-  operador: [] as readonly string[],
-  mantenimiento: [] as readonly string[],
-  repartidor_de_combustible: [] as readonly string[],
+  operador: WHATSAPP_OPERATIONAL_CAPABILITY_KEYS,
+  mantenimiento: WHATSAPP_OPERATIONAL_CAPABILITY_KEYS,
+  repartidor_de_combustible: WHATSAPP_OPERATIONAL_CAPABILITY_KEYS,
 };
 
 export const DEFAULT_ROLES: readonly DefaultRole[] = [
