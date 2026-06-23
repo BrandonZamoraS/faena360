@@ -9,9 +9,7 @@ import { CapabilityDeniedError } from "../auth/effective-capabilities";
 
 describe("subproject catalog service", () => {
   function createService(overrides?: {
-    repository?: Partial<
-      SubprojectCatalogServiceDependencies["repository"]
-    >;
+    repository?: Partial<SubprojectCatalogServiceDependencies["repository"]>;
     requireCapability?: SubprojectCatalogServiceDependencies["capabilityChecker"]["requireCapability"];
   }) {
     const calls: string[] = [];
@@ -53,9 +51,7 @@ describe("subproject catalog service", () => {
           repository as SubprojectCatalogServiceDependencies["repository"],
         capabilityChecker: {
           requireCapability: async (scope, capabilityCode) => {
-            calls.push(
-              `${scope.userId}|${scope.tenantId}|${capabilityCode}`
-            );
+            calls.push(`${scope.userId}|${scope.tenantId}|${capabilityCode}`);
             return capabilityChecker.requireCapability(scope, capabilityCode);
           },
         },
@@ -354,9 +350,7 @@ describe("subproject catalog service", () => {
     const { service } = createService({
       repository: {
         create: async () => {
-          throw new Error(
-            "duplicate key value violates unique constraint"
-          );
+          throw new Error("duplicate key value violates unique constraint");
         },
       },
     });

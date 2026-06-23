@@ -25,9 +25,7 @@ interface SupabaseSubprojectRow {
 const SUBPROJECT_COLUMNS =
   "id,tenant_id,proyecto_id,nombre,ubicacion,forma_cobro,monto_fijo,estado,created_at,updated_at";
 
-export class SupabaseSubprojectCatalogRepository
-  implements SubprojectCatalogRepository
-{
+export class SupabaseSubprojectCatalogRepository implements SubprojectCatalogRepository {
   public constructor(private readonly client: SupabaseClient) {}
 
   public async listVisible(input: {
@@ -196,9 +194,10 @@ export class SupabaseSubprojectCatalogRepository
       throw new Error(response.error.message);
     }
 
-    const row = response.data as
-      | { monto_fijo: number | null; forma_cobro: string }
-      | null;
+    const row = response.data as {
+      monto_fijo: number | null;
+      forma_cobro: string;
+    } | null;
 
     if (!row || row.forma_cobro !== "monto_fijo" || row.monto_fijo === null) {
       return null;
@@ -236,10 +235,7 @@ export class SupabaseSubprojectCatalogRepository
 
     const rows = response.data as readonly { monto_fijo: number | null }[];
 
-    return rows.reduce(
-      (sum, row) => sum + (row.monto_fijo ?? 0),
-      0
-    );
+    return rows.reduce((sum, row) => sum + (row.monto_fijo ?? 0), 0);
   }
 }
 

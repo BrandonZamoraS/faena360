@@ -469,8 +469,7 @@ function normalizeSubprojectInput(
 
   return {
     nombre: input.nombre.trim(),
-    proyecto_id:
-      "proyecto_id" in input ? input.proyecto_id.trim() : undefined,
+    proyecto_id: "proyecto_id" in input ? input.proyecto_id.trim() : undefined,
     ubicacion: input.ubicacion?.trim() || undefined,
     forma_cobro,
     monto_fijo:
@@ -480,9 +479,7 @@ function normalizeSubprojectInput(
   };
 }
 
-function normalizeFormaCobro(
-  forma?: string
-): SubprojectFormaCobro | undefined {
+function normalizeFormaCobro(forma?: string): SubprojectFormaCobro | undefined {
   return ALLOWED_FORMAS_COBRO.has(forma as SubprojectFormaCobro)
     ? (forma as SubprojectFormaCobro)
     : undefined;
