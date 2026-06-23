@@ -66,6 +66,7 @@ const ADMIN_CAPABILITY_KEYS = [
   "subprojects:update",
   "subprojects:finish",
   "subprojects:reopen",
+  "subprojects:hide",
   "machines:read",
   "machines:create",
   "machines:update",

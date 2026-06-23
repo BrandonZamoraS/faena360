@@ -4,3 +4,4 @@ export * from "./fuel-types";
 export * from "./machines";
 export * from "./projects";
 export * from "./storage";
+export * from "./subprojects";
