@@ -60,8 +60,9 @@ begin
       where id = p_subproyecto_id
         and tenant_id = p_tenant_id
         and proyecto_id = p_proyecto_id
+        and estado = 'activo'
     ) then
-      raise exception 'Subproject not found or does not belong to the given project/tenant' using errcode = 'SUB01';
+      raise exception 'Subproject not found, does not belong to the given project/tenant, or is not active' using errcode = 'SUB01';
     end if;
   end if;
 

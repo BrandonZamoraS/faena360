@@ -17,20 +17,23 @@ insert into tenants (id, name, slug, timezone, currency, status, fuel_unit) valu
 insert into auth.users (id, email) values
   ('bbbb4800-0000-0000-0000-000000000001', 'assign-admin-a@example.com'),
   ('bbbb4800-0000-0000-0000-000000000002', 'assign-admin-b@example.com'),
-  ('bbbb4800-0000-0000-0000-000000000003', 'assign-operator-a@example.com')
+  ('bbbb4800-0000-0000-0000-000000000003', 'assign-operator-a@example.com'),
+  ('bbbb4800-0000-0000-0000-000000000004', 'assign-operator-b@example.com')
 on conflict (id) do nothing;
 
 -- Seed: user_profiles
 insert into user_profiles (id, tenant_id, auth_user_id, email, full_name) values
   ('cccc4800-0000-0000-0000-000000000001', 'aaaa4800-0000-0000-0000-000000000001', 'bbbb4800-0000-0000-0000-000000000001', 'assign-admin-a@example.com', 'Assign Admin A'),
   ('cccc4800-0000-0000-0000-000000000002', 'aaaa4800-0000-0000-0000-000000000002', 'bbbb4800-0000-0000-0000-000000000002', 'assign-admin-b@example.com', 'Assign Admin B'),
-  ('cccc4800-0000-0000-0000-000000000003', 'aaaa4800-0000-0000-0000-000000000001', 'bbbb4800-0000-0000-0000-000000000003', 'assign-operator-a@example.com', 'Assign Operator A');
+  ('cccc4800-0000-0000-0000-000000000003', 'aaaa4800-0000-0000-0000-000000000001', 'bbbb4800-0000-0000-0000-000000000003', 'assign-operator-a@example.com', 'Assign Operator A'),
+  ('cccc4800-0000-0000-0000-000000000004', 'aaaa4800-0000-0000-0000-000000000002', 'bbbb4800-0000-0000-0000-000000000004', 'assign-operator-b@example.com', 'Assign Operator B');
 
 -- Seed: roles with capabilities for assignments
 insert into roles (id, tenant_id, name) values
   ('dddd4800-0000-0000-0000-000000000001', 'aaaa4800-0000-0000-0000-000000000001', 'Assign Admin A'),
   ('dddd4800-0000-0000-0000-000000000002', 'aaaa4800-0000-0000-0000-000000000002', 'Assign Admin B'),
-  ('dddd4800-0000-0000-0000-000000000003', 'aaaa4800-0000-0000-0000-000000000001', 'operador');
+  ('dddd4800-0000-0000-0000-000000000003', 'aaaa4800-0000-0000-0000-000000000001', 'operador'),
+  ('dddd4800-0000-0000-0000-000000000004', 'aaaa4800-0000-0000-0000-000000000002', 'operador');
 
 insert into role_capabilities (role_id, capability_id)
 select r.id, c.id from roles r cross join capabilities c
@@ -41,14 +44,15 @@ on conflict do nothing;
 -- Grant operador role only base capabilities (read only for tests)
 insert into role_capabilities (role_id, capability_id)
 select r.id, c.id from roles r cross join capabilities c
-where r.id = 'dddd4800-0000-0000-0000-000000000003'
+where r.id in ('dddd4800-0000-0000-0000-000000000003', 'dddd4800-0000-0000-0000-000000000004')
   and c.key in ('assignments:read', 'web.portal.access')
 on conflict do nothing;
 
 insert into user_roles (tenant_id, user_id, role_id) values
   ('aaaa4800-0000-0000-0000-000000000001', 'cccc4800-0000-0000-0000-000000000001', 'dddd4800-0000-0000-0000-000000000001'),
   ('aaaa4800-0000-0000-0000-000000000002', 'cccc4800-0000-0000-0000-000000000002', 'dddd4800-0000-0000-0000-000000000002'),
-  ('aaaa4800-0000-0000-0000-000000000001', 'cccc4800-0000-0000-0000-000000000003', 'dddd4800-0000-0000-0000-000000000003');
+  ('aaaa4800-0000-0000-0000-000000000001', 'cccc4800-0000-0000-0000-000000000003', 'dddd4800-0000-0000-0000-000000000003'),
+  ('aaaa4800-0000-0000-0000-000000000002', 'cccc4800-0000-0000-0000-000000000004', 'dddd4800-0000-0000-0000-000000000004');
 
 set local role service_role;
 
@@ -101,7 +105,7 @@ select public.create_asignacion(
   'aaaa4800-0000-0000-0000-000000000002',
   'ffff4800-0000-0000-0000-000000000004',
   'hhhh4800-0000-0000-0000-000000000003',
-  'cccc4800-0000-0000-0000-000000000002',
+  'cccc4800-0000-0000-0000-000000000004',
   200,
   null
 ) as v_tenant_b_assignment;
@@ -112,15 +116,15 @@ declare
   v_b_count int;
   v_cross_tenant_count int;
 begin
-  select count(*) into v_a_count from jsonb_array_elements(public.list_asignaciones_activas('aaaa4800-0000-0000-0000-000000000001'));
-  select count(*) into v_b_count from jsonb_array_elements(public.list_asignaciones_activas('aaaa4800-0000-0000-0000-000000000002'));
+  select count(*) into v_a_count from unnest(public.list_asignaciones_activas('aaaa4800-0000-0000-0000-000000000001'));
+  select count(*) into v_b_count from unnest(public.list_asignaciones_activas('aaaa4800-0000-0000-0000-000000000002'));
 
   if v_a_count <> 1 then raise exception 'FAIL: tenant A expected 1 active assignment, got %', v_a_count; end if;
   if v_b_count <> 1 then raise exception 'FAIL: tenant B expected 1 active assignment, got %', v_b_count; end if;
 
   -- Verify tenant A cannot see tenant B's assignment through list
   select count(*) into v_cross_tenant_count
-  from jsonb_array_elements(public.list_asignaciones_activas('aaaa4800-0000-0000-0000-000000000001')) r
+  from unnest(public.list_asignaciones_activas('aaaa4800-0000-0000-0000-000000000001')) r
   where (r->>'maquina_codigo') = 'MAQ-B-ACTIVE';
 
   if v_cross_tenant_count > 0 then
@@ -190,8 +194,7 @@ begin
       null
     );
     raise exception 'FAIL: acarreo machine was accepted for assignment';
-  exception when check_violation then
-    if position('por_tiempo' in sqlerrm) = 0 then raise; end if;
+  exception when sqlstate 'MCH02' then
     raise notice 'PASS: acarreo machine rejected';
   end;
 end $$;
@@ -219,8 +222,7 @@ begin
       null
     );
     raise exception 'FAIL: en_mantenimiento machine was accepted for assignment';
-  exception when check_violation then
-    if position('active' in sqlerrm) = 0 then raise; end if;
+  exception when sqlstate 'MCH03' then
     raise notice 'PASS: en_mantenimiento machine rejected';
   end;
 end $$;
@@ -248,8 +250,7 @@ begin
       null
     );
     raise exception 'FAIL: finished project was accepted for assignment';
-  exception when check_violation then
-    if position('active' in sqlerrm) = 0 then raise; end if;
+  exception when sqlstate 'PRJ02' then
     raise notice 'PASS: finished project rejected';
   end;
 end $$;
@@ -277,8 +278,7 @@ begin
       null
     );
     raise exception 'FAIL: non-operador user was accepted as operator';
-  exception when check_violation then
-    if position('operador' in sqlerrm) = 0 then raise; end if;
+  exception when sqlstate 'USR01' then
     raise notice 'PASS: non-operador user rejected';
   end;
 end $$;

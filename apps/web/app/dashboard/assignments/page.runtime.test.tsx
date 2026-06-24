@@ -20,6 +20,22 @@ const machines = [
     created_at: "2026-06-01T00:00:00.000Z",
     updated_at: "2026-06-01T00:00:00.000Z",
   },
+  {
+    id: "machine-2",
+    tenant_id: "tenant-a",
+    codigo: "MAQ-002",
+    placa: "DEF456",
+    tipo: "por_tiempo" as const,
+    tipo_combustible_id: "fuel-1",
+    tamanio_tanque: 250,
+    modo_medicion_combustible: "exacto" as const,
+    nivel_inicial_combustible: 125,
+    capacidad_transporte_m3: null,
+    tarifa_sugerida: 20000,
+    estado: "activa" as const,
+    created_at: "2026-06-01T00:00:00.000Z",
+    updated_at: "2026-06-01T00:00:00.000Z",
+  },
 ];
 
 const projects = [
@@ -66,6 +82,7 @@ describe("assignments page shell", () => {
     const html = renderToStaticMarkup(
       renderAssignmentsShell({
         tenantName: "Tenant Demo",
+        tenantTimezone: "America/Argentina/Buenos_Aires",
         capabilities: [
           "assignments:read",
           "assignments:create",
@@ -96,6 +113,7 @@ describe("assignments page shell", () => {
     const html = renderToStaticMarkup(
       renderAssignmentsShell({
         tenantName: "Tenant Demo",
+        tenantTimezone: "America/Argentina/Buenos_Aires",
         capabilities: ["assignments:read"],
         assignments,
         machines,
@@ -118,8 +136,9 @@ describe("assignments page shell", () => {
     const html = renderToStaticMarkup(
       renderAssignmentsShell({
         tenantName: "Tenant Demo",
+        tenantTimezone: "America/Argentina/Buenos_Aires",
         capabilities: ["assignments:read", "assignments:create"],
-        assignments,
+        assignments: [],
         machines,
         projects,
         subprojects: [],
@@ -128,7 +147,6 @@ describe("assignments page shell", () => {
     );
 
     expect(html).toContain("Crear asignación");
-    expect(html).toContain("MAQ-001");
     expect(html).not.toContain("Retirar del proyecto");
     expect(html).not.toContain("Cerrar por finalización");
   });
@@ -137,6 +155,7 @@ describe("assignments page shell", () => {
     const html = renderToStaticMarkup(
       renderAssignmentsShell({
         tenantName: "Tenant Demo",
+        tenantTimezone: "America/Argentina/Buenos_Aires",
         capabilities: ["assignments:read", "assignments:create"],
         assignments: [],
         machines: [
@@ -159,6 +178,7 @@ describe("assignments page shell", () => {
     const html = renderToStaticMarkup(
       renderAssignmentsShell({
         tenantName: "Tenant Demo",
+        tenantTimezone: "America/Argentina/Buenos_Aires",
         capabilities: ["assignments:read", "assignments:create"],
         assignments: [],
         machines,
@@ -177,6 +197,7 @@ describe("assignments page shell", () => {
     const html = renderToStaticMarkup(
       renderAssignmentsShell({
         tenantName: "Tenant Demo",
+        tenantTimezone: "America/Argentina/Buenos_Aires",
         capabilities: ["assignments:read"],
         assignments,
         machines,

@@ -159,6 +159,9 @@ export function createMachineAssignmentService({
         if (isPermissionDeniedError(error)) {
           return { ok: false, code: "capability_denied" };
         }
+        if (isAssignmentNotActiveError(error)) {
+          return { ok: false, code: "missing_assignment" };
+        }
         return { ok: false, code: "assignment_update_failed" };
       }
     },
@@ -256,6 +259,14 @@ function isPermissionDeniedError(error: unknown): boolean {
     typeof error === "object" &&
     error !== null &&
     (error as { code?: string }).code === "42501"
+  );
+}
+
+function isAssignmentNotActiveError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    (error as { code?: string }).code === "ASG02"
   );
 }
 

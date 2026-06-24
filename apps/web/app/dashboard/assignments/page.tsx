@@ -52,6 +52,7 @@ interface OperatorOption {
 
 type AssignmentsShellInput = {
   readonly tenantName: string;
+  readonly tenantTimezone: string;
   readonly capabilities: readonly string[];
   readonly assignments: readonly AssignmentDisplayRow[];
   readonly machines: readonly MachineCatalogSummary[];
@@ -79,8 +80,9 @@ export function renderAssignmentsShell(input: AssignmentsShellInput) {
     ASSIGNMENTS_UPDATE_CAPABILITY
   );
   const canMutate = canCreate || canUpdate;
+  const assignedMachineIds = new Set(input.assignments.map((a) => a.maquina_id));
   const activeMachines = input.machines.filter(
-    (m) => m.tipo === "por_tiempo" && m.estado === "activa"
+    (m) => m.tipo === "por_tiempo" && m.estado === "activa" && !assignedMachineIds.has(m.id)
   );
   const activeProjects = input.projects.filter((p) => p.estado === "activo");
   const activeSubprojects = input.subprojects.filter(
@@ -164,7 +166,11 @@ export function renderAssignmentsShell(input: AssignmentsShellInput) {
                       <select className="login-input" name="subproyecto_id">
                         <option value="">Sin subproyecto</option>
                         {activeSubprojects.map((subproject) => (
-                          <option key={subproject.id} value={subproject.id}>
+                          <option
+                            key={subproject.id}
+                            value={subproject.id}
+                            data-proyecto-id={subproject.proyecto_id}
+                          >
                             {subproject.nombre}
                           </option>
                         ))}
@@ -214,6 +220,31 @@ export function renderAssignmentsShell(input: AssignmentsShellInput) {
                             tarifaInput.value = suggested;
                           }
                         });
+                      })();
+                    `,
+                  }}
+                />
+                {/* Filter subprojects by selected project */}
+                <script
+                  dangerouslySetInnerHTML={{
+                    __html: `
+                      (function() {
+                        var projectSelect = document.querySelector('select[name="proyecto_id"]');
+                        var subprojectSelect = document.querySelector('select[name="subproyecto_id"]');
+                        if (!projectSelect || !subprojectSelect) return;
+                        function filterSubprojects() {
+                          var projectId = projectSelect.value;
+                          var options = subprojectSelect.querySelectorAll('option[data-proyecto-id]');
+                          options.forEach(function(opt) {
+                            opt.style.display = opt.getAttribute('data-proyecto-id') === projectId ? '' : 'none';
+                          });
+                          var visible = Array.from(options).filter(function(o) { return o.style.display !== 'none'; });
+                          if (visible.length === 0 || !visible.some(function(o) { return o.selected; })) {
+                            subprojectSelect.value = '';
+                          }
+                        }
+                        projectSelect.addEventListener('change', filterSubprojects);
+                        filterSubprojects();
                       })();
                     `,
                   }}
@@ -268,7 +299,8 @@ export function renderAssignmentsShell(input: AssignmentsShellInput) {
                     </dt>
                     <dd>
                       {new Date(assignment.fecha_inicio).toLocaleDateString(
-                        "es-AR"
+                        "es-AR",
+                        { timeZone: input.tenantTimezone }
                       )}
                     </dd>
                   </div>
@@ -277,7 +309,8 @@ export function renderAssignmentsShell(input: AssignmentsShellInput) {
                     <dd>
                       {assignment.fecha_fin
                         ? new Date(assignment.fecha_fin).toLocaleDateString(
-                            "es-AR"
+                            "es-AR",
+                            { timeZone: input.tenantTimezone }
                           )
                         : "—"}
                     </dd>
@@ -356,16 +389,18 @@ async function getAuthorizedPageSession(): Promise<AppSession> {
   return authResult.session;
 }
 
-async function lookupTenantName(tenantId: string): Promise<string> {
+async function lookupTenant(
+  tenantId: string
+): Promise<{ name: string; timezone: string }> {
   const { data, error } = await createWebSupabaseServiceClient()
     .from("tenants")
-    .select("name")
+    .select("name, timezone")
     .eq("id", tenantId)
-    .single<{ name: string }>();
+    .single<{ name: string; timezone: string }>();
   if (error || !data) {
     throw new Error(error?.message ?? "Tenant not found");
   }
-  return data.name;
+  return data;
 }
 
 async function listActiveAssignmentsWithJoins(
@@ -441,9 +476,9 @@ async function listOperatorsForTenant(
 
 export default async function AssignmentsPage() {
   const session = await getAuthorizedPageSession();
-  const [tenantName, assignments, machines, projects, subprojects, operators] =
+  const [tenant, assignments, machines, projects, subprojects, operators] =
     await Promise.all([
-      lookupTenantName(session.tenant_id),
+      lookupTenant(session.tenant_id),
       listActiveAssignmentsWithJoins(session.tenant_id),
       listActivePorTiempoMachines(session.tenant_id),
       listActiveProjects(session.tenant_id),
@@ -452,7 +487,8 @@ export default async function AssignmentsPage() {
     ]);
 
   return renderAssignmentsShell({
-    tenantName,
+    tenantName: tenant.name,
+    tenantTimezone: tenant.timezone,
     capabilities: session.effective_capabilities,
     assignments,
     machines,
