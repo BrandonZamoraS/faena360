@@ -2,9 +2,11 @@ schema: spec-driven
 
 context: |
   Tech stack: Next.js 16.2.6 + React 19.2.4 + TypeScript 5 + TailwindCSS 4
-  Architecture: Next.js App Router (faena_frontend/), Obsidian vault for product docs
-  Testing: No test runner, no test framework, no coverage tooling detected
-  Style: ESLint 9 (eslint-config-next), TypeScript strict mode, pnpm package manager
+  Architecture: Next.js App Router (apps/web/), hexagonal layers (domain, application, infrastructure, shared)
+  Testing: Vitest 3.2.6 (root + infrastructure package), 7 unit test files (*.test.ts)
+  Style: ESLint 9 (eslint-config-next), TypeScript strict mode, Prettier 3.8.3
+  Database: Supabase (migrations + SQL RLS tests)
+  CI: GitHub Actions (format:check, lint, typecheck, test, build)
 
 rules:
   proposal:
@@ -21,24 +23,24 @@ rules:
   apply:
     - Follow existing code patterns
     tdd: false
-    test_command: ""
+    test_command: "pnpm test"
   verify:
-    test_command: ""
-    build_command: "cd faena_frontend && pnpm build"
+    test_command: "pnpm test"
+    build_command: "pnpm build"
     coverage_threshold: 0
   archive:
     - Warn before merging destructive deltas
 
 testing:
   strict_tdd: false
-  runner: none
-  framework: none
+  runner: vitest
+  framework: vitest
   layers:
-    unit: { available: false, tool: "—" }
+    unit: { available: true, tool: "vitest", command: "pnpm test" }
     integration: { available: false, tool: "—" }
     e2e: { available: false, tool: "—" }
   coverage: { available: false, command: "—" }
   quality:
-    linter: { available: true, command: "cd faena_frontend && pnpm lint" }
-    type_checker: { available: true, command: "cd faena_frontend && npx tsc --noEmit" }
-    formatter: { available: false, command: "—" }
+    linter: { available: true, command: "pnpm lint" }
+    type_checker: { available: true, command: "pnpm -r typecheck" }
+    formatter: { available: true, command: "pnpm format:check" }
