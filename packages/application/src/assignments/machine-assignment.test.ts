@@ -9,9 +9,7 @@ import { CapabilityDeniedError } from "../auth/effective-capabilities";
 
 describe("machine assignment service", () => {
   function createService(overrides?: {
-    repository?: Partial<
-      MachineAssignmentServiceDependencies["repository"]
-    >;
+    repository?: Partial<MachineAssignmentServiceDependencies["repository"]>;
     requireCapability?: MachineAssignmentServiceDependencies["capabilityChecker"]["requireCapability"];
   }) {
     const capabilityCalls: string[] = [];
@@ -58,7 +56,7 @@ describe("machine assignment service", () => {
       capabilityChecker: {
         requireCapability: async (scope, capabilityCode) => {
           capabilityCalls.push(
-            `${scope.userId}|${scope.tenantId}|${capabilityCode}`,
+            `${scope.userId}|${scope.tenantId}|${capabilityCode}`
           );
           return overrides?.requireCapability?.(scope, capabilityCode);
         },
@@ -86,7 +84,7 @@ describe("machine assignment service", () => {
     const denied = new CapabilityDeniedError(
       "actor-1",
       "tenant-1",
-      "assignments:create",
+      "assignments:create"
     );
     const { service, repositoryCalls } = createService({
       requireCapability: async () => {
@@ -101,7 +99,7 @@ describe("machine assignment service", () => {
         proyecto_id: "project-1",
         operador_id: "user-1",
         tarifa_aplicada: 150,
-      },
+      }
     );
 
     expect(result).toEqual({ ok: false, code: "capability_denied" });
@@ -118,13 +116,13 @@ describe("machine assignment service", () => {
         proyecto_id: "project-1",
         operador_id: "user-1",
         tarifa_aplicada: 150,
-      },
+      }
     );
 
     const updateResult = await service.updateAssignmentStatus(
       { tenant_id: "   ", user_id: "actor-1" },
       "assignment-1",
-      "retirada_del_proyecto",
+      "retirada_del_proyecto"
     );
 
     expect(createResult).toEqual({ ok: false, code: "missing_tenant" });
@@ -141,7 +139,7 @@ describe("machine assignment service", () => {
         proyecto_id: "project-1",
         operador_id: "user-1",
         tarifa_aplicada: 150,
-      },
+      }
     );
     const missingProyecto = await service.createAssignment(
       { tenant_id: "tenant-1", user_id: "actor-1" },
@@ -150,7 +148,7 @@ describe("machine assignment service", () => {
         proyecto_id: "   ",
         operador_id: "user-1",
         tarifa_aplicada: 150,
-      },
+      }
     );
     const missingOperador = await service.createAssignment(
       { tenant_id: "tenant-1", user_id: "actor-1" },
@@ -159,7 +157,7 @@ describe("machine assignment service", () => {
         proyecto_id: "project-1",
         operador_id: "   ",
         tarifa_aplicada: 150,
-      },
+      }
     );
     const missingTarifa = await service.createAssignment(
       { tenant_id: "tenant-1", user_id: "actor-1" },
@@ -168,7 +166,7 @@ describe("machine assignment service", () => {
         proyecto_id: "project-1",
         operador_id: "user-1",
         tarifa_aplicada: -1,
-      },
+      }
     );
 
     expect(missingMaquina).toEqual({ ok: false, code: "missing_maquina" });
@@ -189,7 +187,7 @@ describe("machine assignment service", () => {
         subproyecto_id: "  sub-1  ",
         operador_id: "  user-1  ",
         tarifa_aplicada: 200,
-      },
+      }
     );
 
     expect(result).toEqual({ ok: true, assignmentId: "assignment-new" });
@@ -224,7 +222,7 @@ describe("machine assignment service", () => {
         proyecto_id: "project-2",
         operador_id: "user-1",
         tarifa_aplicada: 150,
-      },
+      }
     );
 
     expect(result).toEqual({ ok: false, code: "machine_already_assigned" });
@@ -235,7 +233,7 @@ describe("machine assignment service", () => {
       repository: {
         create: async () => {
           const error = new Error(
-            "Only por_tiempo machines can be assigned",
+            "Only por_tiempo machines can be assigned"
           ) as Error & { code: string };
           error.code = "MCH02";
           throw error;
@@ -250,7 +248,7 @@ describe("machine assignment service", () => {
         proyecto_id: "project-1",
         operador_id: "user-1",
         tarifa_aplicada: 150,
-      },
+      }
     );
 
     expect(result).toEqual({ ok: false, code: "machine_not_por_tiempo" });
@@ -260,9 +258,9 @@ describe("machine assignment service", () => {
     const { service } = createService({
       repository: {
         create: async () => {
-          const error = new Error(
-            "Machine must be active",
-          ) as Error & { code: string };
+          const error = new Error("Machine must be active") as Error & {
+            code: string;
+          };
           error.code = "MCH03";
           throw error;
         },
@@ -276,7 +274,7 @@ describe("machine assignment service", () => {
         proyecto_id: "project-1",
         operador_id: "user-1",
         tarifa_aplicada: 150,
-      },
+      }
     );
 
     expect(result).toEqual({ ok: false, code: "machine_not_active" });
@@ -286,9 +284,9 @@ describe("machine assignment service", () => {
     const { service } = createService({
       repository: {
         create: async () => {
-          const error = new Error(
-            "Project must be active",
-          ) as Error & { code: string };
+          const error = new Error("Project must be active") as Error & {
+            code: string;
+          };
           error.code = "PRJ02";
           throw error;
         },
@@ -302,7 +300,7 @@ describe("machine assignment service", () => {
         proyecto_id: "project-1",
         operador_id: "user-1",
         tarifa_aplicada: 150,
-      },
+      }
     );
 
     expect(result).toEqual({ ok: false, code: "project_not_active" });
@@ -312,9 +310,9 @@ describe("machine assignment service", () => {
     const { service } = createService({
       repository: {
         create: async () => {
-          const error = new Error(
-            "Not an operador",
-          ) as Error & { code: string };
+          const error = new Error("Not an operador") as Error & {
+            code: string;
+          };
           error.code = "USR01";
           throw error;
         },
@@ -328,7 +326,7 @@ describe("machine assignment service", () => {
         proyecto_id: "project-1",
         operador_id: "user-1",
         tarifa_aplicada: 150,
-      },
+      }
     );
 
     expect(result).toEqual({ ok: false, code: "user_not_operador" });
@@ -357,7 +355,7 @@ describe("machine assignment service", () => {
           proyecto_id: "project-1",
           operador_id: "user-1",
           tarifa_aplicada: 150,
-        },
+        }
       );
 
       expect(result).toEqual({ ok: false, code: "assignment_create_failed" });
@@ -368,9 +366,9 @@ describe("machine assignment service", () => {
     const { service } = createService({
       repository: {
         create: async () => {
-          const error = new Error(
-            "permission denied",
-          ) as Error & { code: string };
+          const error = new Error("permission denied") as Error & {
+            code: string;
+          };
           error.code = "42501";
           throw error;
         },
@@ -384,7 +382,7 @@ describe("machine assignment service", () => {
         proyecto_id: "project-1",
         operador_id: "user-1",
         tarifa_aplicada: 150,
-      },
+      }
     );
 
     expect(result).toEqual({ ok: false, code: "capability_denied" });
@@ -396,7 +394,7 @@ describe("machine assignment service", () => {
     const result = await service.updateAssignmentStatus(
       { tenant_id: " tenant-1 ", user_id: "actor-1" },
       "  assignment-1  ",
-      "retirada_del_proyecto",
+      "retirada_del_proyecto"
     );
 
     expect(result).toEqual({ ok: true });
@@ -414,7 +412,7 @@ describe("machine assignment service", () => {
     const denied = new CapabilityDeniedError(
       "actor-1",
       "tenant-1",
-      "assignments:update",
+      "assignments:update"
     );
     const { service, repositoryCalls } = createService({
       requireCapability: async () => {
@@ -425,7 +423,7 @@ describe("machine assignment service", () => {
     const result = await service.updateAssignmentStatus(
       { tenant_id: "tenant-1", user_id: "actor-1" },
       "assignment-1",
-      "cerrada_por_finalizacion",
+      "cerrada_por_finalizacion"
     );
 
     expect(result).toEqual({ ok: false, code: "capability_denied" });
@@ -438,7 +436,7 @@ describe("machine assignment service", () => {
     const result = await service.updateAssignmentStatus(
       { tenant_id: "tenant-1", user_id: "actor-1" },
       "   ",
-      "retirada_del_proyecto",
+      "retirada_del_proyecto"
     );
 
     expect(result).toEqual({ ok: false, code: "missing_assignment" });
@@ -450,7 +448,7 @@ describe("machine assignment service", () => {
     const result = await service.updateAssignmentStatus(
       { tenant_id: "tenant-1", user_id: "actor-1" },
       "assignment-1",
-      "activa" as "retirada_del_proyecto",
+      "activa" as "retirada_del_proyecto"
     );
 
     expect(result).toEqual({ ok: false, code: "unknown_error" });
@@ -467,7 +465,7 @@ describe("machine assignment service", () => {
         operador_id: "user-1",
         tarifa_aplicada: 150,
         tenant_id: "tenant-2",
-      } as CreateAssignmentInput,
+      } as CreateAssignmentInput
     );
 
     expect(result).toEqual({ ok: false, code: "capability_denied" });

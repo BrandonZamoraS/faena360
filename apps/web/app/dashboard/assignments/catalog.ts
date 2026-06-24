@@ -27,18 +27,17 @@ export const ASSIGNMENTS_CREATE_CAPABILITY = "assignments:create";
 export const ASSIGNMENTS_UPDATE_CAPABILITY = "assignments:update";
 
 export function canAccessAssignmentsPage(
-  capabilities: readonly string[],
+  capabilities: readonly string[]
 ): boolean {
   return capabilities.includes(ASSIGNMENTS_READ_CAPABILITY);
 }
 
 export function canRunAssignmentAction(
   capabilities: readonly string[],
-  capability: string,
+  capability: string
 ): boolean {
   return (
-    canAccessAssignmentsPage(capabilities) &&
-    capabilities.includes(capability)
+    canAccessAssignmentsPage(capabilities) && capabilities.includes(capability)
   );
 }
 
@@ -55,7 +54,7 @@ export async function createAssignmentAction(formData: FormData) {
   guardAssignmentAction(session, ASSIGNMENTS_CREATE_CAPABILITY);
   const result = await buildAssignmentService(session).createAssignment(
     { tenant_id: session.tenant_id, user_id: session.user_id },
-    readCreateAssignmentInput(formData),
+    readCreateAssignmentInput(formData)
   );
   if (!result.ok) {
     throw new Error(result.code ?? "assignment_create_failed");
@@ -70,7 +69,7 @@ export async function updateAssignmentStatusAction(formData: FormData) {
   const result = await buildAssignmentService(session).updateAssignmentStatus(
     { tenant_id: session.tenant_id, user_id: session.user_id },
     getString(formData, "assignmentId"),
-    getString(formData, "estado") as AssignmentEstado,
+    getString(formData, "estado") as AssignmentEstado
   );
   if (!result.ok) {
     throw new Error(result.code ?? "assignment_update_failed");
@@ -88,7 +87,7 @@ function buildAssignmentService(session: AppSession) {
           throw new CapabilityDeniedError(
             session.user_id,
             session.tenant_id,
-            capabilityCode,
+            capabilityCode
           );
         }
       },
@@ -106,18 +105,14 @@ async function getAuthorizedAssignmentsSession(): Promise<AppSession> {
   if (!authResult.ok) {
     redirect("/dashboard");
   }
-  if (
-    !canAccessAssignmentsPage(authResult.session.effective_capabilities)
-  ) {
+  if (!canAccessAssignmentsPage(authResult.session.effective_capabilities)) {
     redirect("/dashboard");
   }
   return authResult.session;
 }
 
 function guardAssignmentAction(session: AppSession, capability: string) {
-  if (
-    !canRunAssignmentAction(session.effective_capabilities, capability)
-  ) {
+  if (!canRunAssignmentAction(session.effective_capabilities, capability)) {
     redirect("/dashboard");
   }
 }

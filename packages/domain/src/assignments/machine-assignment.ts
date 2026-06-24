@@ -57,11 +57,13 @@ export interface MachineAssignmentRepository {
     readonly tenantId: string;
   }): Promise<readonly MachineAssignment[]>;
 
-  create(input: {
-    readonly tenantId: string;
-    readonly actorId: string;
-    readonly auditSource: AuditSource;
-  } & CreateAssignmentInput): Promise<{ readonly id: string }>;
+  create(
+    input: {
+      readonly tenantId: string;
+      readonly actorId: string;
+      readonly auditSource: AuditSource;
+    } & CreateAssignmentInput
+  ): Promise<{ readonly id: string }>;
 
   updateStatus(input: {
     readonly tenantId: string;

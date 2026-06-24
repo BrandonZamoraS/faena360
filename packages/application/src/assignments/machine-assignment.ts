@@ -23,23 +23,23 @@ export interface MachineAssignmentServiceDependencies {
   readonly capabilityChecker: {
     requireCapability(
       scope: CapabilityScope,
-      capabilityCode: string,
+      capabilityCode: string
     ): Promise<unknown>;
   };
 }
 
 export interface MachineAssignmentService {
   listActiveAssignments(
-    session: TenantSessionScope,
+    session: TenantSessionScope
   ): Promise<readonly MachineAssignment[]>;
   createAssignment(
     session: TenantSessionScope,
-    input: CreateAssignmentInput,
+    input: CreateAssignmentInput
   ): Promise<AssignmentOutcome>;
   updateAssignmentStatus(
     session: TenantSessionScope,
     assignmentId: string,
-    estado: AssignmentEstado,
+    estado: AssignmentEstado
   ): Promise<AssignmentOutcome>;
 }
 
@@ -66,7 +66,7 @@ export function createMachineAssignmentService({
 
       await capabilityChecker.requireCapability(
         { tenantId, userId: session.user_id },
-        ASSIGNMENTS_READ_CAPABILITY,
+        ASSIGNMENTS_READ_CAPABILITY
       );
 
       return repository.listActive({ tenantId });
@@ -90,7 +90,7 @@ export function createMachineAssignmentService({
         capabilityChecker,
         session,
         tenantId,
-        ASSIGNMENTS_CREATE_CAPABILITY,
+        ASSIGNMENTS_CREATE_CAPABILITY
       );
       if (!capability.ok) {
         return capability;
@@ -138,7 +138,7 @@ export function createMachineAssignmentService({
         capabilityChecker,
         session,
         tenantId,
-        ASSIGNMENTS_UPDATE_CAPABILITY,
+        ASSIGNMENTS_UPDATE_CAPABILITY
       );
       if (!capability.ok) {
         return capability;
@@ -169,12 +169,12 @@ async function requireCapability(
   capabilityChecker: MachineAssignmentServiceDependencies["capabilityChecker"],
   session: TenantSessionScope,
   tenantId: string,
-  capabilityCode: string,
+  capabilityCode: string
 ): Promise<AssignmentOutcome> {
   try {
     await capabilityChecker.requireCapability(
       { tenantId, userId: session.user_id },
-      capabilityCode,
+      capabilityCode
     );
     return { ok: true };
   } catch (error) {
@@ -272,7 +272,14 @@ function isPermissionDeniedError(error: unknown): boolean {
  *   SUB01 → subproject not found      → generic (null)
  *   USR01 → user not operador         → user_not_operador
  */
-function mapRpcValidationError(error: unknown): "machine_not_por_tiempo" | "machine_not_active" | "project_not_active" | "user_not_operador" | null {
+function mapRpcValidationError(
+  error: unknown
+):
+  | "machine_not_por_tiempo"
+  | "machine_not_active"
+  | "project_not_active"
+  | "user_not_operador"
+  | null {
   if (typeof error !== "object" || error === null) {
     return null;
   }

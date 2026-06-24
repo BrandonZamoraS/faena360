@@ -8,7 +8,11 @@ import {
   SupabaseSubprojectCatalogRepository,
 } from "@faena360/infrastructure";
 
-import type { MachineCatalogSummary, ProjectCatalogSummary, SubprojectCatalogSummary } from "@faena360/domain";
+import type {
+  MachineCatalogSummary,
+  ProjectCatalogSummary,
+  SubprojectCatalogSummary,
+} from "@faena360/domain";
 
 import {
   canAccessAssignmentsPage,
@@ -68,21 +72,19 @@ const ESTADO_LABELS: Record<string, string> = {
 export function renderAssignmentsShell(input: AssignmentsShellInput) {
   const canCreate = canRunAssignmentAction(
     input.capabilities,
-    ASSIGNMENTS_CREATE_CAPABILITY,
+    ASSIGNMENTS_CREATE_CAPABILITY
   );
   const canUpdate = canRunAssignmentAction(
     input.capabilities,
-    ASSIGNMENTS_UPDATE_CAPABILITY,
+    ASSIGNMENTS_UPDATE_CAPABILITY
   );
   const canMutate = canCreate || canUpdate;
   const activeMachines = input.machines.filter(
-    (m) => m.tipo === "por_tiempo" && m.estado === "activa",
+    (m) => m.tipo === "por_tiempo" && m.estado === "activa"
   );
-  const activeProjects = input.projects.filter(
-    (p) => p.estado === "activo",
-  );
+  const activeProjects = input.projects.filter((p) => p.estado === "activo");
   const activeSubprojects = input.subprojects.filter(
-    (s) => s.estado === "activo",
+    (s) => s.estado === "activo"
   );
 
   return (
@@ -129,14 +131,14 @@ export function renderAssignmentsShell(input: AssignmentsShellInput) {
                 >
                   <label className="space-y-2 text-sm font-medium">
                     <span>Máquina</span>
-                    <select
-                      className="login-input"
-                      name="maquina_id"
-                      required
-                    >
+                    <select className="login-input" name="maquina_id" required>
                       <option value="">Seleccionar máquina</option>
                       {activeMachines.map((machine) => (
-                        <option key={machine.id} value={machine.id} data-tarifa-sugerida={machine.tarifa_sugerida ?? ""}>
+                        <option
+                          key={machine.id}
+                          value={machine.id}
+                          data-tarifa-sugerida={machine.tarifa_sugerida ?? ""}
+                        >
                           {machine.codigo}
                           {machine.tarifa_sugerida != null
                             ? ` (tarifa sugerida: ${machine.tarifa_sugerida})`
@@ -147,11 +149,7 @@ export function renderAssignmentsShell(input: AssignmentsShellInput) {
                   </label>
                   <label className="space-y-2 text-sm font-medium">
                     <span>Proyecto</span>
-                    <select
-                      className="login-input"
-                      name="proyecto_id"
-                      required
-                    >
+                    <select className="login-input" name="proyecto_id" required>
                       <option value="">Seleccionar proyecto</option>
                       {activeProjects.map((project) => (
                         <option key={project.id} value={project.id}>
@@ -163,10 +161,7 @@ export function renderAssignmentsShell(input: AssignmentsShellInput) {
                   {activeSubprojects.length > 0 ? (
                     <label className="space-y-2 text-sm font-medium">
                       <span>Subproyecto (opcional)</span>
-                      <select
-                        className="login-input"
-                        name="subproyecto_id"
-                      >
+                      <select className="login-input" name="subproyecto_id">
                         <option value="">Sin subproyecto</option>
                         {activeSubprojects.map((subproject) => (
                           <option key={subproject.id} value={subproject.id}>
@@ -178,11 +173,7 @@ export function renderAssignmentsShell(input: AssignmentsShellInput) {
                   ) : null}
                   <label className="space-y-2 text-sm font-medium">
                     <span>Operador</span>
-                    <select
-                      className="login-input"
-                      name="operador_id"
-                      required
-                    >
+                    <select className="login-input" name="operador_id" required>
                       <option value="">Seleccionar operador</option>
                       {input.operators.map((op) => (
                         <option key={op.id} value={op.id}>
@@ -204,10 +195,7 @@ export function renderAssignmentsShell(input: AssignmentsShellInput) {
                       placeholder="0.00"
                     />
                   </label>
-                  <button
-                    className="login-button md:col-span-2"
-                    type="submit"
-                  >
+                  <button className="login-button md:col-span-2" type="submit">
                     Crear asignación
                   </button>
                 </form>
@@ -280,18 +268,16 @@ export function renderAssignmentsShell(input: AssignmentsShellInput) {
                     </dt>
                     <dd>
                       {new Date(assignment.fecha_inicio).toLocaleDateString(
-                        "es-AR",
+                        "es-AR"
                       )}
                     </dd>
                   </div>
                   <div>
-                    <dt className="font-semibold text-[#173b29]">
-                      Fecha fin
-                    </dt>
+                    <dt className="font-semibold text-[#173b29]">Fecha fin</dt>
                     <dd>
                       {assignment.fecha_fin
                         ? new Date(assignment.fecha_fin).toLocaleDateString(
-                            "es-AR",
+                            "es-AR"
                           )
                         : "—"}
                     </dd>
@@ -364,9 +350,7 @@ async function getAuthorizedPageSession(): Promise<AppSession> {
   if (!authResult.ok) {
     redirect("/dashboard");
   }
-  if (
-    !canAccessAssignmentsPage(authResult.session.effective_capabilities)
-  ) {
+  if (!canAccessAssignmentsPage(authResult.session.effective_capabilities)) {
     redirect("/dashboard");
   }
   return authResult.session;
@@ -385,7 +369,7 @@ async function lookupTenantName(tenantId: string): Promise<string> {
 }
 
 async function listActiveAssignmentsWithJoins(
-  tenantId: string,
+  tenantId: string
 ): Promise<readonly AssignmentDisplayRow[]> {
   const client = createWebSupabaseServiceClient();
   const response = await client.rpc("list_asignaciones_activas", {
@@ -405,36 +389,36 @@ async function listActiveAssignmentsWithJoins(
 }
 
 async function listActivePorTiempoMachines(
-  tenantId: string,
+  tenantId: string
 ): Promise<readonly MachineCatalogSummary[]> {
   const machines = await new SupabaseMachineCatalogRepository(
-    createWebSupabaseServiceClient(),
+    createWebSupabaseServiceClient()
   ).listVisible({ tenantId });
   return machines.filter(
-    (m) => m.tipo === "por_tiempo" && m.estado === "activa",
+    (m) => m.tipo === "por_tiempo" && m.estado === "activa"
   );
 }
 
 async function listActiveProjects(
-  tenantId: string,
+  tenantId: string
 ): Promise<readonly ProjectCatalogSummary[]> {
   const projects = await new SupabaseProjectCatalogRepository(
-    createWebSupabaseServiceClient(),
+    createWebSupabaseServiceClient()
   ).listVisible({ tenantId });
   return projects.filter((p) => p.estado === "activo");
 }
 
 async function listActiveSubprojects(
-  tenantId: string,
+  tenantId: string
 ): Promise<readonly SubprojectCatalogSummary[]> {
   const subprojects = await new SupabaseSubprojectCatalogRepository(
-    createWebSupabaseServiceClient(),
+    createWebSupabaseServiceClient()
   ).listVisible({ tenantId });
   return subprojects.filter((s) => s.estado === "activo");
 }
 
 async function listOperatorsForTenant(
-  tenantId: string,
+  tenantId: string
 ): Promise<readonly OperatorOption[]> {
   const { data, error } = await createWebSupabaseServiceClient()
     .from("user_profiles")

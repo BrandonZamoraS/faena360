@@ -21,9 +21,7 @@ interface AssignmentJoinRow {
   updated_at: string;
 }
 
-export class SupabaseMachineAssignmentRepository
-  implements MachineAssignmentRepository
-{
+export class SupabaseMachineAssignmentRepository implements MachineAssignmentRepository {
   public constructor(private readonly client: SupabaseClient) {}
 
   public async listActive(input: {

@@ -77,8 +77,7 @@ export const DASHBOARD_MODULES: readonly DashboardModuleDefinition[] = [
     href: "/dashboard/assignments",
     label: "Asignaciones",
     description: "Gestionar asignaciones de máquinas a proyectos",
-    canView: (capabilities) =>
-      hasCapability(capabilities, "assignments:read"),
+    canView: (capabilities) => hasCapability(capabilities, "assignments:read"),
   },
 ];
 

@@ -76,7 +76,7 @@ describe("assignments page shell", () => {
         projects,
         subprojects: [],
         operators,
-      }),
+      })
     );
 
     expect(html).toContain("Asignaciones de máquinas");
@@ -102,7 +102,7 @@ describe("assignments page shell", () => {
         projects,
         subprojects: [],
         operators,
-      }),
+      })
     );
 
     expect(html).toContain("Asignaciones visibles en modo lectura.");
@@ -124,7 +124,7 @@ describe("assignments page shell", () => {
         projects,
         subprojects: [],
         operators,
-      }),
+      })
     );
 
     expect(html).toContain("Crear asignación");
@@ -148,7 +148,7 @@ describe("assignments page shell", () => {
         projects,
         subprojects: [],
         operators,
-      }),
+      })
     );
 
     expect(html).toContain("No hay máquinas por tiempo activas disponibles.");
@@ -165,7 +165,7 @@ describe("assignments page shell", () => {
         projects,
         subprojects: [],
         operators,
-      }),
+      })
     );
 
     expect(html).toContain("No hay asignaciones activas.");
@@ -183,7 +183,7 @@ describe("assignments page shell", () => {
         projects,
         subprojects: [],
         operators,
-      }),
+      })
     );
 
     expect(html).toContain('href="/dashboard/assignments"');
