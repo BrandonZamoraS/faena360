@@ -80,9 +80,14 @@ export function renderAssignmentsShell(input: AssignmentsShellInput) {
     ASSIGNMENTS_UPDATE_CAPABILITY
   );
   const canMutate = canCreate || canUpdate;
-  const assignedMachineIds = new Set(input.assignments.map((a) => a.maquina_id));
+  const assignedMachineIds = new Set(
+    input.assignments.map((a) => a.maquina_id)
+  );
   const activeMachines = input.machines.filter(
-    (m) => m.tipo === "por_tiempo" && m.estado === "activa" && !assignedMachineIds.has(m.id)
+    (m) =>
+      m.tipo === "por_tiempo" &&
+      m.estado === "activa" &&
+      !assignedMachineIds.has(m.id)
   );
   const activeProjects = input.projects.filter((p) => p.estado === "activo");
   const activeSubprojects = input.subprojects.filter(
