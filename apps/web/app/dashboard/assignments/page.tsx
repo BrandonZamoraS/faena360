@@ -422,9 +422,9 @@ async function listOperatorsForTenant(
 ): Promise<readonly OperatorOption[]> {
   const { data, error } = await createWebSupabaseServiceClient()
     .from("user_profiles")
-    .select("id, full_name, user_roles!inner(role_id), roles!inner(name)")
+    .select("id, full_name, user_roles!inner(roles!inner(name))")
     .eq("tenant_id", tenantId)
-    .eq("roles.name", "operador")
+    .eq("user_roles.roles.name", "operador")
     .order("full_name", { ascending: true });
 
   if (error) {

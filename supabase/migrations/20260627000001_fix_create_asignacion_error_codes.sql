@@ -11,14 +11,15 @@ create or replace function public.create_asignacion(
   p_tenant_id uuid,
   p_maquina_id uuid,
   p_proyecto_id uuid,
-  p_subproyecto_id uuid default null,
   p_operador_id uuid,
-  p_tarifa_aplicada numeric
+  p_tarifa_aplicada numeric,
+  p_subproyecto_id uuid default null
 ) returns uuid language plpgsql security definer set search_path = public as $$
 declare
   v_machine_tipo text;
   v_machine_estado text;
   v_project_estado text;
+  v_auth_user_id uuid;
   v_assignment_id uuid;
 begin
   if not public.app_user_has_capability(p_actor_id, p_tenant_id, 'assignments:create') then
@@ -77,12 +78,17 @@ begin
     raise exception 'Selected user does not have operador role in this tenant' using errcode = 'USR01';
   end if;
 
+  -- Resolve auth.users id for created_by FK
+  select up.auth_user_id into v_auth_user_id
+  from public.user_profiles up
+  where up.id = p_actor_id;
+
   perform set_config('app.current_actor_id', p_actor_id::text, true);
   perform set_config('app.audit_source', p_audit_source, true);
   perform set_config('app.audit_target_id', '', true);
 
-  insert into public.asignaciones_maquina (tenant_id, maquina_id, proyecto_id, subproyecto_id, operador_id, tarifa_aplicada, estado)
-  values (p_tenant_id, p_maquina_id, p_proyecto_id, p_subproyecto_id, p_operador_id, p_tarifa_aplicada, 'activa')
+  insert into public.asignaciones_maquina (tenant_id, maquina_id, proyecto_id, operador_id, tarifa_aplicada, subproyecto_id, estado, created_by)
+  values (p_tenant_id, p_maquina_id, p_proyecto_id, p_operador_id, p_tarifa_aplicada, p_subproyecto_id, 'activa', v_auth_user_id)
   returning id into v_assignment_id;
 
   return v_assignment_id;

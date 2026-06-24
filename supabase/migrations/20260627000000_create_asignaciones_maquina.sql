@@ -40,14 +40,15 @@ create or replace function public.create_asignacion(
   p_tenant_id uuid,
   p_maquina_id uuid,
   p_proyecto_id uuid,
-  p_subproyecto_id uuid default null,
   p_operador_id uuid,
-  p_tarifa_aplicada numeric
+  p_tarifa_aplicada numeric,
+  p_subproyecto_id uuid default null
 ) returns uuid language plpgsql security definer set search_path = public as $$
 declare
   v_machine_tipo text;
   v_machine_estado text;
   v_project_estado text;
+  v_auth_user_id uuid;
   v_assignment_id uuid;
 begin
   if not public.app_user_has_capability(p_actor_id, p_tenant_id, 'assignments:create') then
@@ -106,12 +107,17 @@ begin
     raise exception 'Selected user does not have operador role in this tenant' using errcode = '23514';
   end if;
 
+  -- Resolve auth.users id for created_by FK
+  select up.auth_user_id into v_auth_user_id
+  from public.user_profiles up
+  where up.id = p_actor_id;
+
   perform set_config('app.current_actor_id', p_actor_id::text, true);
   perform set_config('app.audit_source', p_audit_source, true);
   perform set_config('app.audit_target_id', '', true);
 
-  insert into public.asignaciones_maquina (tenant_id, maquina_id, proyecto_id, subproyecto_id, operador_id, tarifa_aplicada, estado)
-  values (p_tenant_id, p_maquina_id, p_proyecto_id, p_subproyecto_id, p_operador_id, p_tarifa_aplicada, 'activa')
+  insert into public.asignaciones_maquina (tenant_id, maquina_id, proyecto_id, operador_id, tarifa_aplicada, subproyecto_id, estado, created_by)
+  values (p_tenant_id, p_maquina_id, p_proyecto_id, p_operador_id, p_tarifa_aplicada, p_subproyecto_id, 'activa', v_auth_user_id)
   returning id into v_assignment_id;
 
   return v_assignment_id;
@@ -128,14 +134,19 @@ create or replace function public.update_asignacion(
 ) returns boolean language plpgsql security definer set search_path = public as $$
 declare
   v_tenant_id uuid;
+  v_current_estado text;
   v_updated_count integer;
 begin
-  select tenant_id into v_tenant_id
+  select tenant_id, estado into v_tenant_id, v_current_estado
   from public.asignaciones_maquina
   where id = p_asignacion_id;
 
   if v_tenant_id is null then
-    raise exception 'Assignment not found' using errcode = '23514';
+    raise exception 'Assignment not found' using errcode = 'ASG02';
+  end if;
+
+  if v_current_estado <> 'activa' then
+    raise exception 'Only active assignments can be updated' using errcode = 'ASG01';
   end if;
 
   if not public.app_user_has_capability(p_actor_id, v_tenant_id, 'assignments:update') then
@@ -177,7 +188,7 @@ begin
       a.subproyecto_id,
       s.nombre as subproyecto_nombre,
       a.operador_id,
-      up.full_name as operador_nombre,
+      up.full_name as operador_full_name,
       up.email as operador_email,
       a.tarifa_aplicada,
       a.estado,
@@ -274,9 +285,9 @@ create trigger audit_asignaciones_maquina
   execute function public.audit_asignaciones_maquina();
 
 -- Revoke execute from public and authenticated; grant to service_role.
-revoke execute on function public.create_asignacion(uuid, text, uuid, uuid, uuid, uuid, uuid, numeric) from public, anon, authenticated;
+revoke execute on function public.create_asignacion(uuid, text, uuid, uuid, uuid, uuid, numeric, uuid) from public, anon, authenticated;
 revoke execute on function public.update_asignacion(uuid, text, uuid, text) from public, anon, authenticated;
 revoke execute on function public.list_asignaciones_activas(uuid) from public, anon, authenticated;
-grant execute on function public.create_asignacion(uuid, text, uuid, uuid, uuid, uuid, uuid, numeric) to service_role;
+grant execute on function public.create_asignacion(uuid, text, uuid, uuid, uuid, uuid, numeric, uuid) to service_role;
 grant execute on function public.update_asignacion(uuid, text, uuid, text) to service_role;
 grant execute on function public.list_asignaciones_activas(uuid) to service_role;

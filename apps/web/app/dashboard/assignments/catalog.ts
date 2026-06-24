@@ -138,6 +138,13 @@ function getNullableString(formData: FormData, key: string): string | null {
 }
 
 function getRequiredNumber(formData: FormData, key: string): number {
-  const value = Number(getString(formData, key));
+  const raw = getString(formData, key).trim();
+  if (raw === "") {
+    throw new Error(`missing_${key}`);
+  }
+  const value = Number(raw);
+  if (!Number.isFinite(value)) {
+    throw new Error(`invalid_${key}`);
+  }
   return value;
 }

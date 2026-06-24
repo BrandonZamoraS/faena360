@@ -53,9 +53,9 @@ insert into user_roles (tenant_id, user_id, role_id) values
 set local role service_role;
 
 -- Seed: clientes (needed for proyectos FK)
-insert into public.clientes (id, tenant_id, razon_social, email, contacto, telefono, estado) values
-  ('gggg4800-0000-0000-0000-000000000001', 'aaaa4800-0000-0000-0000-000000000001', 'Cliente A', 'cliente-a@example.com', 'Contacto A', '123456789', 'activo'),
-  ('gggg4800-0000-0000-0000-000000000002', 'aaaa4800-0000-0000-0000-000000000002', 'Cliente B', 'cliente-b@example.com', 'Contacto B', '987654321', 'activo');
+insert into public.clientes (id, tenant_id, nombre, telefono, correo, estado) values
+  ('abab4800-0000-0000-0000-000000000001', 'aaaa4800-0000-0000-0000-000000000001', 'Cliente A', '123456789', 'cliente-a@example.com', 'activo'),
+  ('abab4800-0000-0000-0000-000000000002', 'aaaa4800-0000-0000-0000-000000000002', 'Cliente B', '987654321', 'cliente-b@example.com', 'activo');
 
 -- Seed: fuel types (needed for maquinas FK)
 insert into public.tipos_combustible (id, tenant_id, nombre, estado) values
@@ -64,9 +64,9 @@ insert into public.tipos_combustible (id, tenant_id, nombre, estado) values
 
 -- Seed: projects
 insert into public.proyectos (id, tenant_id, nombre, cliente_id, ubicacion, fecha_inicio, forma_cobro, monto_fijo, estado) values
-  ('hhhh4800-0000-0000-0000-000000000001', 'aaaa4800-0000-0000-0000-000000000001', 'Project A Active', 'gggg4800-0000-0000-0000-000000000001', 'Location A', '2026-01-01', 'monto_fijo', 50000, 'activo'),
-  ('hhhh4800-0000-0000-0000-000000000002', 'aaaa4800-0000-0000-0000-000000000001', 'Project A Finished', 'gggg4800-0000-0000-0000-000000000001', 'Location A2', '2026-01-01', 'monto_fijo', 30000, 'finalizado'),
-  ('hhhh4800-0000-0000-0000-000000000003', 'aaaa4800-0000-0000-0000-000000000002', 'Project B Active', 'gggg4800-0000-0000-0000-000000000002', 'Location B', '2026-01-01', 'monto_fijo', 40000, 'activo');
+  ('hhhh4800-0000-0000-0000-000000000001', 'aaaa4800-0000-0000-0000-000000000001', 'Project A Active', 'abab4800-0000-0000-0000-000000000001', 'Location A', '2026-01-01', 'monto_fijo', 50000, 'activo'),
+  ('hhhh4800-0000-0000-0000-000000000002', 'aaaa4800-0000-0000-0000-000000000001', 'Project A Finished', 'abab4800-0000-0000-0000-000000000001', 'Location A2', '2026-01-01', 'monto_fijo', 30000, 'finalizado'),
+  ('hhhh4800-0000-0000-0000-000000000003', 'aaaa4800-0000-0000-0000-000000000002', 'Project B Active', 'abab4800-0000-0000-0000-000000000002', 'Location B', '2026-01-01', 'monto_fijo', 40000, 'activo');
 
 -- Seed: machines (mix of por_tiempo and acarreo, active and non-active)
 insert into public.maquinas (id, tenant_id, codigo, tipo, tipo_combustible_id, tamanio_tanque, modo_medicion_combustible, estado) values
@@ -89,9 +89,9 @@ select public.create_asignacion(
   'aaaa4800-0000-0000-0000-000000000001',
   'ffff4800-0000-0000-0000-000000000001',
   'hhhh4800-0000-0000-0000-000000000001',
-  null,
   'cccc4800-0000-0000-0000-000000000003',
-  150
+  150,
+  null
 ) as v_tenant_a_assignment;
 
 -- Create an assignment in tenant B
@@ -101,9 +101,9 @@ select public.create_asignacion(
   'aaaa4800-0000-0000-0000-000000000002',
   'ffff4800-0000-0000-0000-000000000004',
   'hhhh4800-0000-0000-0000-000000000003',
-  null,
   'cccc4800-0000-0000-0000-000000000002',
-  200
+  200,
+  null
 ) as v_tenant_b_assignment;
 
 do $$
@@ -143,9 +143,9 @@ select public.create_asignacion(
   'aaaa4800-0000-0000-0000-000000000001',
   'ffff4800-0000-0000-0000-000000000001',
   'hhhh4800-0000-0000-0000-000000000001',
-  null,
   'cccc4800-0000-0000-0000-000000000003',
-  150
+  150,
+  null
 ) as v_first;
 
 do $$
@@ -157,9 +157,9 @@ begin
       'aaaa4800-0000-0000-0000-000000000001',
       'ffff4800-0000-0000-0000-000000000001',
       'hhhh4800-0000-0000-0000-000000000001',
-      null,
       'cccc4800-0000-0000-0000-000000000003',
-      160
+      160,
+      null
     );
     raise exception 'FAIL: duplicate active assignment was accepted';
   exception when unique_violation then
@@ -185,9 +185,9 @@ begin
       'aaaa4800-0000-0000-0000-000000000001',
       'ffff4800-0000-0000-0000-000000000003',
       'hhhh4800-0000-0000-0000-000000000001',
-      null,
       'cccc4800-0000-0000-0000-000000000003',
-      150
+      150,
+      null
     );
     raise exception 'FAIL: acarreo machine was accepted for assignment';
   exception when check_violation then
@@ -214,9 +214,9 @@ begin
       'aaaa4800-0000-0000-0000-000000000001',
       'ffff4800-0000-0000-0000-000000000002',
       'hhhh4800-0000-0000-0000-000000000001',
-      null,
       'cccc4800-0000-0000-0000-000000000003',
-      150
+      150,
+      null
     );
     raise exception 'FAIL: en_mantenimiento machine was accepted for assignment';
   exception when check_violation then
@@ -243,9 +243,9 @@ begin
       'aaaa4800-0000-0000-0000-000000000001',
       'ffff4800-0000-0000-0000-000000000001',
       'hhhh4800-0000-0000-0000-000000000002',
-      null,
       'cccc4800-0000-0000-0000-000000000003',
-      150
+      150,
+      null
     );
     raise exception 'FAIL: finished project was accepted for assignment';
   exception when check_violation then
@@ -272,9 +272,9 @@ begin
       'aaaa4800-0000-0000-0000-000000000001',
       'ffff4800-0000-0000-0000-000000000001',
       'hhhh4800-0000-0000-0000-000000000001',
-      null,
       'cccc4800-0000-0000-0000-000000000001',
-      150
+      150,
+      null
     );
     raise exception 'FAIL: non-operador user was accepted as operator';
   exception when check_violation then
@@ -301,9 +301,9 @@ begin
       'aaaa4800-0000-0000-0000-000000000001',
       'ffff4800-0000-0000-0000-000000000001',
       'hhhh4800-0000-0000-0000-000000000001',
-      null,
       'cccc4800-0000-0000-0000-000000000003',
-      150
+      150,
+      null
     );
     raise exception 'FAIL: user without assignments:create was accepted';
   exception when insufficient_privilege then
@@ -333,9 +333,9 @@ begin
     'aaaa4800-0000-0000-0000-000000000001',
     'ffff4800-0000-0000-0000-000000000001',
     'hhhh4800-0000-0000-0000-000000000001',
-    null,
     'cccc4800-0000-0000-0000-000000000003',
-    150
+    150,
+    null
   );
 
   select action, source, actor_user_id
@@ -374,9 +374,9 @@ begin
     'aaaa4800-0000-0000-0000-000000000001',
     'ffff4800-0000-0000-0000-000000000001',
     'hhhh4800-0000-0000-0000-000000000001',
-    null,
     'cccc4800-0000-0000-0000-000000000003',
-    150
+    150,
+    null
   );
 
   v_updated := public.update_asignacion(
@@ -426,9 +426,9 @@ begin
     'aaaa4800-0000-0000-0000-000000000001',
     'ffff4800-0000-0000-0000-000000000001',
     'hhhh4800-0000-0000-0000-000000000001',
-    null,
     'cccc4800-0000-0000-0000-000000000003',
-    150
+    150,
+    null
   );
 
   v_updated := public.update_asignacion(
@@ -457,9 +457,9 @@ begin
     'aaaa4800-0000-0000-0000-000000000001',
     'ffff4800-0000-0000-0000-000000000001',
     'hhhh4800-0000-0000-0000-000000000001',
-    null,
     'cccc4800-0000-0000-0000-000000000003',
-    180
+    180,
+    null
   );
 
   if v_assignment_id2 is null then
