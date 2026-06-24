@@ -35,6 +35,7 @@ values
   ('projects:create', 'Projects Create', 'Allows creating projects.'),
   ('projects:finish', 'Projects Finish', 'Allows finishing projects.'),
   ('projects:pause', 'Projects Pause', 'Allows pausing projects.'),
+  ('projects:hide', 'Projects Hide', 'Allows hiding projects.'),
   ('projects:read', 'Projects Read', 'Allows reading projects.'),
   ('projects:reopen', 'Projects Reopen', 'Allows reopening projects.'),
   ('projects:update', 'Projects Update', 'Allows updating projects.'),
@@ -56,6 +57,7 @@ values
   ('users:create', 'Users Create', 'Allows creating users.'),
   ('users:read', 'Users Read', 'Allows reading users.'),
   ('users:update', 'Users Update', 'Allows updating users.'),
+  ('whatsapp.channel.access', 'WhatsApp Channel Access', 'Allows operative access through the WhatsApp channel.'),
   ('web.portal.access', 'Web Portal Access', 'Allows signing in to the web portal.')
 on conflict ("key") do update
   set

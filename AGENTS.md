@@ -27,15 +27,30 @@ When an agent has several unrelated tasks:
 
 This applies to reading 4+ files, multi-file edits, test execution, or any task that can be divided.
 
-## Supabase Command Gate (MANDATORY)
+## SDD Intent Check (MANDATORY)
 
-- Agents **MUST NOT** run Supabase CLI commands by default, including `supabase db reset`, `supabase test`, migration execution, or SQL test execution.
-- If Supabase execution is needed for verification or debugging, the agent must stop and report the exact command, why it is needed, and what result is expected.
-- Only run Supabase commands after the user explicitly authorizes that specific command/run.
-- If a Supabase-related error appears, investigate files and logs that are already available, then ask via chat instead of retrying commands repeatedly.
-- Non-Supabase checks such as `pnpm build`, `pnpm lint`, or `pnpm -r typecheck` may still run when appropriate.
+- Before executing any GitHub issue, product change, feature, bugfix, or implementation request, the agent **MUST ask whether the work should use SDD** unless the user explicitly says it is or is not SDD.
+- Do not infer that a regular implementation workflow is acceptable just because the request does not mention SDD.
+- If the user says to use SDD, start with the project's SDD workflow before changing code.
+- If the user says not to use SDD, proceed with the normal isolated worktree + delegation + verification workflow when appropriate.
 
 ## Questions and Doubts
 
 - Whenever you have questions, doubts, or need extra data about code, documentation, or requirements, you **MUST ask directly via chat**.
 - **NEVER** leave your questions, notes, or doubts written as comments inside files (code, markdown, etc.), as this clutters the files and prevents a quick resolution.
+
+## GitHub Operations
+
+- Always use the GitHub MCP server for GitHub operations (issues, labels, pull requests, reviews, checks, releases) instead of shelling out to `gh` or guessing from local state.
+- If the GitHub MCP server is unavailable because Docker Desktop is not running, try to start Docker Desktop and retry the MCP operation.
+- If Docker Desktop cannot be started from the agent environment, tell the user immediately and ask them to start Docker Desktop manually before continuing GitHub work.
+- After creating or updating a PR, always check the PR checks through GitHub MCP.
+- If checks are still queued or in progress, wait 90 seconds and check them again before reporting status.
+- If any check fails, inspect the failing check details/logs, identify the root cause, and either fix it or report the exact blocker with evidence.
+
+## SQL Verification
+
+- The local database is temporary/non-critical for this project. Agents may use it as a disposable test database.
+- When database facts are needed, agents should run the local database commands needed to start, clean, update, reset, migrate, seed, query, or verify the database instead of guessing or relying only on docs.
+- Agents may run destructive local database commands (for example reset/clean/reseed) when needed for verification, as long as the target is the local development database.
+- Do not run destructive commands against remote, production, staging, or shared databases unless the user explicitly authorizes that exact target.

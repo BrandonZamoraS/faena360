@@ -24,6 +24,7 @@ interface MockCalls {
   }>;
   readonly createAuthCalls: string[];
   readonly deleteAuthCalls: string[];
+  readonly disableAuthCalls: string[];
   readonly createProfileCalls: Array<{
     readonly tenantId: string;
     readonly authUserId: string;
@@ -37,10 +38,43 @@ interface MockCalls {
     readonly roleIds: readonly string[];
   }>;
   readonly auditCalls: Array<{
+    readonly action?: string;
     readonly actorUserId: string;
     readonly targetUserId: string;
   }>;
   readonly listActiveCalls: string[];
+  readonly updateProfileCalls: Array<{
+    readonly tenantId: string;
+    readonly userId: string;
+    readonly fullName: string;
+    readonly phone?: string;
+  }>;
+  readonly replaceRoleCalls: Array<{
+    readonly tenantId: string;
+    readonly userId: string;
+    readonly roleIds: readonly string[];
+  }>;
+  readonly deactivateProfileCalls: Array<{
+    readonly tenantId: string;
+    readonly userId: string;
+  }>;
+  readonly reactivateProfileCalls: Array<{
+    readonly tenantId: string;
+    readonly userId: string;
+  }>;
+  readonly identifierExistsExcludingCalls: Array<{
+    readonly userId: string;
+    readonly email: string;
+    readonly phone: string;
+  }>;
+  readonly getUserEmailCalls: Array<{
+    readonly userId: string;
+    readonly tenantId: string;
+  }>;
+  readonly invalidatorCalls: Array<{
+    readonly tenantId: string;
+    readonly userId: string;
+  }>;
 }
 
 type UserManagementDependenciesOverrides = {
@@ -49,6 +83,11 @@ type UserManagementDependenciesOverrides = {
   readonly capabilityChecker?: {
     readonly requireCapability?: UserManagementServiceDependencies["capabilityChecker"]["requireCapability"];
   };
+  readonly capabilityInvalidator?: {
+    readonly invalidate?: NonNullable<
+      UserManagementServiceDependencies["capabilityInvalidator"]
+    >["invalidate"];
+  } | null;
 };
 
 function createCallsTracker(): MockCalls {
@@ -58,10 +97,18 @@ function createCallsTracker(): MockCalls {
     identifierExistsCalls: [],
     createAuthCalls: [],
     deleteAuthCalls: [],
+    disableAuthCalls: [],
     createProfileCalls: [],
     assignRoleCalls: [],
     auditCalls: [],
     listActiveCalls: [],
+    updateProfileCalls: [],
+    replaceRoleCalls: [],
+    deactivateProfileCalls: [],
+    reactivateProfileCalls: [],
+    identifierExistsExcludingCalls: [],
+    getUserEmailCalls: [],
+    invalidatorCalls: [],
   };
 }
 
@@ -87,6 +134,11 @@ function createUserManagementServiceWithMocks(
       ) => {
         calls.deleteAuthCalls.push(authUserId);
       },
+      disableUser: async (
+        authUserId: Parameters<AuthAdminPort["disableUser"]>[0]
+      ) => {
+        calls.disableAuthCalls.push(authUserId);
+      },
       ...overrides?.authAdmin,
     },
     repository: {
@@ -100,6 +152,24 @@ function createUserManagementServiceWithMocks(
         });
 
         return false;
+      },
+      identifierExistsExcluding: async ({
+        userId,
+        email,
+        phone,
+      }: Parameters<
+        UserManagementRepository["identifierExistsExcluding"]
+      >[0]) => {
+        calls.identifierExistsExcludingCalls.push({ userId, email, phone });
+
+        return false;
+      },
+      getUserEmail: async ({
+        userId,
+        tenantId,
+      }: Parameters<UserManagementRepository["getUserEmail"]>[0]) => {
+        calls.getUserEmailCalls.push({ userId, tenantId });
+        return "target@example.com";
       },
       createProfile: async ({
         tenantId,
@@ -138,6 +208,7 @@ function createUserManagementServiceWithMocks(
             full_name: "Tenant user",
             phone: "+34 111 111 111",
             status: "active",
+            role_ids: [],
           } satisfies TenantUserSummary,
         ];
       },
@@ -145,7 +216,66 @@ function createUserManagementServiceWithMocks(
         actorUserId,
         targetUserId,
       }: Parameters<UserManagementRepository["recordUserCreatedAudit"]>[0]) => {
-        calls.auditCalls.push({ actorUserId, targetUserId });
+        calls.auditCalls.push({
+          action: "user_created",
+          actorUserId,
+          targetUserId,
+        });
+      },
+      updateProfile: async ({
+        tenantId,
+        userId,
+        fullName,
+        phone,
+      }: Parameters<UserManagementRepository["updateProfile"]>[0]) => {
+        calls.updateProfileCalls.push({
+          tenantId,
+          userId,
+          fullName,
+          ...(phone ? { phone } : {}),
+        });
+      },
+      replaceRoles: async ({
+        tenantId,
+        userId,
+        roleIds,
+      }: Parameters<UserManagementRepository["replaceRoles"]>[0]) => {
+        calls.replaceRoleCalls.push({ tenantId, userId, roleIds });
+      },
+      deactivateProfile: async ({
+        tenantId,
+        userId,
+      }: Parameters<UserManagementRepository["deactivateProfile"]>[0]) => {
+        calls.deactivateProfileCalls.push({ tenantId, userId });
+        return { authUserId: "auth-user-id-for-deactivate" };
+      },
+      reactivateProfile: async ({
+        tenantId,
+        userId,
+      }: Parameters<UserManagementRepository["reactivateProfile"]>[0]) => {
+        calls.reactivateProfileCalls.push({ tenantId, userId });
+      },
+      recordUserUpdatedAudit: async ({
+        actorUserId,
+        targetUserId,
+      }: Parameters<UserManagementRepository["recordUserUpdatedAudit"]>[0]) => {
+        calls.auditCalls.push({
+          action: "user_updated",
+          actorUserId,
+          targetUserId,
+        });
+      },
+      recordUserDeactivatedAudit: async ({
+        actorUserId,
+        targetUserId,
+      }: Parameters<
+        UserManagementRepository["recordUserDeactivatedAudit"]
+      >[0]) => {
+        calls.auditCalls.push({
+          action: "user_deactivated",
+          actorUserId,
+          targetUserId,
+        });
       },
       ...overrides?.repository,
     },
@@ -157,6 +287,17 @@ function createUserManagementServiceWithMocks(
       },
       ...overrides?.capabilityChecker,
     },
+    capabilityInvalidator:
+      overrides?.capabilityInvalidator === null
+        ? undefined
+        : {
+            invalidate: async (scope) => {
+              calls.invalidatorCalls.push(scope);
+            },
+            ...(overrides?.capabilityInvalidator
+              ? { invalidate: overrides.capabilityInvalidator.invalidate }
+              : {}),
+          },
   });
 
   return {
@@ -178,6 +319,15 @@ async function runUserManagementServiceContractChecks(): Promise<void> {
   await runDuplicatePreflightRejectsWithoutAuthWrite();
   await runCompensationRunsOnLocalFailureAfterAuthCreated();
   await runListUsersFiltersToActiveTenantOnly();
+  await runUpdateUserRequiresUpdateCapabilityAndReplacesRoles();
+  await runUpdateUserRequiresRoleCapabilityBeforeProfileMutation();
+  await runDeactivateUserSoftDeletesProfileOnly();
+  await runDeactivateUserCompensatesProfileWhenAuthDisableFails();
+  await runCreateUserRequiresRoleUpdateCapabilityForRoleGrants();
+  await runUpdateUserRejectsDuplicatePhone();
+  await runUpdateUserSelfExclusionAllowsSamePhone();
+  await runUpdateUserInvalidatesCapabilitiesCacheAfterReplaceRoles();
+  await runUpdateUserSkipsInvalidationWhenInvalidatorUndefined();
 }
 
 async function runCapabilityRejectionPreventsCreation(): Promise<void> {
@@ -406,6 +556,458 @@ async function runListUsersFiltersToActiveTenantOnly(): Promise<void> {
   );
 }
 
+async function runUpdateUserRequiresUpdateCapabilityAndReplacesRoles(): Promise<void> {
+  const calls = createCallsTracker();
+
+  const { service } = createUserManagementServiceWithMocks({ calls });
+
+  const result = await service.updateUser(
+    {
+      tenant_id: " tenant-4 ",
+      user_id: "actor-4",
+    },
+    {
+      userId: "target-user-4",
+      fullName: "  Updated User  ",
+      phone: " +1 (555) 222-3333 ",
+      roleIds: ["role-a", "role-b", "role-a"],
+    }
+  );
+
+  assert(result.ok === true, "Expected updateUser to succeed by default.");
+  assertEquals(
+    calls.requireCapability[0],
+    "users:update",
+    "Expected users:update capability check"
+  );
+  assertEquals(
+    calls.updateProfileCalls[0],
+    {
+      tenantId: "tenant-4",
+      userId: "target-user-4",
+      fullName: "Updated User",
+      phone: "15552223333",
+    },
+    "Expected normalized profile update payload"
+  );
+  assertEquals(
+    calls.requireCapability,
+    ["users:update", "roles:update"],
+    "Expected role grants during update to require roles:update"
+  );
+  assertEquals(
+    calls.replaceRoleCalls[0],
+    {
+      tenantId: "tenant-4",
+      userId: "target-user-4",
+      roleIds: ["role-a", "role-b"],
+    },
+    "Expected role replacement with deduplicated role ids"
+  );
+  assertEquals(
+    calls.auditCalls.at(-1),
+    {
+      action: "user_updated",
+      actorUserId: "actor-4",
+      targetUserId: "target-user-4",
+    },
+    "Expected update audit event"
+  );
+}
+
+async function runCreateUserRequiresRoleUpdateCapabilityForRoleGrants(): Promise<void> {
+  const calls = createCallsTracker();
+
+  const { service } = createUserManagementServiceWithMocks({
+    calls,
+    capabilityChecker: {
+      requireCapability: async (scope, capabilityCode) => {
+        calls.requireCapability.push(capabilityCode);
+        calls.requireCapabilityScopes.push(scope);
+        if (capabilityCode === "roles:update") {
+          throw new CapabilityDeniedError(
+            scope.userId,
+            scope.tenantId,
+            capabilityCode
+          );
+        }
+      },
+    },
+  });
+
+  const result = await service.createUser(
+    { tenant_id: "tenant-6", user_id: "actor-6" },
+    {
+      email: "new-user@example.com",
+      temporaryPassword: "Temp123!",
+      fullName: "New User",
+      roleIds: ["admin-role-id"],
+    }
+  );
+
+  assert(
+    result.ok === false,
+    "Expected createUser to reject unsafe role grants."
+  );
+  assertEquals(
+    result.code,
+    "capability_denied",
+    "Expected capability denial when actor cannot update roles"
+  );
+  assertEquals(
+    calls.createAuthCalls.length,
+    0,
+    "Expected no Auth user creation when role grant capability is denied"
+  );
+}
+
+async function runUpdateUserRequiresRoleCapabilityBeforeProfileMutation(): Promise<void> {
+  const calls = createCallsTracker();
+
+  const { service } = createUserManagementServiceWithMocks({
+    calls,
+    capabilityChecker: {
+      requireCapability: async (scope, capabilityCode) => {
+        calls.requireCapability.push(capabilityCode);
+        calls.requireCapabilityScopes.push(scope);
+        if (capabilityCode === "roles:update") {
+          throw new CapabilityDeniedError(
+            scope.userId,
+            scope.tenantId,
+            capabilityCode
+          );
+        }
+      },
+    },
+  });
+
+  const result = await service.updateUser(
+    { tenant_id: "tenant-7", user_id: "actor-7" },
+    {
+      userId: "target-user-7",
+      fullName: "Partial Mutation Risk",
+      roleIds: ["admin-role-id"],
+    }
+  );
+
+  assert(
+    result.ok === false,
+    "Expected updateUser to reject unsafe role edits."
+  );
+  assertEquals(
+    result.code,
+    "capability_denied",
+    "Expected capability denial when actor cannot update roles"
+  );
+  assertEquals(
+    calls.updateProfileCalls.length,
+    0,
+    "Expected no profile mutation before role capability is confirmed"
+  );
+  assertEquals(
+    calls.replaceRoleCalls.length,
+    0,
+    "Expected no role replacement after role capability is denied"
+  );
+}
+
+async function runDeactivateUserSoftDeletesProfileOnly(): Promise<void> {
+  const calls = createCallsTracker();
+
+  const { service } = createUserManagementServiceWithMocks({ calls });
+
+  const result = await service.deactivateUser(
+    {
+      tenant_id: "tenant-5",
+      user_id: "actor-5",
+    },
+    {
+      userId: "target-user-5",
+    }
+  );
+
+  assert(result.ok === true, "Expected deactivateUser to succeed by default.");
+  assertEquals(
+    calls.requireCapability[0],
+    "users:update",
+    "Expected users:update capability check for soft delete"
+  );
+  assertEquals(
+    calls.deactivateProfileCalls[0],
+    {
+      tenantId: "tenant-5",
+      userId: "target-user-5",
+    },
+    "Expected soft delete to deactivate the local profile"
+  );
+  assertEquals(
+    calls.deleteAuthCalls.length,
+    0,
+    "Expected soft delete not to hard-delete Auth identity"
+  );
+  assertEquals(
+    calls.disableAuthCalls[0],
+    "auth-user-id-for-deactivate",
+    "Expected soft delete to revoke Auth access for the deactivated user"
+  );
+  assertEquals(
+    calls.auditCalls.at(-1),
+    {
+      action: "user_deactivated",
+      actorUserId: "actor-5",
+      targetUserId: "target-user-5",
+    },
+    "Expected soft delete audit event"
+  );
+}
+
+async function runDeactivateUserCompensatesProfileWhenAuthDisableFails(): Promise<void> {
+  const calls = createCallsTracker();
+
+  const { service } = createUserManagementServiceWithMocks({
+    calls,
+    authAdmin: {
+      disableUser: async (authUserId) => {
+        calls.disableAuthCalls.push(authUserId);
+        throw new Error("Auth disable failed in test.");
+      },
+    },
+  });
+
+  const result = await service.deactivateUser(
+    {
+      tenant_id: "tenant-8",
+      user_id: "actor-8",
+    },
+    {
+      userId: "target-user-8",
+    }
+  );
+
+  assert(
+    result.ok === false,
+    "Expected deactivateUser to fail when Auth disable fails."
+  );
+  assertEquals(
+    result.code,
+    "profile_update_failed",
+    "Expected failed deactivation outcome when Auth disable cannot complete"
+  );
+  assertEquals(
+    calls.reactivateProfileCalls[0],
+    {
+      tenantId: "tenant-8",
+      userId: "target-user-8",
+    },
+    "Expected local profile reactivation compensation after Auth disable failure"
+  );
+  assertEquals(
+    calls.auditCalls.length,
+    0,
+    "Expected no deactivation audit when deactivation is compensated"
+  );
+}
+
+async function runUpdateUserRejectsDuplicatePhone(): Promise<void> {
+  const calls = createCallsTracker();
+
+  const { service } = createUserManagementServiceWithMocks({
+    calls,
+    repository: {
+      identifierExistsExcluding: async ({ userId, email, phone }) => {
+        calls.identifierExistsExcludingCalls.push({ userId, email, phone });
+        return true;
+      },
+    },
+  });
+
+  const result = await service.updateUser(
+    { tenant_id: "tenant-9", user_id: "actor-9" },
+    {
+      userId: "target-user-9",
+      fullName: "Updated User",
+      phone: "15559998888",
+    }
+  );
+
+  assert(result.ok === false, "Expected updateUser to reject duplicate phone.");
+  assertEquals(
+    result.code,
+    "duplicate_identifier",
+    "Expected duplicate_identifier when phone is already taken"
+  );
+  assertEquals(
+    calls.identifierExistsExcludingCalls.length,
+    1,
+    "Expected one identifierExistsExcluding call for phone uniqueness"
+  );
+  assertEquals(
+    calls.identifierExistsExcludingCalls[0],
+    {
+      userId: "target-user-9",
+      email: "target@example.com",
+      phone: "15559998888",
+    },
+    "Expected self-exclusion check with correct userId, email, and normalized phone"
+  );
+  assertEquals(
+    calls.updateProfileCalls.length,
+    0,
+    "Expected no profile update when phone is duplicate"
+  );
+}
+
+async function runUpdateUserSelfExclusionAllowsSamePhone(): Promise<void> {
+  const calls = createCallsTracker();
+
+  const { service } = createUserManagementServiceWithMocks({ calls });
+
+  const result = await service.updateUser(
+    { tenant_id: "tenant-10", user_id: "actor-10" },
+    {
+      userId: "target-user-10",
+      fullName: "Same Phone User",
+      phone: "15550001111",
+    }
+  );
+
+  assert(
+    result.ok === true,
+    "Expected updateUser to succeed when phone is not duplicate (self-exclusion default mock returns false)."
+  );
+  assertEquals(
+    calls.identifierExistsExcludingCalls[0],
+    {
+      userId: "target-user-10",
+      email: "target@example.com",
+      phone: "15550001111",
+    },
+    "Expected self-exclusion check with own userId to pass"
+  );
+  assertEquals(
+    calls.updateProfileCalls.length,
+    1,
+    "Expected profile update after successful phone uniqueness check"
+  );
+}
+
+async function runUpdateUserInvalidatesCapabilitiesCacheAfterReplaceRoles(): Promise<void> {
+  const calls = createCallsTracker();
+
+  const { service } = createUserManagementServiceWithMocks({
+    calls,
+  });
+
+  const result = await service.updateUser(
+    { tenant_id: "tenant-11", user_id: "actor-11" },
+    {
+      userId: "target-user-11",
+      fullName: "Role Change User",
+      roleIds: ["role-x"],
+    }
+  );
+
+  assert(
+    result.ok === true,
+    "Expected updateUser to succeed with role replacement and invalidation."
+  );
+  assertEquals(
+    calls.replaceRoleCalls.length,
+    1,
+    "Expected one replaceRoles call"
+  );
+  assertEquals(
+    calls.invalidatorCalls.length,
+    1,
+    "Expected one capabilityInvalidator.invalidate call after replaceRoles"
+  );
+  assertEquals(
+    calls.invalidatorCalls[0],
+    { tenantId: "tenant-11", userId: "target-user-11" },
+    "Expected invalidation scope to match target user and tenant"
+  );
+}
+
+async function runUpdateUserRecordsAuditEvenWhenInvalidationFails(): Promise<void> {
+  const calls = createCallsTracker();
+
+  const { service } = createUserManagementServiceWithMocks({
+    calls,
+    capabilityInvalidator: {
+      invalidate: async (scope: { tenantId: string; userId: string }) => {
+        calls.invalidatorCalls.push(scope);
+        throw new Error("Cache invalidation failed in test.");
+      },
+    },
+  });
+
+  const result = await service.updateUser(
+    { tenant_id: "tenant-13", user_id: "actor-13" },
+    {
+      userId: "target-user-13",
+      fullName: "Role Change User",
+      roleIds: ["role-z"],
+    }
+  );
+
+  assert(
+    result.ok === true,
+    "Expected updateUser to succeed even when invalidation fails."
+  );
+  assertEquals(
+    calls.replaceRoleCalls.length,
+    1,
+    "Expected one replaceRoles call"
+  );
+  assertEquals(
+    calls.invalidatorCalls.length,
+    1,
+    "Expected one invalidator call before failure"
+  );
+  assertEquals(
+    calls.auditCalls.at(-1),
+    {
+      action: "user_updated",
+      actorUserId: "actor-13",
+      targetUserId: "target-user-13",
+    },
+    "Expected audit to be recorded despite invalidation failure"
+  );
+}
+
+async function runUpdateUserSkipsInvalidationWhenInvalidatorUndefined(): Promise<void> {
+  const calls = createCallsTracker();
+
+  const { service } = createUserManagementServiceWithMocks({
+    calls,
+    capabilityInvalidator: null,
+  });
+
+  const result = await service.updateUser(
+    { tenant_id: "tenant-12", user_id: "actor-12" },
+    {
+      userId: "target-user-12",
+      fullName: "No Invalidator User",
+      roleIds: ["role-y"],
+    }
+  );
+
+  assert(
+    result.ok === true,
+    "Expected updateUser to succeed when capabilityInvalidator is undefined"
+  );
+  assertEquals(
+    calls.replaceRoleCalls.length,
+    1,
+    "Expected replaceRoles to still be called"
+  );
+  assertEquals(
+    calls.invalidatorCalls.length,
+    0,
+    "Expected no invalidator call when capabilityInvalidator is not provided"
+  );
+}
+
 describe("user management service", () => {
   it("prevents creating a user when capability is denied", async () => {
     await runCapabilityRejectionPreventsCreation();
@@ -421,6 +1023,46 @@ describe("user management service", () => {
 
   it("returns only active users scoped to the requesting tenant", async () => {
     await runListUsersFiltersToActiveTenantOnly();
+  });
+
+  it("updates a user only with update capability and replaces roles", async () => {
+    await runUpdateUserRequiresUpdateCapabilityAndReplacesRoles();
+  });
+
+  it("checks role edit capability before mutating profile fields", async () => {
+    await runUpdateUserRequiresRoleCapabilityBeforeProfileMutation();
+  });
+
+  it("soft deletes users by deactivating local profiles", async () => {
+    await runDeactivateUserSoftDeletesProfileOnly();
+  });
+
+  it("reactivates the local profile when auth disable fails", async () => {
+    await runDeactivateUserCompensatesProfileWhenAuthDisableFails();
+  });
+
+  it("requires role update capability before granting roles on create", async () => {
+    await runCreateUserRequiresRoleUpdateCapabilityForRoleGrants();
+  });
+
+  it("rejects update with duplicate phone via identifierExistsExcluding", async () => {
+    await runUpdateUserRejectsDuplicatePhone();
+  });
+
+  it("allows update with same phone via self-exclusion", async () => {
+    await runUpdateUserSelfExclusionAllowsSamePhone();
+  });
+
+  it("invalidates capabilities cache after successful replaceRoles", async () => {
+    await runUpdateUserInvalidatesCapabilitiesCacheAfterReplaceRoles();
+  });
+
+  it("records audit even when capability invalidation fails", async () => {
+    await runUpdateUserRecordsAuditEvenWhenInvalidationFails();
+  });
+
+  it("skips invalidation when capabilityInvalidator is undefined", async () => {
+    await runUpdateUserSkipsInvalidationWhenInvalidatorUndefined();
   });
 
   it("runs user management contract checks", async () => {

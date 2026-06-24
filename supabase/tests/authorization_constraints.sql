@@ -47,17 +47,19 @@ values
 on conflict (id) do nothing;
 
 -- Insert user profiles
-insert into user_profiles (id, tenant_id, auth_user_id, email, phone)
+insert into user_profiles (id, tenant_id, auth_user_id, email, full_name, phone)
 values
   ('c0000000-0000-0000-0000-000000000001',
    'a0000000-0000-0000-0000-000000000001',
    'b0000000-0000-0000-0000-000000000001',
    'profile1@test.com',
+   'Profile 1',
    '+1111111111'),
   ('c0000000-0000-0000-0000-000000000002',
    'a0000000-0000-0000-0000-000000000001',
    'b0000000-0000-0000-0000-000000000002',
    'profile2@test.com',
+   'Profile 2',
    '+2222222222');
 
 -- Insert capabilities
@@ -86,11 +88,12 @@ savepoint test1;
 do $$
 begin
   begin
-    insert into user_profiles (tenant_id, auth_user_id, email)
+    insert into user_profiles (tenant_id, auth_user_id, email, full_name)
     values (
       'a0000000-0000-0000-0000-000000000001',
       gen_random_uuid(), -- new auth user
-      'profile1@test.com' -- duplicate
+      'profile1@test.com', -- duplicate
+      'Duplicate Email User'
     );
     raise exception 'FAIL: duplicate email was accepted';
   exception when unique_violation then
@@ -107,11 +110,13 @@ savepoint test2;
 do $$
 begin
   begin
-    insert into user_profiles (tenant_id, auth_user_id, phone)
+    insert into user_profiles (tenant_id, auth_user_id, email, phone, full_name)
     values (
       'a0000000-0000-0000-0000-000000000001',
       gen_random_uuid(),
-      '+1111111111' -- duplicate
+      'duplicate-phone@test.com',
+      '+1111111111', -- duplicate
+      'Duplicate Phone User'
     );
     raise exception 'FAIL: duplicate phone was accepted';
   exception when unique_violation then
@@ -128,11 +133,12 @@ savepoint test3;
 do $$
 begin
   begin
-    insert into user_profiles (tenant_id, auth_user_id, email)
+    insert into user_profiles (tenant_id, auth_user_id, email, full_name)
     values (
       'a0000000-0000-0000-0000-000000000001',
       'b0000000-0000-0000-0000-000000000001', -- duplicate
-      'unique_email@test.com'
+      'unique_email@test.com',
+      'Duplicate Auth User'
     );
     raise exception 'FAIL: duplicate auth_user_id was accepted';
   exception when unique_violation then
@@ -642,11 +648,12 @@ values ('b0000000-0000-0000-0000-000000000021', 'user21@test.com', now());
 do $$
 begin
   begin
-    insert into user_profiles (tenant_id, auth_user_id, email)
+    insert into user_profiles (tenant_id, auth_user_id, email, full_name)
     values (
       'a0000000-0000-0000-0000-000000000001',
       'b0000000-0000-0000-0000-000000000021',
-      ' profile1@test.com  '
+      ' profile1@test.com  ',
+      'Whitespace Email User'
     );
     raise exception 'FAIL: duplicate trimmed email was accepted';
   exception when unique_violation then
@@ -666,11 +673,13 @@ values ('b0000000-0000-0000-0000-000000000022', 'user22@test.com', now());
 do $$
 begin
   begin
-    insert into user_profiles (tenant_id, auth_user_id, phone)
+    insert into user_profiles (tenant_id, auth_user_id, email, phone, full_name)
     values (
       'a0000000-0000-0000-0000-000000000001',
       'b0000000-0000-0000-0000-000000000022',
-      ' +1111111111  '
+      'user22-profile@test.com',
+      ' +1111111111  ',
+      'Whitespace Phone User'
     );
     raise exception 'FAIL: duplicate trimmed phone was accepted';
   exception when unique_violation then
@@ -761,12 +770,13 @@ savepoint test26;
 insert into auth.users (id, email, email_confirmed_at)
 values ('b0000000-0000-0000-0000-000000000026', 'user26@test.com', now())
 on conflict (id) do nothing;
-insert into user_profiles (id, tenant_id, auth_user_id, email)
+insert into user_profiles (id, tenant_id, auth_user_id, email, full_name)
 values (
   'c0000000-0000-0000-0000-000000000026',
   'a0000000-0000-0000-0000-000000000002',
   'b0000000-0000-0000-0000-000000000026',
-  'user26@test.com'
+  'user26@test.com',
+  'User 26'
 );
 do $$
 begin
@@ -967,6 +977,148 @@ begin
   raise notice 'PASS: issue #20 user profile status checks executed successfully.';
 end $$;
 rollback to savepoint issue20;
+
+-- --------------------------------------------------------
+-- Test 28: user_roles keeps a single tenant-aware profile FK
+-- Covers: PostgREST embed path must be unambiguous after duplicate FK cleanup
+-- --------------------------------------------------------
+\echo 'Test 28: user_roles has exactly one FK relationship to user_profiles'
+savepoint test28;
+do $$
+declare
+  v_fk_count int;
+  v_has_original_fk boolean;
+  v_has_redundant_fk boolean;
+begin
+  select count(*)
+    into v_fk_count
+  from pg_constraint c
+  where c.conrelid = 'public.user_roles'::regclass
+    and c.confrelid = 'public.user_profiles'::regclass
+    and c.contype = 'f';
+
+  select exists (
+    select 1
+    from pg_constraint c
+    where c.conrelid = 'public.user_roles'::regclass
+      and c.confrelid = 'public.user_profiles'::regclass
+      and c.contype = 'f'
+      and pg_get_constraintdef(c.oid) = 'FOREIGN KEY (tenant_id, user_id) REFERENCES user_profiles(tenant_id, id) ON DELETE CASCADE'
+  ) into v_has_original_fk;
+
+  select exists (
+    select 1
+    from pg_constraint c
+    where c.conrelid = 'public.user_roles'::regclass
+      and c.conname = 'user_roles_user_id_tenant_id_fkey'
+  ) into v_has_redundant_fk;
+
+  if v_fk_count <> 1 then
+    raise exception 'FAIL: expected exactly 1 user_roles -> user_profiles FK, found %', v_fk_count;
+  end if;
+
+  if not v_has_original_fk then
+    raise exception 'FAIL: original tenant-aware user_roles profile FK is missing';
+  end if;
+
+  if v_has_redundant_fk then
+    raise exception 'FAIL: redundant user_roles_user_id_tenant_id_fkey still exists';
+  end if;
+
+  raise notice 'PASS: user_roles keeps one tenant-aware profile FK';
+end $$;
+rollback to savepoint test28;
+
+-- --------------------------------------------------------
+-- Test 29: Same-tenant user role assignment succeeds
+-- Covers: valid tenant-scoped membership remains allowed after FK cleanup
+-- --------------------------------------------------------
+\echo 'Test 29: Same-tenant user role assignment succeeds'
+savepoint test29;
+insert into user_roles (tenant_id, user_id, role_id)
+values (
+  'a0000000-0000-0000-0000-000000000001',
+  'c0000000-0000-0000-0000-000000000001',
+  'e0000000-0000-0000-0000-000000000002'
+);
+do $$
+begin
+  if exists (
+    select 1
+    from user_roles
+    where tenant_id = 'a0000000-0000-0000-0000-000000000001'
+      and user_id = 'c0000000-0000-0000-0000-000000000001'
+      and role_id = 'e0000000-0000-0000-0000-000000000002'
+  ) then
+    raise notice 'PASS: same-tenant user role assignment accepted';
+  else
+    raise exception 'FAIL: same-tenant user role assignment was not persisted';
+  end if;
+end $$;
+rollback to savepoint test29;
+
+-- --------------------------------------------------------
+-- Test 30: Cross-tenant profile assignment rejected
+-- Covers: (tenant_id, user_id) must keep user_roles bound to the profile tenant
+-- --------------------------------------------------------
+\echo 'Test 30: Cross-tenant profile assignment rejected'
+savepoint test30;
+insert into auth.users (id, email, email_confirmed_at)
+values ('b0000000-0000-0000-0000-000000000030', 'user30@test.com', now())
+on conflict (id) do nothing;
+insert into user_profiles (id, tenant_id, auth_user_id, email, full_name)
+values (
+  'c0000000-0000-0000-0000-000000000030',
+  'a0000000-0000-0000-0000-000000000002',
+  'b0000000-0000-0000-0000-000000000030',
+  'user30@test.com',
+  'User 30'
+);
+do $$
+begin
+  begin
+    insert into user_roles (tenant_id, user_id, role_id)
+    values (
+      'a0000000-0000-0000-0000-000000000001',
+      'c0000000-0000-0000-0000-000000000030',
+      'e0000000-0000-0000-0000-000000000001'
+    );
+    raise exception 'FAIL: cross-tenant profile assignment was accepted';
+  exception when foreign_key_violation then
+    raise notice 'PASS: cross-tenant profile assignment rejected';
+  end;
+end $$;
+rollback to savepoint test30;
+
+-- --------------------------------------------------------
+-- Test 31: Cross-tenant role assignment rejected
+-- Covers: (tenant_id, role_id) must keep user_roles bound to the role tenant
+-- --------------------------------------------------------
+\echo 'Test 31: Cross-tenant role assignment rejected'
+savepoint test31;
+insert into roles (id, tenant_id, name, is_system, is_web_access)
+values (
+  'e0000000-0000-0000-0000-000000000031',
+  'a0000000-0000-0000-0000-000000000002',
+  'cross-tenant-role-31',
+  false,
+  true
+);
+do $$
+begin
+  begin
+    insert into user_roles (tenant_id, user_id, role_id)
+    values (
+      'a0000000-0000-0000-0000-000000000001',
+      'c0000000-0000-0000-0000-000000000001',
+      'e0000000-0000-0000-0000-000000000031'
+    );
+    raise exception 'FAIL: cross-tenant role assignment was accepted';
+  exception when foreign_key_violation then
+    raise notice 'PASS: cross-tenant role assignment rejected';
+  end;
+end $$;
+rollback to savepoint test31;
 
 \echo '=== All authorization constraint tests complete ==='
 

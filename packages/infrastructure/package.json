@@ -2,12 +2,21 @@
   "name": "@faena360/infrastructure",
   "version": "0.1.0",
   "private": true,
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "build": "tsc --noEmit"
   },
   "dependencies": {
+    "@faena360/application": "workspace:*",
     "@faena360/domain": "workspace:*",
     "@supabase/supabase-js": "^2"
   },

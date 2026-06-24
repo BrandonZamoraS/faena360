@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   buildLoginPayload,
   getLoginFailureMessage,
@@ -13,6 +14,7 @@ type LoginResponse =
   | { ok: false; code: LoginFailureCode };
 
 export function LoginForm() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -61,6 +63,7 @@ export function LoginForm() {
       }
 
       setSuccess(`Sesión iniciada como ${payload.session.email}.`);
+      router.replace("/dashboard");
     } catch {
       setError("No pudimos iniciar sesión. Intentá nuevamente.");
     } finally {

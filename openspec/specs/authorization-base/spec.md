@@ -2,13 +2,13 @@
 
 ## Purpose
 
-Define the minimum authorization persistence Faena360 MUST provide for tenant-bound roles, effective capabilities, local user profiles, and minimal audit history.
+Define the minimum authorization persistence Faena360 MUST provide for tenant-bound roles, effective capabilities, local user profiles, and audit history.
 
 ## Requirements
 
 ### Requirement: Local user profiles
 
-The system MUST persist local user profiles linked to a tenant and a platform identity. Email and phone identifiers MUST be globally unique when present.
+The system MUST persist local user profiles linked to a tenant and a platform identity. Email and phone identifiers MUST be globally unique when present, enforced on BOTH create and update paths. When updating a user's phone, the system MUST check the new phone against all OTHER users and MUST allow the same user to keep their existing phone. The `updateUser` use case MUST return `duplicate_identifier` when the updated phone belongs to a different user.
 
 #### Scenario: Profile is stored for a tenant user
 - GIVEN a valid platform user and tenant
@@ -19,6 +19,16 @@ The system MUST persist local user profiles linked to a tenant and a platform id
 - GIVEN an existing profile with the same email or phone
 - WHEN another profile uses that same global identifier
 - THEN the write is rejected by the data store
+
+#### Scenario: Duplicate phone on update is rejected
+- GIVEN user A has phone "11234567890" and user B has phone "999"
+- WHEN user B's profile is updated to use phone "11234567890"
+- THEN `updateUser` returns `{ ok: false, code: "duplicate_identifier" }`
+
+#### Scenario: Same-phone update is allowed (self-exclusion)
+- GIVEN user A has phone "11234567890"
+- WHEN user A's profile is updated with the same phone "11234567890" and a new fullName
+- THEN the update succeeds, profile changes are persisted, and audit is recorded
 
 ### Requirement: Tenant roles and assignments
 
@@ -48,19 +58,26 @@ The system MUST persist a global capability catalog, role-to-capability grants, 
 - WHEN a user-specific override is stored
 - THEN the override is persisted separately from the role grants
 
-### Requirement: Minimal authorization audit history
+### Requirement: Authorization audit history
 
-The system MUST persist minimal audit records for authorization changes with actor, target, action, and event timestamp data. The system MUST NOT require richer audit detail fields beyond this MVP scope.
+The system MUST persist audit records for authorization changes with actor, target, action, and event timestamp data. Authorization audit behavior is delegated to the `audit-log-system` capability, which provides source tracing, before/after JSONB diffs, and sensitive field sanitization.
+
+(Previously: Required minimal audit records and explicitly disallowed richer detail fields beyond MVP scope.)
 
 #### Scenario: Authorization change creates a minimal audit record
 - GIVEN a role, assignment, or override change
 - WHEN the change is stored
 - THEN a minimal audit record can capture who acted, what changed, and when
 
-#### Scenario: MVP audit scope stays minimal
-- GIVEN the authorization base schema is reviewed
-- WHEN audit requirements are validated
-- THEN richer vault-only audit columns are not required in this phase
+#### Scenario: Authorization audit uses full audit-log-system
+- GIVEN the audit-log-system capability is active
+- WHEN an authorization mutation is audited
+- THEN source, old_value, and new_value JSONB diffs are captured per audit-log-system spec
+
+#### Scenario: Sensitive authorization changes are audited
+- GIVEN a supervisor modifies role permissions or creates capability overrides
+- WHEN the change is stored
+- THEN an audit entry records the actor, target, source, and mutation details per audit-log-system
 
 ### Requirement: Authorization schema integrity
 

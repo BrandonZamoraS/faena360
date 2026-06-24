@@ -12,6 +12,7 @@ interface SupabaseProfileRow {
   readonly full_name: string;
   readonly phone: string | null;
   readonly status: "active" | "inactive";
+  readonly user_roles?: readonly { readonly role_id: string }[];
 }
 
 interface CreateProfileInput {
@@ -26,6 +27,13 @@ interface AssignRolesInput {
   readonly tenantId: string;
   readonly userId: string;
   readonly roleIds: readonly string[];
+}
+
+interface UpdateProfileInput {
+  readonly tenantId: string;
+  readonly userId: string;
+  readonly fullName: string;
+  readonly phone?: string;
 }
 
 interface RecordAuditInput {
@@ -65,6 +73,58 @@ export class SupabaseUserManagementRepository implements UserManagementRepositor
     }
 
     return false;
+  }
+
+  /**
+   * Verifica unicidad de teléfono excluyendo al propio usuario (para ediciones).
+   * Recibe el email desde Application para evitar consultas compensatorias.
+   */
+  public async identifierExistsExcluding(input: {
+    readonly userId: string;
+    readonly email: string;
+    readonly phone: string;
+  }): Promise<boolean> {
+    const normalizedEmail = normalizeIdentifierEmail(input.email);
+    const normalizedPhone = normalizeIdentifierPhone(input.phone);
+
+    const response = await this.client.rpc(
+      "user_profile_identifier_exists_excluding",
+      {
+        lookup_email: normalizedEmail,
+        lookup_phone: normalizedPhone,
+        exclude_user_id: input.userId,
+      }
+    );
+
+    if (response.error) {
+      throw new Error(response.error.message);
+    }
+
+    if (response.data === true) {
+      return true;
+    }
+
+    return false;
+  }
+
+  public async getUserEmail(input: {
+    readonly userId: string;
+    readonly tenantId: string;
+  }): Promise<string> {
+    const { data, error } = await this.client
+      .from("user_profiles")
+      .select("email")
+      .eq("id", input.userId)
+      .eq("tenant_id", input.tenantId)
+      .single<{ email: string }>();
+
+    if (error || !data?.email) {
+      throw new Error(
+        error?.message ?? "Could not resolve user email for uniqueness check"
+      );
+    }
+
+    return data.email;
   }
 
   public async createProfile(input: CreateProfileInput): Promise<string> {
@@ -118,12 +178,85 @@ export class SupabaseUserManagementRepository implements UserManagementRepositor
     }
   }
 
+  public async replaceRoles(input: AssignRolesInput): Promise<void> {
+    const uniqueRoleIds = Array.from(new Set(input.roleIds));
+
+    // Reemplazar roles con delete+insert desde el cliente no es atómico; el RPC
+    // mantiene la operación en una transacción para preservar permisos previos
+    // si falla la inserción o la validación de roles.
+    const response = await this.client.rpc("replace_user_roles_for_tenant", {
+      target_tenant_id: input.tenantId,
+      target_user_id: input.userId,
+      replacement_role_ids: uniqueRoleIds,
+    });
+
+    if (response.error) {
+      throw new Error(response.error.message);
+    }
+  }
+
+  public async updateProfile(input: UpdateProfileInput): Promise<void> {
+    const response = await this.client
+      .from("user_profiles")
+      .update({
+        full_name: input.fullName,
+        phone: input.phone ?? null,
+      })
+      .eq("tenant_id", input.tenantId)
+      .eq("id", input.userId);
+
+    if (response.error) {
+      throw new Error(response.error.message);
+    }
+  }
+
+  public async deactivateProfile(input: {
+    readonly tenantId: string;
+    readonly userId: string;
+  }): Promise<{ readonly authUserId: string }> {
+    const response = await this.client
+      .from("user_profiles")
+      .update({ status: "inactive" })
+      .select("auth_user_id")
+      .eq("tenant_id", input.tenantId)
+      .eq("id", input.userId)
+      .single();
+
+    if (response.error) {
+      throw new Error(response.error.message);
+    }
+
+    const data = response.data as { auth_user_id?: string } | null;
+    if (!data?.auth_user_id) {
+      throw new Error("Profile deactivation did not return auth user id.");
+    }
+
+    return { authUserId: data.auth_user_id };
+  }
+
+  public async reactivateProfile(input: {
+    readonly tenantId: string;
+    readonly userId: string;
+  }): Promise<void> {
+    // Solo se usa como compensación cuando falla la revocación de Auth tras una
+    // deactivación local; mantiene consistente lo que ve el admin con el estado.
+    const response = await this.client
+      .from("user_profiles")
+      .update({ status: "active" })
+      .eq("tenant_id", input.tenantId)
+      .eq("id", input.userId);
+
+    if (response.error) {
+      throw new Error(response.error.message);
+    }
+  }
+
   public async listActiveUsers(input: {
     readonly tenantId: string;
   }): Promise<readonly TenantUserSummary[]> {
     const response = await this.client
       .from("user_profiles")
-      .select("id,tenant_id,email,full_name,phone,status")
+      .select("id,tenant_id,email,full_name,phone,status,user_roles(role_id)")
       .eq("tenant_id", input.tenantId)
       .eq("status", "active");
 
@@ -138,6 +271,7 @@ export class SupabaseUserManagementRepository implements UserManagementRepositor
       full_name: row.full_name,
       phone: row.phone ?? null,
       status: row.status,
+      role_ids: (row.user_roles ?? []).map((ur) => ur.role_id),
     }));
   }
 
@@ -148,6 +282,33 @@ export class SupabaseUserManagementRepository implements UserManagementRepositor
       actor_user_id: input.actorUserId,
       target_user_id: input.targetUserId,
       action: "user_created",
+      occurred_at: new Date().toISOString(),
+    });
+
+    if (response.error) {
+      throw new Error(response.error.message);
+    }
+  }
+
+  public async recordUserUpdatedAudit(input: RecordAuditInput): Promise<void> {
+    await this.recordUserAudit(input, "user_updated");
+  }
+
+  public async recordUserDeactivatedAudit(
+    input: RecordAuditInput
+  ): Promise<void> {
+    await this.recordUserAudit(input, "user_deactivated");
+  }
+
+  private async recordUserAudit(
+    input: RecordAuditInput,
+    action: string
+  ): Promise<void> {
+    const response = await this.client.from("audit_log").insert({
+      tenant_id: await this.resolveTenantIdForProfile(input.targetUserId),
+      actor_user_id: input.actorUserId,
+      target_user_id: input.targetUserId,
+      action,
       occurred_at: new Date().toISOString(),
     });
 

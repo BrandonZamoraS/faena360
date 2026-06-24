@@ -44,7 +44,7 @@ The system MUST resolve a user's effective capabilities for a tenant by combinin
 
 ### Requirement: Cache and Guard
 
-The system SHOULD cache resolved capabilities by tenant and user for a short TTL. The system MUST allow invalidation for role/capability/override changes and MUST provide a guard for required capabilities.
+The system SHOULD cache resolved capabilities by tenant and user for a short TTL. The system MUST invalidate the target user's cache when `updateUser` replaces roles via `replaceRoles`. The system MUST allow invalidation for role/capability/override changes and MUST provide a guard for required capabilities.
 
 #### Scenario: Cached result is reused until invalidated
 
@@ -57,6 +57,13 @@ The system SHOULD cache resolved capabilities by tenant and user for a short TTL
 - GIVEN a cached tenant/user capability result has exceeded its TTL
 - WHEN capabilities are resolved again
 - THEN fresh repository data is read
+
+#### Scenario: Cache invalidated after role change in updateUser
+
+- GIVEN a user's capabilities are cached (e.g. from a recent login)
+- AND an admin calls `updateUser` with a new `roleIds` list for that user
+- WHEN the same user's capabilities are resolved next
+- THEN the cache MISSES and fresh capabilities are computed from the repository
 
 #### Scenario: Missing capability fails authorization
 

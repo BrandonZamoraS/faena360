@@ -35,6 +35,24 @@ function createMockQuery<T>(
       });
       return query;
     },
+    in: (column: string, values: readonly unknown[]) => {
+      calls.push({
+        operation: "in",
+        details: `${table}:${column}=${values.join(",")}`,
+      });
+      return query;
+    },
+    delete: () => {
+      calls.push({ operation: "delete", details: table });
+      return query;
+    },
+    update: (values: unknown) => {
+      calls.push({
+        operation: "update",
+        details: `${table}:${JSON.stringify(values)}`,
+      });
+      return query;
+    },
     insert: (values: unknown) => {
       calls.push({ operation: "insert", details: table });
       onInsert?.(values);
@@ -58,6 +76,128 @@ function createMockQuery<T>(
   return query;
 }
 
+async function runUpdateProfileScopesByTenantAndUser(): Promise<void> {
+  const calls: QueryCall[] = [];
+
+  const client = {
+    from: (table: string) => {
+      expect(table).toBe("user_profiles");
+      return createMockQuery({ data: null, error: null }, calls, table);
+    },
+  } as unknown as SupabaseClient;
+
+  const repository = new SupabaseUserManagementRepository(client);
+  await repository.updateProfile({
+    tenantId: "tenant-1",
+    userId: "user-id-1",
+    fullName: "Updated User",
+    phone: "15552223333",
+  });
+
+  expect(calls).toContainEqual({
+    operation: "update",
+    details: 'user_profiles:{"full_name":"Updated User","phone":"15552223333"}',
+  });
+  expect(calls).toContainEqual({
+    operation: "eq",
+    details: "user_profiles:tenant_id=tenant-1",
+  });
+  expect(calls).toContainEqual({
+    operation: "eq",
+    details: "user_profiles:id=user-id-1",
+  });
+}
+
+async function runReplaceRolesDeletesThenInsertsTenantScopedRoles(): Promise<void> {
+  const calls: QueryCall[] = [];
+  let rpcArguments: unknown;
+
+  const client = {
+    rpc: (functionName: string, args: unknown) => {
+      calls.push({ operation: "rpc", details: functionName });
+      rpcArguments = args;
+
+      return { data: null, error: null };
+    },
+  } as unknown as SupabaseClient;
+
+  const repository = new SupabaseUserManagementRepository(client);
+  await repository.replaceRoles({
+    tenantId: "tenant-1",
+    userId: "user-id-1",
+    roleIds: ["role-a", "role-b", "role-a"],
+  });
+
+  expect(calls).toEqual([
+    { operation: "rpc", details: "replace_user_roles_for_tenant" },
+  ]);
+  expect(rpcArguments).toEqual({
+    target_tenant_id: "tenant-1",
+    target_user_id: "user-id-1",
+    replacement_role_ids: ["role-a", "role-b"],
+  });
+}
+
+async function runReplaceRolesValidatesBeforeDeletingCurrentRoles(): Promise<void> {
+  const calls: QueryCall[] = [];
+
+  const client = {
+    rpc: (functionName: string) => {
+      calls.push({ operation: "rpc", details: functionName });
+
+      return {
+        data: null,
+        error: { message: "Role assignment includes roles outside the tenant" },
+      };
+    },
+  } as unknown as SupabaseClient;
+
+  const repository = new SupabaseUserManagementRepository(client);
+
+  await expect(
+    repository.replaceRoles({
+      tenantId: "tenant-1",
+      userId: "user-id-1",
+      roleIds: ["role-a", "missing-role"],
+    })
+  ).rejects.toThrow("Role assignment includes roles outside the tenant");
+
+  expect(calls).toEqual([
+    { operation: "rpc", details: "replace_user_roles_for_tenant" },
+  ]);
+}
+
+async function runDeactivateProfileUsesStatusInactive(): Promise<void> {
+  const calls: QueryCall[] = [];
+
+  const client = {
+    from: (table: string) => {
+      expect(table).toBe("user_profiles");
+      return createMockQuery(
+        { data: { auth_user_id: "auth-user-id-1" }, error: null },
+        calls,
+        table
+      );
+    },
+  } as unknown as SupabaseClient;
+
+  const repository = new SupabaseUserManagementRepository(client);
+  const result = await repository.deactivateProfile({
+    tenantId: "tenant-1",
+    userId: "user-id-1",
+  });
+
+  expect(calls).toContainEqual({
+    operation: "update",
+    details: 'user_profiles:{"status":"inactive"}',
+  });
+  expect(calls).not.toContainEqual({
+    operation: "delete",
+    details: "user_profiles",
+  });
+  expect(result.authUserId).toBe("auth-user-id-1");
+}
+
 async function runTenantActiveUsersUseSchemaColumnsCheck(): Promise<void> {
   const calls: QueryCall[] = [];
 
@@ -69,6 +209,7 @@ async function runTenantActiveUsersUseSchemaColumnsCheck(): Promise<void> {
       full_name: "Tenant One",
       phone: null,
       status: "active" as const,
+      user_roles: [{ role_id: "role-1" }, { role_id: "role-2" }],
     },
   ];
 
@@ -84,9 +225,10 @@ async function runTenantActiveUsersUseSchemaColumnsCheck(): Promise<void> {
 
   expect(result).toHaveLength(1);
   expect(result[0]?.user_id).toBe("user-id-1");
+  expect(result[0]?.role_ids).toEqual(["role-1", "role-2"]);
   expect(
     calls.find((entry) => entry.operation === "select")?.details
-  ).toContain("id,tenant_id,email,full_name,phone,status");
+  ).toContain("user_roles(role_id)");
 }
 
 async function runCreateProfileUsesAuthUserColumnAndReturnsId(): Promise<void> {
@@ -259,6 +401,40 @@ async function runRecordUserCreatedAuditUsesCurrentSchema(): Promise<void> {
   ).toBeTypeOf("string");
 }
 
+async function runIdentifierExistsExcludingPassesExcludeParamToRpc(): Promise<void> {
+  const calls: QueryCall[] = [];
+
+  const client = {
+    rpc: (functionName: string, args: Record<string, unknown>) => {
+      calls.push({ operation: "rpc", details: functionName });
+      calls.push({
+        operation: "rpc_args",
+        details: `email:${String(args.lookup_email)} phone:${String(args.lookup_phone)} exclude:${String(args.exclude_user_id)}`,
+      });
+
+      return { data: false, error: null };
+    },
+  } as unknown as SupabaseClient;
+
+  const repository = new SupabaseUserManagementRepository(client);
+
+  const exists = await repository.identifierExistsExcluding({
+    userId: "target-user-id",
+    email: "user@example.com",
+    phone: "+1 (555) 999-8888",
+  });
+
+  expect(exists).toBe(false);
+  expect(calls).toContainEqual({
+    operation: "rpc",
+    details: "user_profile_identifier_exists_excluding",
+  });
+  expect(calls).toContainEqual({
+    operation: "rpc_args",
+    details: "email:user@example.com phone:15559998888 exclude:target-user-id",
+  });
+}
+
 describe("SupabaseUserManagementRepository", () => {
   it("maps active list results to TenantUserSummary.user_id from user_profiles.id", async () => {
     await runTenantActiveUsersUseSchemaColumnsCheck();
@@ -278,5 +454,25 @@ describe("SupabaseUserManagementRepository", () => {
 
   it("writes audit log using canonical column names", async () => {
     await runRecordUserCreatedAuditUsesCurrentSchema();
+  });
+
+  it("updates profiles scoped by tenant and user", async () => {
+    await runUpdateProfileScopesByTenantAndUser();
+  });
+
+  it("replaces user roles with tenant-scoped assignments", async () => {
+    await runReplaceRolesDeletesThenInsertsTenantScopedRoles();
+  });
+
+  it("validates replacement roles before deleting current roles", async () => {
+    await runReplaceRolesValidatesBeforeDeletingCurrentRoles();
+  });
+
+  it("soft deletes profiles by setting status inactive", async () => {
+    await runDeactivateProfileUsesStatusInactive();
+  });
+
+  it("passes exclude_user_id to RPC for identifierExistsExcluding", async () => {
+    await runIdentifierExistsExcludingPassesExcludeParamToRpc();
   });
 });
