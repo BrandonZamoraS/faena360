@@ -1,0 +1,1 @@
+export { SupabaseSubprojectCatalogRepository } from "./SupabaseSubprojectCatalogRepository";
