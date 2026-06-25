@@ -81,7 +81,10 @@ describe("verifyWhatsappWebhookSignature", () => {
       verifyWhatsappWebhookSignature({
         headers: buildHeaders(validPayloadSignature),
         rawBody,
-        signedPayload: JSON.stringify({ method: "GET", tipo: "inicio_jornada" }),
+        signedPayload: JSON.stringify({
+          method: "GET",
+          tipo: "inicio_jornada",
+        }),
         secret,
         now: Number(timestamp),
       })
