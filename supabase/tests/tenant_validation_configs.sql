@@ -46,10 +46,11 @@ values (
 );
 
 insert into role_capabilities (role_id, capability_id)
-values (
+select
   'e0000000-0000-0000-0000-000000000069',
-  'd0000000-0000-0000-0000-000000000069'
-);
+  c.id
+from capabilities c
+where c.key = 'whatsapp.channel.access';
 
 insert into user_roles (tenant_id, user_id, role_id)
 values (
@@ -70,6 +71,37 @@ values
     'inicio_jornada',
     '{"campos":{"fotoHorometro":{"obligatorio":false}}}'::jsonb
   );
+
+\echo 'Test 0: Service/admin inserts derive audit tenant_id from tenant_validation_configs rows'
+savepoint tenant_validation_test0;
+
+insert into tenant_validation_configs (tenant_id, tipo, config)
+values (
+  'a0000000-0000-0000-0000-000000000069',
+  'cierre_jornada',
+  '{"campos":{"fotoFinal":{"obligatorio":true}}}'::jsonb
+);
+
+do $$
+declare
+  v_tenant_id uuid;
+begin
+  select tenant_id
+  into v_tenant_id
+  from audit_log
+  where action = 'tenant_validation_configs.create'
+    and new_value ->> 'tipo' = 'cierre_jornada'
+  order by occurred_at desc
+  limit 1;
+
+  if v_tenant_id = 'a0000000-0000-0000-0000-000000000069'::uuid then
+    raise notice 'PASS: audit log captured tenant_validation_configs tenant_id without JWT context';
+  else
+    raise exception 'FAIL: audit log tenant_id was %, expected tenant A id', v_tenant_id;
+  end if;
+end $$;
+
+rollback to savepoint tenant_validation_test0;
 
 \echo 'Test 1: Unique (tenant_id, tipo) rejects duplicate rows'
 savepoint tenant_validation_test1;

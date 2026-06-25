@@ -6,29 +6,67 @@ import { handleValidationConfigGet } from "./handler";
 
 process.env.WEBHOOK_WHATSAPP_SECRET = "test-whatsapp-secret";
 
+const ROUTE_PATH = "/api/config/validacion";
 const TENANT_ID = "11111111-1111-4111-8111-111111111111";
 const USER_ID = "22222222-2222-4222-8222-222222222222";
 
-function buildSignedRequest(
-  tipo: string,
-  headers: Record<string, string> = {},
-  timestamp = Date.now().toString()
-) {
+function buildSignedPayload(input: {
+  tipo: string;
+  tenantId: string;
+  userId: string;
+  rawBody?: string;
+}) {
+  return JSON.stringify({
+    method: "GET",
+    path: ROUTE_PATH,
+    query: { tipo: input.tipo },
+    headers: {
+      "x-faena-tenant-id": input.tenantId,
+      "x-faena-user-id": input.userId,
+    },
+    body: input.rawBody ?? "",
+  });
+}
+
+function buildSignedRequest(input: {
+  tipo: string;
+  requestTipo?: string;
+  tenantId?: string;
+  requestTenantId?: string;
+  userId?: string;
+  requestUserId?: string;
+  headers?: Record<string, string>;
+  timestamp?: string;
+}) {
   const rawBody = "";
+  const signedTipo = input.tipo;
+  const signedTenantId = input.tenantId ?? TENANT_ID;
+  const signedUserId = input.userId ?? USER_ID;
+  const requestTipo = input.requestTipo ?? signedTipo;
+  const requestTenantId = input.requestTenantId ?? signedTenantId;
+  const requestUserId = input.requestUserId ?? signedUserId;
+  const timestamp = input.timestamp ?? Date.now().toString();
   const signature = createHmac("sha256", process.env.WEBHOOK_WHATSAPP_SECRET!)
-    .update(`${timestamp}.${rawBody}`)
+    .update(
+      `${timestamp}.${buildSignedPayload({
+        tipo: signedTipo,
+        tenantId: signedTenantId,
+        userId: signedUserId,
+        rawBody,
+      })}`
+    )
     .digest("hex");
 
   return new NextRequest(
-    `http://localhost/api/config/validacion?tipo=${encodeURIComponent(tipo)}`,
+    `http://localhost${ROUTE_PATH}?tipo=${encodeURIComponent(requestTipo)}`,
     {
       method: "GET",
       headers: {
         "X-Faena-Timestamp": timestamp,
         "X-Faena-Signature": signature,
-        "X-Faena-Tenant-Id": TENANT_ID,
-        "X-Faena-User-Id": USER_ID,
-        ...headers,
+        "X-Faena-Tenant-Id": requestTenantId,
+        "X-Faena-User-Id": requestUserId,
+        ...input.headers,
       },
     }
   );
@@ -58,7 +96,7 @@ describe("GET /api/config/validacion", () => {
 
   it("rejects missing tenant or user context headers", async () => {
     const response = await handleValidationConfigGet(
-      buildSignedRequest("gasto", { "X-Faena-Tenant-Id": "" })
+      buildSignedRequest({ tipo: "gasto", tenantId: "", requestTenantId: "" })
     );
 
     expect(response.status).toBe(403);
@@ -71,10 +109,18 @@ describe("GET /api/config/validacion", () => {
 
   it("rejects malformed tenant or user context headers", async () => {
     const invalidTenantResponse = await handleValidationConfigGet(
-      buildSignedRequest("gasto", { "X-Faena-Tenant-Id": "tenant-1" })
+      buildSignedRequest({
+        tipo: "gasto",
+        tenantId: "tenant-1",
+        requestTenantId: "tenant-1",
+      })
     );
     const invalidUserResponse = await handleValidationConfigGet(
-      buildSignedRequest("gasto", { "X-Faena-User-Id": "user-1" })
+      buildSignedRequest({
+        tipo: "gasto",
+        userId: "user-1",
+        requestUserId: "user-1",
+      })
     );
 
     expect(invalidTenantResponse.status).toBe(403);
@@ -94,7 +140,7 @@ describe("GET /api/config/validacion", () => {
 
   it("rejects missing tipo before hitting the service", async () => {
     const response = await handleValidationConfigGet(
-      buildSignedRequest("   "),
+      buildSignedRequest({ tipo: "   ", requestTipo: "   " }),
       { service: { getConfig: vi.fn() } }
     );
 
@@ -108,7 +154,7 @@ describe("GET /api/config/validacion", () => {
 
   it("maps controlled service denials", async () => {
     const response = await handleValidationConfigGet(
-      buildSignedRequest("gasto"),
+      buildSignedRequest({ tipo: "gasto" }),
       {
         service: {
           getConfig: vi.fn().mockResolvedValue({
@@ -129,7 +175,7 @@ describe("GET /api/config/validacion", () => {
 
   it("returns the minimal tenant-aware validation contract", async () => {
     const response = await handleValidationConfigGet(
-      buildSignedRequest("inicio_jornada"),
+      buildSignedRequest({ tipo: "inicio_jornada" }),
       {
         service: {
           getConfig: vi.fn().mockResolvedValue({
@@ -162,7 +208,7 @@ describe("GET /api/config/validacion", () => {
 
   it("returns CONFIG_INVALIDA when the service throws unexpectedly", async () => {
     const response = await handleValidationConfigGet(
-      buildSignedRequest("gasto"),
+      buildSignedRequest({ tipo: "gasto" }),
       {
         service: {
           getConfig: vi.fn().mockRejectedValue(new Error("db exploded")),
@@ -174,6 +220,57 @@ describe("GET /api/config/validacion", () => {
     await expect(response.json()).resolves.toEqual({
       ok: false,
       errorCode: "CONFIG_INVALIDA",
+      message: "Controlled validation-config rejection.",
+    });
+  });
+
+  it("rejects query tampering after signing", async () => {
+    const response = await handleValidationConfigGet(
+      buildSignedRequest({
+        tipo: "gasto",
+        requestTipo: "inicio_jornada",
+      }),
+      { service: { getConfig: vi.fn() } }
+    );
+
+    expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toEqual({
+      ok: false,
+      errorCode: "PERMISO_DENEGADO",
+      message: "Controlled validation-config rejection.",
+    });
+  });
+
+  it("rejects tenant header tampering after signing", async () => {
+    const response = await handleValidationConfigGet(
+      buildSignedRequest({
+        tipo: "gasto",
+        requestTenantId: "33333333-3333-4333-8333-333333333333",
+      }),
+      { service: { getConfig: vi.fn() } }
+    );
+
+    expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toEqual({
+      ok: false,
+      errorCode: "PERMISO_DENEGADO",
+      message: "Controlled validation-config rejection.",
+    });
+  });
+
+  it("rejects user header tampering after signing", async () => {
+    const response = await handleValidationConfigGet(
+      buildSignedRequest({
+        tipo: "gasto",
+        requestUserId: "44444444-4444-4444-8444-444444444444",
+      }),
+      { service: { getConfig: vi.fn() } }
+    );
+
+    expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toEqual({
+      ok: false,
+      errorCode: "PERMISO_DENEGADO",
       message: "Controlled validation-config rejection.",
     });
   });

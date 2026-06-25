@@ -16,7 +16,11 @@ const UUID_PATTERN =
 
 export type ValidationConfigRouteDependencies = {
   service?: ValidationConfigService;
-  verifySignature?: (input: { headers: Headers; rawBody: string }) => boolean;
+  verifySignature?: (input: {
+    headers: Headers;
+    rawBody: string;
+    signedPayload?: string;
+  }) => boolean;
 };
 
 function buildService(): ValidationConfigService {
@@ -31,24 +35,33 @@ export async function handleValidationConfigGet(
 ): Promise<NextResponse> {
   try {
     const rawBody = await request.text();
+    const tipoRaw = request.nextUrl.searchParams.get("tipo") ?? "";
+    const tenantHeaderRaw = request.headers.get(TENANT_HEADER) ?? "";
+    const userHeaderRaw = request.headers.get(USER_HEADER) ?? "";
+
     if (
       !(dependencies.verifySignature ?? verifyWhatsappWebhookSignature)({
         headers: request.headers,
         rawBody,
+        signedPayload: buildSignedPayload({
+          pathname: request.nextUrl.pathname,
+          tipo: tipoRaw,
+          tenantId: tenantHeaderRaw,
+          userId: userHeaderRaw,
+          rawBody,
+        }),
       })
     ) {
       return errorResponse(401, "PERMISO_DENEGADO");
     }
 
-    const tipo = request.nextUrl.searchParams.get("tipo")?.trim() ?? "";
+    const tipo = tipoRaw.trim();
     if (!tipo) {
       return errorResponse(400, "TIPO_INVALIDO");
     }
 
-    const tenantId = normalizeIdentifierHeader(
-      request.headers.get(TENANT_HEADER)
-    );
-    const userId = normalizeIdentifierHeader(request.headers.get(USER_HEADER));
+    const tenantId = normalizeIdentifierHeader(tenantHeaderRaw);
+    const userId = normalizeIdentifierHeader(userHeaderRaw);
     if (!tenantId || !userId) {
       return errorResponse(403, "TENANT_INVALIDO");
     }
@@ -100,4 +113,23 @@ function errorResponse(status: number, errorCode: string): NextResponse {
 function normalizeIdentifierHeader(value: string | null): string | null {
   const normalized = value?.trim() ?? "";
   return UUID_PATTERN.test(normalized) ? normalized : null;
+}
+
+function buildSignedPayload(input: {
+  pathname: string;
+  tipo: string;
+  tenantId: string;
+  userId: string;
+  rawBody: string;
+}): string {
+  return JSON.stringify({
+    method: "GET",
+    path: input.pathname,
+    query: { tipo: input.tipo },
+    headers: {
+      "x-faena-tenant-id": input.tenantId,
+      "x-faena-user-id": input.userId,
+    },
+    body: input.rawBody,
+  });
 }
