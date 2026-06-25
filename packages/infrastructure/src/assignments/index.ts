@@ -1,0 +1,1 @@
+export { SupabaseMachineAssignmentRepository } from "./SupabaseMachineAssignmentRepository";

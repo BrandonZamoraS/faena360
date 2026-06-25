@@ -72,6 +72,13 @@ export const DASHBOARD_MODULES: readonly DashboardModuleDefinition[] = [
     description: "Consultar tipos de combustible del tenant",
     canView: (capabilities) => hasCapability(capabilities, "fuel_types:read"),
   },
+  {
+    slug: "assignments",
+    href: "/dashboard/assignments",
+    label: "Asignaciones",
+    description: "Gestionar asignaciones de máquinas a proyectos",
+    canView: (capabilities) => hasCapability(capabilities, "assignments:read"),
+  },
 ];
 
 export function getVisibleDashboardModules(
