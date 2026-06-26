@@ -2,6 +2,7 @@ import { type SupabaseClient } from "@supabase/supabase-js";
 
 import type {
   AssignmentEstado,
+  AssignmentHistoryEntry,
   MachineAssignment,
   MachineAssignmentRepository,
 } from "@faena360/domain";
@@ -41,6 +42,13 @@ export class SupabaseMachineAssignmentRepository implements MachineAssignmentRep
     }
 
     return rows.map(mapRowToAssignment);
+  }
+
+  public async listHistory(_input: {
+    readonly tenantId: string;
+    readonly assignmentId: string;
+  }): Promise<readonly AssignmentHistoryEntry[]> {
+    throw new Error("Not implemented. Full implementation in Phase 2.");
   }
 
   public async create(input: {
