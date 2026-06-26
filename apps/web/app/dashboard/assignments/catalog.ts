@@ -1,9 +1,6 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import type {
-  AppSession,
-  CreateAssignmentInput,
-} from "@faena360/domain";
+import type { AppSession, CreateAssignmentInput } from "@faena360/domain";
 import {
   CapabilityDeniedError,
   createMachineAssignmentService,
@@ -86,7 +83,9 @@ export function guardAssignmentAction(session: AppSession, capability: string) {
   }
 }
 
-export function readCreateAssignmentInput(formData: FormData): CreateAssignmentInput {
+export function readCreateAssignmentInput(
+  formData: FormData
+): CreateAssignmentInput {
   return {
     maquina_id: getString(formData, "maquina_id"),
     proyecto_id: getString(formData, "proyecto_id"),

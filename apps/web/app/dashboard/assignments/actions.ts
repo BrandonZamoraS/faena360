@@ -1,7 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import type { AssignmentEstado, AssignmentHistoryEntry } from "@faena360/domain";
+import type {
+  AssignmentEstado,
+  AssignmentHistoryEntry,
+} from "@faena360/domain";
 import {
   getAuthorizedAssignmentsSession,
   guardAssignmentAction,
