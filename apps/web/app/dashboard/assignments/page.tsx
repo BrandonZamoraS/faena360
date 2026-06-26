@@ -59,6 +59,7 @@ type AssignmentsShellInput = {
   readonly tenantTimezone: string;
   readonly capabilities: readonly string[];
   readonly assignments: readonly AssignmentDisplayRow[];
+  readonly allAssignments: readonly AssignmentDisplayRow[];
   readonly machines: readonly MachineCatalogSummary[];
   readonly projects: readonly ProjectCatalogSummary[];
   readonly subprojects: readonly SubprojectCatalogSummary[];
@@ -90,7 +91,7 @@ export function renderAssignmentsShell(input: AssignmentsShellInput) {
     Boolean(input.proyectoFilter) || Boolean(input.maquinaFilter);
 
   const assignedMachineIds = new Set(
-    input.assignments.map((a) => a.maquina_id)
+    input.allAssignments.map((a) => a.maquina_id)
   );
   const activeMachines = input.machines.filter(
     (m) =>
@@ -524,29 +525,38 @@ export default async function AssignmentsPage({
   searchParams: Promise<{ proyecto_id?: string; maquina_id?: string }>;
 }) {
   const params = await searchParams;
-  const proyectoFilter = params.proyecto_id ?? undefined;
-  const maquinaFilter = params.maquina_id ?? undefined;
+  const proyectoFilter = params.proyecto_id || undefined;
+  const maquinaFilter = params.maquina_id || undefined;
 
   const session = await getAuthorizedPageSession();
-  const [tenant, assignments, machines, projects, subprojects, operators] =
-    await Promise.all([
-      lookupTenant(session.tenant_id),
-      listActiveAssignmentsWithJoins(
-        session.tenant_id,
-        proyectoFilter,
-        maquinaFilter
-      ),
-      listActivePorTiempoMachines(session.tenant_id),
-      listActiveProjects(session.tenant_id),
-      listActiveSubprojects(session.tenant_id),
-      listOperatorsForTenant(session.tenant_id),
-    ]);
+  const [
+    tenant,
+    assignments,
+    allAssignments,
+    machines,
+    projects,
+    subprojects,
+    operators,
+  ] = await Promise.all([
+    lookupTenant(session.tenant_id),
+    listActiveAssignmentsWithJoins(
+      session.tenant_id,
+      proyectoFilter,
+      maquinaFilter
+    ),
+    listActiveAssignmentsWithJoins(session.tenant_id),
+    listActivePorTiempoMachines(session.tenant_id),
+    listActiveProjects(session.tenant_id),
+    listActiveSubprojects(session.tenant_id),
+    listOperatorsForTenant(session.tenant_id),
+  ]);
 
   return renderAssignmentsShell({
     tenantName: tenant.name,
     tenantTimezone: tenant.timezone,
     capabilities: session.effective_capabilities,
     assignments,
+    allAssignments,
     machines,
     projects,
     subprojects,

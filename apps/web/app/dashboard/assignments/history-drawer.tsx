@@ -12,9 +12,9 @@ const ESTADO_LABELS: Record<string, string> = {
 };
 
 const ACTION_LABELS: Record<string, string> = {
-  "asignacion.created": "Creación de asignación",
-  "asignacion.updated": "Actualización de asignación",
-  "asignacion.deleted": "Eliminación de asignación",
+  "asignacion.create": "Creación de asignación",
+  "asignacion.update": "Actualización de asignación",
+  "asignacion.delete": "Eliminación de asignación",
 };
 
 function formatAction(action: string): string {

@@ -89,8 +89,9 @@ create index if not exists idx_asignaciones_tenant_proyecto_estado
   on public.asignaciones_maquina (tenant_id, proyecto_id, estado);
 
 -- Partial expression index to accelerate assignment-id lookups in audit_log
+-- Index expression matches the cast used in list_asignacion_historial WHERE clause
 create index if not exists idx_audit_log_assignment_id
-  on public.audit_log ((new_value->>'id'))
+  on public.audit_log (((new_value->>'id')::uuid))
   where action like 'asignacion.%';
 
 -- ============================================================
@@ -169,7 +170,10 @@ begin
     from public.audit_log
     where tenant_id = p_tenant_id
       and action like 'asignacion.%'
-      and (new_value->>'id')::uuid = p_asignacion_id
+      and (
+        (new_value->>'id')::uuid = p_asignacion_id
+        or (old_value->>'id')::uuid = p_asignacion_id
+      )
     order by occurred_at desc
   ) r;
 
@@ -182,7 +186,10 @@ $$;
 -- ============================================================
 
 -- Revoke old signature of list_asignaciones_activas (single param)
-revoke execute on function public.list_asignaciones_activas(uuid) from public, anon, authenticated, service_role;
+revoke execute on function public.list_asignaciones_activas(uuid) from public, anon, authenticated;
+-- Note: service_role retains execute on the old single-param overload
+-- to avoid breaking existing callers during rolling deploy.
+-- The old overload will be dropped once all callers have migrated.
 -- Revoke new extended signatures
 revoke execute on function public.list_asignaciones_activas(uuid, uuid, uuid) from public, anon, authenticated;
 -- Revoke historial
