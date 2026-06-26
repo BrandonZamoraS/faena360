@@ -476,7 +476,9 @@ describe("machine assignment service", () => {
     const { service } = createService({
       repository: {
         updateStatus: async () => {
-          const error = new Error("Only active assignments can be updated") as Error & { code: string };
+          const error = new Error(
+            "Only active assignments can be updated"
+          ) as Error & { code: string };
           error.code = "ASG01";
           throw error;
         },
@@ -561,7 +563,9 @@ describe("machine assignment service", () => {
     const { service } = createService({
       repository: {
         updateStatus: async () => {
-          const error = new Error("Only active assignments can be updated") as Error & { code: string };
+          const error = new Error(
+            "Only active assignments can be updated"
+          ) as Error & { code: string };
           error.code = "ASG01";
           throw error;
         },
