@@ -27,9 +27,13 @@ export class SupabaseMachineAssignmentRepository implements MachineAssignmentRep
 
   public async listActive(input: {
     readonly tenantId: string;
+    readonly proyectoId?: string | null;
+    readonly maquinaId?: string | null;
   }): Promise<readonly MachineAssignment[]> {
     const response = await this.client.rpc("list_asignaciones_activas", {
       p_tenant_id: input.tenantId,
+      p_proyecto_id: input.proyectoId ?? null,
+      p_maquina_id: input.maquinaId ?? null,
     });
 
     if (response.error) {
@@ -44,11 +48,27 @@ export class SupabaseMachineAssignmentRepository implements MachineAssignmentRep
     return rows.map(mapRowToAssignment);
   }
 
-  public async listHistory(_input: {
+  public async listHistory(input: {
     readonly tenantId: string;
+    readonly actorId: string;
     readonly assignmentId: string;
   }): Promise<readonly AssignmentHistoryEntry[]> {
-    throw new Error("Not implemented. Full implementation in Phase 2.");
+    const response = await this.client.rpc("list_asignacion_historial", {
+      p_actor_id: input.actorId,
+      p_tenant_id: input.tenantId,
+      p_asignacion_id: input.assignmentId,
+    });
+
+    if (response.error) {
+      throw createRepositoryError(response.error);
+    }
+
+    const rows = response.data as AssignmentHistoryEntry[] | null;
+    if (!rows) {
+      return [];
+    }
+
+    return rows;
   }
 
   public async create(input: {
