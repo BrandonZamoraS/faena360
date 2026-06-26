@@ -521,17 +521,26 @@ async function listOperatorsForTenant(
 
 function isValidUuid(value: string | undefined): value is string {
   if (!value) return false;
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+    value
+  );
 }
 
 export default async function AssignmentsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ filter_proyecto_id?: string; filter_maquina_id?: string }>;
+  searchParams: Promise<{
+    filter_proyecto_id?: string;
+    filter_maquina_id?: string;
+  }>;
 }) {
   const params = await searchParams;
-  const proyectoFilter = isValidUuid(params.filter_proyecto_id) ? params.filter_proyecto_id : undefined;
-  const maquinaFilter = isValidUuid(params.filter_maquina_id) ? params.filter_maquina_id : undefined;
+  const proyectoFilter = isValidUuid(params.filter_proyecto_id)
+    ? params.filter_proyecto_id
+    : undefined;
+  const maquinaFilter = isValidUuid(params.filter_maquina_id)
+    ? params.filter_maquina_id
+    : undefined;
 
   const session = await getAuthorizedPageSession();
   const [
