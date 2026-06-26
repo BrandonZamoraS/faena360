@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { AssignmentHistoryEntry } from "@faena360/domain";
-import { listAssignmentHistoryAction } from "./catalog";
+import { listAssignmentHistoryAction } from "./actions";
 
 const ESTADO_LABELS: Record<string, string> = {
   activa: "Activa",

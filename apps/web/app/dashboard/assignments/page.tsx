@@ -17,12 +17,14 @@ import type {
 import {
   canAccessAssignmentsPage,
   canRunAssignmentAction,
-  createAssignmentAction,
   ASSIGNMENTS_CREATE_CAPABILITY,
   ASSIGNMENTS_PATH,
   ASSIGNMENTS_UPDATE_CAPABILITY,
-  updateAssignmentStatusAction,
 } from "./catalog";
+import {
+  createAssignmentAction,
+  updateAssignmentStatusAction,
+} from "./actions";
 import { AssignmentFilters, type FilterOption } from "./filters";
 import { HistoryDrawerButton } from "./history-drawer";
 import {
