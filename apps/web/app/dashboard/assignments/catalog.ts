@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import type {
   AppSession,
   AssignmentEstado,
+  AssignmentHistoryEntry,
   CreateAssignmentInput,
 } from "@faena360/domain";
 import {
@@ -46,6 +47,17 @@ export async function listActiveAssignmentsForSession(session: AppSession) {
     tenant_id: session.tenant_id,
     user_id: session.user_id,
   });
+}
+
+export async function listAssignmentHistoryAction(
+  assignmentId: string
+): Promise<readonly AssignmentHistoryEntry[]> {
+  "use server";
+  const session = await getAuthorizedAssignmentsSession();
+  return buildAssignmentService(session).listAssignmentHistory(
+    { tenant_id: session.tenant_id, user_id: session.user_id },
+    assignmentId
+  );
 }
 
 export async function createAssignmentAction(formData: FormData) {

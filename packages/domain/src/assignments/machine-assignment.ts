@@ -83,6 +83,7 @@ export interface MachineAssignmentRepository {
 
   listHistory(input: {
     readonly tenantId: string;
+    readonly actorId: string;
     readonly assignmentId: string;
   }): Promise<readonly AssignmentHistoryEntry[]>;
 
