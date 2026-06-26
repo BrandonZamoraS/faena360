@@ -140,7 +140,7 @@ describe("machine assignment service", () => {
     const updateResult = await service.updateAssignmentStatus(
       { tenant_id: "   ", user_id: "actor-1" },
       "assignment-1",
-      "retirada_del_proyecto"
+      "cerrada_por_finalizacion"
     );
 
     expect(createResult).toEqual({ ok: false, code: "missing_tenant" });
@@ -412,7 +412,7 @@ describe("machine assignment service", () => {
     const result = await service.updateAssignmentStatus(
       { tenant_id: " tenant-1 ", user_id: "actor-1" },
       "  assignment-1  ",
-      "retirada_del_proyecto"
+      "cerrada_por_finalizacion"
     );
 
     expect(result).toEqual({ ok: true });
@@ -422,7 +422,7 @@ describe("machine assignment service", () => {
       assignmentId: "assignment-1",
       actorId: "actor-1",
       auditSource: "web",
-      estado: "retirada_del_proyecto",
+      estado: "cerrada_por_finalizacion",
     });
   });
 
@@ -454,7 +454,7 @@ describe("machine assignment service", () => {
     const result = await service.updateAssignmentStatus(
       { tenant_id: "tenant-1", user_id: "actor-1" },
       "   ",
-      "retirada_del_proyecto"
+      "cerrada_por_finalizacion"
     );
 
     expect(result).toEqual({ ok: false, code: "missing_assignment" });
@@ -470,6 +470,110 @@ describe("machine assignment service", () => {
     );
 
     expect(result).toEqual({ ok: false, code: "unknown_error" });
+  });
+
+  it("maps ASG01 (assignment not active) to missing_assignment", async () => {
+    const { service } = createService({
+      repository: {
+        updateStatus: async () => {
+          const error = new Error("Only active assignments can be updated") as Error & { code: string };
+          error.code = "ASG01";
+          throw error;
+        },
+      },
+    });
+
+    const result = await service.updateAssignmentStatus(
+      { tenant_id: "tenant-1", user_id: "actor-1" },
+      "assignment-1",
+      "cerrada_por_finalizacion"
+    );
+
+    expect(result).toEqual({ ok: false, code: "missing_assignment" });
+  });
+
+  it("updateAssignmentStatus rejects retirada_del_proyecto", async () => {
+    const { service, repositoryCalls } = createService();
+
+    const result = await service.updateAssignmentStatus(
+      { tenant_id: "tenant-1", user_id: "actor-1" },
+      "assignment-1",
+      "retirada_del_proyecto"
+    );
+
+    expect(result).toEqual({ ok: false, code: "capability_denied" });
+    expect(repositoryCalls.updateStatus).toHaveLength(0);
+  });
+
+  it("withdrawAssignment gates on assignments:withdraw and delegates to repository", async () => {
+    const { service, capabilityCalls, repositoryCalls } = createService();
+
+    const result = await service.withdrawAssignment(
+      { tenant_id: " tenant-1 ", user_id: "actor-1" },
+      "  assignment-1  "
+    );
+
+    expect(result).toEqual({ ok: true });
+    expect(capabilityCalls).toEqual(["actor-1|tenant-1|assignments:withdraw"]);
+    expect(repositoryCalls.updateStatus).toHaveLength(1);
+    expect(repositoryCalls.updateStatus[0]).toMatchObject({
+      tenantId: "tenant-1",
+      assignmentId: "assignment-1",
+      actorId: "actor-1",
+      auditSource: "web",
+      estado: "retirada_del_proyecto",
+    });
+  });
+
+  it("withdrawAssignment rejects when caller lacks assignments:withdraw", async () => {
+    const denied = new CapabilityDeniedError(
+      "actor-1",
+      "tenant-1",
+      "assignments:withdraw"
+    );
+    const { service, repositoryCalls } = createService({
+      requireCapability: async () => {
+        throw denied;
+      },
+    });
+
+    const result = await service.withdrawAssignment(
+      { tenant_id: "tenant-1", user_id: "actor-1" },
+      "assignment-1"
+    );
+
+    expect(result).toEqual({ ok: false, code: "capability_denied" });
+    expect(repositoryCalls.updateStatus).toHaveLength(0);
+  });
+
+  it("withdrawAssignment rejects blank assignment id", async () => {
+    const { service } = createService();
+
+    const result = await service.withdrawAssignment(
+      { tenant_id: "tenant-1", user_id: "actor-1" },
+      "   "
+    );
+
+    expect(result).toEqual({ ok: false, code: "missing_assignment" });
+  });
+
+  it("withdrawAssignment maps ASG01 (not active) to missing_assignment", async () => {
+    const { service } = createService({
+      repository: {
+        updateStatus: async () => {
+          const error = new Error("Only active assignments can be updated") as Error & { code: string };
+          error.code = "ASG01";
+          throw error;
+        },
+      },
+    });
+
+    const result = await service.withdrawAssignment(
+      { tenant_id: "tenant-1", user_id: "actor-1" },
+      "assignment-1"
+    );
+
+    expect(result).toEqual({ ok: false, code: "missing_assignment" });
   });
 
   // --- listAssignmentHistory ---

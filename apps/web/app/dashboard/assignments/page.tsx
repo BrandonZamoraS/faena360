@@ -20,10 +20,12 @@ import {
   ASSIGNMENTS_CREATE_CAPABILITY,
   ASSIGNMENTS_PATH,
   ASSIGNMENTS_UPDATE_CAPABILITY,
+  ASSIGNMENTS_WITHDRAW_CAPABILITY,
 } from "./catalog";
 import {
   createAssignmentAction,
   updateAssignmentStatusAction,
+  withdrawAssignmentAction,
 } from "./actions";
 import { AssignmentFilters, type FilterOption } from "./filters";
 import { HistoryDrawerButton } from "./history-drawer";
@@ -68,6 +70,7 @@ type AssignmentsShellInput = {
   readonly maquinaFilter?: string;
   readonly createAction?: (formData: FormData) => Promise<void>;
   readonly updateAction?: (formData: FormData) => Promise<void>;
+  readonly withdrawAction?: (formData: FormData) => Promise<void>;
 };
 
 const ESTADO_LABELS: Record<string, string> = {
@@ -85,6 +88,10 @@ export function renderAssignmentsShell(input: AssignmentsShellInput) {
   const canUpdate = canRunAssignmentAction(
     input.capabilities,
     ASSIGNMENTS_UPDATE_CAPABILITY
+  );
+  const canWithdraw = canRunAssignmentAction(
+    input.capabilities,
+    ASSIGNMENTS_WITHDRAW_CAPABILITY
   );
   const canMutate = canCreate || canUpdate;
   const hasActiveFilters =
@@ -358,21 +365,16 @@ export function renderAssignmentsShell(input: AssignmentsShellInput) {
                   </div>
                 </dl>
 
-                {canUpdate ? (
+                {canWithdraw ? (
                   <div className="mt-4 grid gap-3 sm:grid-cols-2">
                     <form
-                      action={input.updateAction}
+                      action={input.withdrawAction}
                       className="space-y-3 rounded-xl border border-[#f5d0d0] p-4"
                     >
                       <input
                         name="assignmentId"
                         type="hidden"
                         value={assignment.id}
-                      />
-                      <input
-                        name="estado"
-                        type="hidden"
-                        value="retirada_del_proyecto"
                       />
                       <button
                         className="rounded-xl bg-[#fff1f0] px-3 py-2 text-sm font-semibold text-[#8a1f16]"
@@ -382,6 +384,32 @@ export function renderAssignmentsShell(input: AssignmentsShellInput) {
                       </button>
                     </form>
 
+                    {canUpdate ? (
+                      <form
+                        action={input.updateAction}
+                        className="space-y-3 rounded-xl border border-[#dbedff] p-4"
+                      >
+                        <input
+                          name="assignmentId"
+                          type="hidden"
+                          value={assignment.id}
+                        />
+                        <input
+                          name="estado"
+                          type="hidden"
+                          value="cerrada_por_finalizacion"
+                        />
+                        <button
+                          className="rounded-xl bg-[#e8f7ff] px-3 py-2 text-sm font-semibold text-[#005f8a]"
+                          type="submit"
+                        >
+                          Cerrar por finalización
+                        </button>
+                      </form>
+                    ) : null}
+                  </div>
+                ) : canUpdate ? (
+                  <div className="mt-4 grid gap-3 sm:grid-cols-1">
                     <form
                       action={input.updateAction}
                       className="space-y-3 rounded-xl border border-[#dbedff] p-4"
@@ -579,5 +607,6 @@ export default async function AssignmentsPage({
     maquinaFilter,
     createAction: createAssignmentAction,
     updateAction: updateAssignmentStatusAction,
+    withdrawAction: withdrawAssignmentAction,
   });
 }

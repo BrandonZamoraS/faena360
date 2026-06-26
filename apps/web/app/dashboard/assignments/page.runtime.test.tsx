@@ -87,6 +87,7 @@ describe("assignments page shell", () => {
           "assignments:read",
           "assignments:create",
           "assignments:update",
+          "assignments:withdraw",
         ],
         assignments,
         allAssignments: assignments,
@@ -108,6 +109,26 @@ describe("assignments page shell", () => {
     expect(html).toContain("Juan Operador");
     expect(html).toContain("Retirar del proyecto");
     expect(html).toContain("Cerrar por finalización");
+  });
+
+  it("hides withdraw button for supervisor with assignments:update but not assignments:withdraw", () => {
+    const html = renderToStaticMarkup(
+      renderAssignmentsShell({
+        tenantName: "Tenant Demo",
+        tenantTimezone: "America/Argentina/Buenos_Aires",
+        capabilities: ["assignments:read", "assignments:update"],
+        assignments,
+        allAssignments: assignments,
+        machines,
+        projects,
+        subprojects: [],
+        operators,
+      })
+    );
+
+    expect(html).toContain("Cerrar por finalización");
+    expect(html).not.toContain("Retirar del proyecto");
+    expect(html).not.toContain("Crear asignación");
   });
 
   it("hides create form and action buttons for read-only sessions", () => {
