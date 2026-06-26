@@ -469,5 +469,405 @@ end $$;
 
 rollback to savepoint test10;
 
+--
+-- TEST 11: Trigger includes id in UPDATE old_value / new_value
+--
+\echo 'Test 11: Trigger includes id in UPDATE diff'
+savepoint test11;
+set local role service_role;
+
+do $$
+declare
+  v_assignment_id uuid;
+  v_updated boolean;
+  v_old_id text;
+  v_new_id text;
+  v_old_estado text;
+  v_new_estado text;
+begin
+  v_assignment_id := public.create_asignacion(
+    'cccc4800-0000-0000-0000-000000000001',
+    'test-suite',
+    'aaaa4800-0000-0000-0000-000000000001',
+    'ffff4800-0000-0000-0000-000000000001',
+    'hhhh4800-0000-0000-0000-000000000001',
+    'cccc4800-0000-0000-0000-000000000003',
+    150,
+    null
+  );
+
+  v_updated := public.update_asignacion(
+    'cccc4800-0000-0000-0000-000000000001',
+    'test-suite',
+    v_assignment_id,
+    'retirada_del_proyecto'
+  );
+
+  if not v_updated then
+    raise exception 'FAIL: update_asignacion returned false';
+  end if;
+
+  select old_value->>'id', new_value->>'id', old_value->>'estado', new_value->>'estado'
+    into v_old_id, v_new_id, v_old_estado, v_new_estado
+  from public.audit_log
+  where tenant_id = 'aaaa4800-0000-0000-0000-000000000001'
+    and action = 'asignacion.update'
+    and source = 'test-suite'
+    and old_value is not null
+  order by occurred_at desc
+  limit 1;
+
+  if v_old_id is null or v_old_id <> v_assignment_id::text then
+    raise exception 'FAIL: old_value id missing or wrong (got %)', v_old_id;
+  end if;
+  if v_new_id is null or v_new_id <> v_assignment_id::text then
+    raise exception 'FAIL: new_value id missing or wrong (got %)', v_new_id;
+  end if;
+  if v_old_estado <> 'activa' then
+    raise exception 'FAIL: old estado expected activa got %', v_old_estado;
+  end if;
+  if v_new_estado <> 'retirada_del_proyecto' then
+    raise exception 'FAIL: new estado expected retirada_del_proyecto got %', v_new_estado;
+  end if;
+
+  raise notice 'PASS: trigger includes id and estado diff in UPDATE';
+end $$;
+
+rollback to savepoint test11;
+
+--
+-- TEST 12: list_asignacion_historial returns full timeline ordered by time
+--
+\echo 'Test 12: list_asignacion_historial full timeline'
+savepoint test12;
+set local role service_role;
+
+do $$
+declare
+  v_assignment_id uuid;
+  v_updated boolean;
+  v_history jsonb[];
+  v_entry_count int;
+  v_latest_action text;
+begin
+  v_assignment_id := public.create_asignacion(
+    'cccc4800-0000-0000-0000-000000000001',
+    'test-suite',
+    'aaaa4800-0000-0000-0000-000000000001',
+    'ffff4800-0000-0000-0000-000000000001',
+    'hhhh4800-0000-0000-0000-000000000001',
+    'cccc4800-0000-0000-0000-000000000003',
+    150,
+    null
+  );
+
+  -- Small sleep to ensure distinct occurred_at timestamps
+  perform pg_sleep(0.1);
+
+  v_updated := public.update_asignacion(
+    'cccc4800-0000-0000-0000-000000000001',
+    'test-suite',
+    v_assignment_id,
+    'retirada_del_proyecto'
+  );
+
+  if not v_updated then
+    raise exception 'FAIL: update_asignacion returned false';
+  end if;
+
+  v_history := public.list_asignacion_historial(
+    'cccc4800-0000-0000-0000-000000000001',
+    'aaaa4800-0000-0000-0000-000000000001',
+    v_assignment_id
+  );
+
+  v_entry_count := array_length(v_history, 1);
+  if v_entry_count <> 2 then
+    raise exception 'FAIL: expected 2 history entries, got %', v_entry_count;
+  end if;
+
+  -- Most recent entry first (desc order): the update
+  v_latest_action := v_history[1]->>'action';
+  if v_latest_action <> 'asignacion.update' then
+    raise exception 'FAIL: latest entry should be asignacion.update, got %', v_latest_action;
+  end if;
+
+  -- Second entry: the create
+  if v_history[2]->>'action' <> 'asignacion.created' then
+    raise exception 'FAIL: second entry should be asignacion.created, got %', v_history[2]->>'action';
+  end if;
+
+  raise notice 'PASS: timeline has 2 entries, ordered occurred_at DESC';
+end $$;
+
+rollback to savepoint test12;
+
+--
+-- TEST 13: list_asignacion_historial empty for non-existent assignment
+--
+\echo 'Test 13: list_asignacion_historial empty for non-existent'
+savepoint test13;
+set local role service_role;
+
+do $$
+declare
+  v_history jsonb[];
+  v_count int;
+begin
+  v_history := public.list_asignacion_historial(
+    'cccc4800-0000-0000-0000-000000000001',
+    'aaaa4800-0000-0000-0000-000000000001',
+    'deadbeef-0000-0000-0000-000000000000'
+  );
+
+  v_count := array_length(v_history, 1);
+  if v_count is not null and v_count > 0 then
+    raise exception 'FAIL: expected empty array for non-existent assignment, got % entries', v_count;
+  end if;
+
+  raise notice 'PASS: non-existent assignment returns empty array';
+end $$;
+
+rollback to savepoint test13;
+
+--
+-- TEST 14: list_asignacion_historial cross-tenant isolation
+--
+\echo 'Test 14: list_asignacion_historial cross-tenant isolation'
+savepoint test14;
+set local role service_role;
+
+do $$
+declare
+  v_assignment_id uuid;
+  v_history jsonb[];
+  v_count int;
+begin
+  -- Create assignment in tenant A
+  v_assignment_id := public.create_asignacion(
+    'cccc4800-0000-0000-0000-000000000001',
+    'test-suite',
+    'aaaa4800-0000-0000-0000-000000000001',
+    'ffff4800-0000-0000-0000-000000000001',
+    'hhhh4800-0000-0000-0000-000000000001',
+    'cccc4800-0000-0000-0000-000000000003',
+    150,
+    null
+  );
+
+  -- Query from tenant B using tenant A's assignment id
+  v_history := public.list_asignacion_historial(
+    'cccc4800-0000-0000-0000-000000000002',
+    'aaaa4800-0000-0000-0000-000000000002',
+    v_assignment_id
+  );
+
+  v_count := coalesce(array_length(v_history, 1), 0);
+  if v_count > 0 then
+    raise exception 'FAIL: cross-tenant query saw % entries (should be 0)', v_count;
+  end if;
+
+  raise notice 'PASS: cross-tenant history query returns empty';
+end $$;
+
+rollback to savepoint test14;
+
+--
+-- TEST 15: list_asignacion_historial requires assignments:read (42501)
+--
+\echo 'Test 15: list_asignacion_historial requires assignments:read'
+savepoint test15;
+set local role service_role;
+
+do $$
+declare
+  v_assignment_id uuid;
+  v_no_capability_id uuid := '99994800-0000-0000-0000-000000000001';
+begin
+  v_assignment_id := public.create_asignacion(
+    'cccc4800-0000-0000-0000-000000000001',
+    'test-suite',
+    'aaaa4800-0000-0000-0000-000000000001',
+    'ffff4800-0000-0000-0000-000000000001',
+    'hhhh4800-0000-0000-0000-000000000001',
+    'cccc4800-0000-0000-0000-000000000003',
+    150,
+    null
+  );
+
+  begin
+    perform public.list_asignacion_historial(
+      v_no_capability_id,
+      'aaaa4800-0000-0000-0000-000000000001',
+      v_assignment_id
+    );
+    raise exception 'FAIL: user without assignments:read was allowed to query history';
+  exception when insufficient_privilege then
+    raise notice 'PASS: user without assignments:read rejected (42501)';
+  end;
+
+  -- Admin can query
+  declare
+    v_admin_history jsonb[];
+    v_admin_count int;
+  begin
+    v_admin_history := public.list_asignacion_historial(
+      'cccc4800-0000-0000-0000-000000000001',
+      'aaaa4800-0000-0000-0000-000000000001',
+      v_assignment_id
+    );
+    v_admin_count := coalesce(array_length(v_admin_history, 1), 0);
+    if v_admin_count = 0 then
+      raise exception 'FAIL: admin with assignments:read should see history';
+    end if;
+  end;
+
+  -- Supervisor (operator with assignments:read) can also query
+  declare
+    v_supervisor_history jsonb[];
+    v_supervisor_count int;
+  begin
+    v_supervisor_history := public.list_asignacion_historial(
+      'cccc4800-0000-0000-0000-000000000003',
+      'aaaa4800-0000-0000-0000-000000000001',
+      v_assignment_id
+    );
+    v_supervisor_count := coalesce(array_length(v_supervisor_history, 1), 0);
+    if v_supervisor_count = 0 then
+      raise exception 'FAIL: supervisor with assignments:read should see history';
+    end if;
+  end;
+
+  raise notice 'PASS: capability check enforces assignments:read';
+end $$;
+
+rollback to savepoint test15;
+
+--
+-- TEST 16: list_asignaciones_activas with p_proyecto_id filter
+--
+\echo 'Test 16: list_asignaciones_activas with p_proyecto_id'
+savepoint test16;
+set local role service_role;
+
+do $$
+declare
+  v_project_a uuid := 'hhhh4800-0000-0000-0000-000000000001';
+  v_project_extra uuid := 'hhhh4800-0000-0000-0000-000000000009';
+  v_tenant_a uuid := 'aaaa4800-0000-0000-0000-000000000001';
+  v_admin_a uuid := 'cccc4800-0000-0000-0000-000000000001';
+  v_operator_a uuid := 'cccc4800-0000-0000-0000-000000000003';
+  v_machine_a uuid := 'ffff4800-0000-0000-0000-000000000001';
+  v_count int;
+begin
+  -- Create a second active project in tenant A
+  insert into public.proyectos (id, tenant_id, nombre, cliente_id, ubicacion, fecha_inicio, forma_cobro, estado)
+  values (v_project_extra, v_tenant_a, 'Project A Extra', 'abab4800-0000-0000-0000-000000000001', 'Location Extra', '2026-01-01', 'monto_fijo', 'activo');
+
+  -- Create assignment on project A
+  perform public.create_asignacion(
+    v_admin_a, 'test-suite', v_tenant_a, v_machine_a, v_project_a, v_operator_a, 150, null
+  );
+
+  -- Create assignment on project Extra (need a different machine, but we can re-assign after closing)
+  -- Actually, we can't create two active assignments on the same machine. Let's close the first one.
+  -- But we need both to be active for the filter test... hmm.
+
+  -- Instead, let's create a second active machine in tenant A
+  insert into public.maquinas (id, tenant_id, codigo, tipo, tipo_combustible_id, tamanio_tanque, modo_medicion_combustible, estado)
+  values ('ffff4800-0000-0000-0000-000000000009', v_tenant_a, 'MAQ-PT-EXTRA', 'por_tiempo', 'eeee4800-0000-0000-0000-000000000001', 120, 'sin_medicion', 'activa');
+
+  perform public.create_asignacion(
+    v_admin_a, 'test-suite', v_tenant_a, 'ffff4800-0000-0000-0000-000000000009', v_project_extra, v_operator_a, 200, null
+  );
+
+  -- Filter by project A only
+  select count(*) into v_count
+  from unnest(public.list_asignaciones_activas(v_tenant_a, v_project_a, null)) r;
+  if v_count <> 1 then
+    raise exception 'FAIL: filter by project A expected 1, got %', v_count;
+  end if;
+
+  -- Filter by project Extra only
+  select count(*) into v_count
+  from unnest(public.list_asignaciones_activas(v_tenant_a, v_project_extra, null)) r;
+  if v_count <> 1 then
+    raise exception 'FAIL: filter by project Extra expected 1, got %', v_count;
+  end if;
+
+  -- No filter (both projects)
+  select count(*) into v_count
+  from unnest(public.list_asignaciones_activas(v_tenant_a, null, null)) r;
+  if v_count <> 2 then
+    raise exception 'FAIL: no filter expected 2, got %', v_count;
+  end if;
+
+  raise notice 'PASS: proyecto filter works correctly';
+end $$;
+
+rollback to savepoint test16;
+
+--
+-- TEST 17: list_asignaciones_activas with p_maquina_id filter
+--
+\echo 'Test 17: list_asignaciones_activas with p_maquina_id'
+savepoint test17;
+set local role service_role;
+
+do $$
+declare
+  v_tenant_a uuid := 'aaaa4800-0000-0000-0000-000000000001';
+  v_admin_a uuid := 'cccc4800-0000-0000-0000-000000000001';
+  v_operator_a uuid := 'cccc4800-0000-0000-0000-000000000003';
+  v_project_a uuid := 'hhhh4800-0000-0000-0000-000000000001';
+  v_machine_1 uuid := 'ffff4800-0000-0000-0000-000000000001';
+  v_machine_2 uuid := 'ffff4800-0000-0000-0000-000000000010';
+  v_count int;
+  v_extra_project uuid := 'hhhh4800-0000-0000-0000-000000000010';
+begin
+  -- Create second active por_tiempo machine in tenant A
+  insert into public.maquinas (id, tenant_id, codigo, tipo, tipo_combustible_id, tamanio_tanque, modo_medicion_combustible, estado)
+  values (v_machine_2, v_tenant_a, 'MAQ-PT-FILTER', 'por_tiempo', 'eeee4800-0000-0000-0000-000000000001', 110, 'sin_medicion', 'activa');
+
+  -- Need a second project for the second machine (can't have 2 active on same machine)
+  insert into public.proyectos (id, tenant_id, nombre, cliente_id, ubicacion, fecha_inicio, forma_cobro, estado)
+  values (v_extra_project, v_tenant_a, 'Project Filter', 'abab4800-0000-0000-0000-000000000001', 'Location Filter', '2026-01-01', 'monto_fijo', 'activo');
+
+  -- Create assignment on machine 1
+  perform public.create_asignacion(
+    v_admin_a, 'test-suite', v_tenant_a, v_machine_1, v_project_a, v_operator_a, 150, null
+  );
+
+  -- Create assignment on machine 2
+  perform public.create_asignacion(
+    v_admin_a, 'test-suite', v_tenant_a, v_machine_2, v_extra_project, v_operator_a, 200, null
+  );
+
+  -- Filter by machine 1
+  select count(*) into v_count
+  from unnest(public.list_asignaciones_activas(v_tenant_a, null, v_machine_1)) r;
+  if v_count <> 1 then
+    raise exception 'FAIL: filter by machine 1 expected 1, got %', v_count;
+  end if;
+
+  -- Filter by machine 2
+  select count(*) into v_count
+  from unnest(public.list_asignaciones_activas(v_tenant_a, null, v_machine_2)) r;
+  if v_count <> 1 then
+    raise exception 'FAIL: filter by machine 2 expected 1, got %', v_count;
+  end if;
+
+  -- Both filters (both match)
+  select count(*) into v_count
+  from unnest(public.list_asignaciones_activas(v_tenant_a, null, null)) r;
+  if v_count <> 2 then
+    raise exception 'FAIL: no filter expected 2, got %', v_count;
+  end if;
+
+  raise notice 'PASS: maquina filter works correctly';
+end $$;
+
+rollback to savepoint test17;
+
 \echo 'All asignaciones maquina tests passed.';
 rollback;

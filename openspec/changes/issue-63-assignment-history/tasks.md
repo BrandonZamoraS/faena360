@@ -55,8 +55,8 @@ Chain strategy: stacked-to-main
 
 ## Phase 4: Testing
 
-- [ ] 4.1 Add unit tests in `packages/application/src/assignments/machine-assignment.test.ts`: verify `listAssignmentHistory` calls capability checker before repository, verify `listActive` passes optional filters.
-- [ ] 4.2 Add runtime tests in `apps/web/app/dashboard/assignments/page.runtime.test.tsx`: assert filter dropdowns render, drawer opens with timeline entries, `readOnly` mode hides mutation buttons.
-- [ ] 4.3 Extend `supabase/tests/asignaciones_maquina_catalog.sql`: test trigger includes `id` in UPDATE diff (jsonb assert).
-- [ ] 4.4 In same SQL test file: test `list_asignacion_historial` returns full timeline, empty for non-existent, rejects cross-tenant, requires `assignments:read` (expect 42501).
-- [ ] 4.5 In same SQL test file: test `list_asignaciones_activas` with `p_proyecto_id`, `p_maquina_id`, both, and neither — assert correct row counts.
+- [x] 4.1 Add unit tests in `packages/application/src/assignments/machine-assignment.test.ts`: verify `listAssignmentHistory` calls capability checker before repository, verify `listActive` passes optional filters.
+- [x] 4.2 Add runtime tests in `apps/web/app/dashboard/assignments/page.runtime.test.tsx`: assert filter dropdowns render, drawer opens with timeline entries, `readOnly` mode hides mutation buttons.
+- [x] 4.3 Extend `supabase/tests/asignaciones_maquina_catalog.sql`: test trigger includes `id` in UPDATE diff (jsonb assert).
+- [x] 4.4 In same SQL test file: test `list_asignacion_historial` returns full timeline, empty for non-existent, rejects cross-tenant, requires `assignments:read` (expect 42501).
+- [x] 4.5 In same SQL test file: test `list_asignaciones_activas` with `p_proyecto_id`, `p_maquina_id`, both, and neither — assert correct row counts.

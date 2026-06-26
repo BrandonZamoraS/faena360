@@ -209,4 +209,82 @@ describe("assignments page shell", () => {
 
     expect(html).toContain('href="/dashboard/assignments"');
   });
+
+  it("renders filter dropdowns for proyecto and maquina", () => {
+    const html = renderToStaticMarkup(
+      renderAssignmentsShell({
+        tenantName: "Tenant Demo",
+        tenantTimezone: "America/Argentina/Buenos_Aires",
+        capabilities: ["assignments:read"],
+        assignments,
+        machines,
+        projects,
+        subprojects: [],
+        operators,
+      })
+    );
+
+    expect(html).toContain("Filtros");
+    expect(html).toContain('name="proyecto_id"');
+    expect(html).toContain('name="maquina_id"');
+  });
+
+  it("renders Historial button per assignment row", () => {
+    const html = renderToStaticMarkup(
+      renderAssignmentsShell({
+        tenantName: "Tenant Demo",
+        tenantTimezone: "America/Argentina/Buenos_Aires",
+        capabilities: ["assignments:read"],
+        assignments,
+        machines,
+        projects,
+        subprojects: [],
+        operators,
+      })
+    );
+
+    expect(html).toContain("Historial");
+  });
+
+  it("shows differentiated empty state when filters are active", () => {
+    const html = renderToStaticMarkup(
+      renderAssignmentsShell({
+        tenantName: "Tenant Demo",
+        tenantTimezone: "America/Argentina/Buenos_Aires",
+        capabilities: ["assignments:read", "assignments:create"],
+        assignments: [],
+        machines,
+        projects,
+        subprojects: [],
+        operators,
+        proyectoFilter: "project-1",
+        maquinaFilter: undefined,
+      })
+    );
+
+    expect(html).toContain(
+      "No hay asignaciones activas para los filtros seleccionados."
+    );
+    expect(html).not.toContain("No hay asignaciones activas.");
+  });
+
+  it("shows read-only banner for supervisor with assignments:read but no create or update", () => {
+    const html = renderToStaticMarkup(
+      renderAssignmentsShell({
+        tenantName: "Tenant Demo",
+        tenantTimezone: "America/Argentina/Buenos_Aires",
+        capabilities: ["assignments:read"],
+        assignments,
+        machines,
+        projects,
+        subprojects: [],
+        operators,
+      })
+    );
+
+    expect(html).toContain("Asignaciones visibles en modo lectura.");
+    expect(html).not.toContain("Crear asignación");
+    expect(html).not.toContain("Retirar del proyecto");
+    expect(html).not.toContain("Cerrar por finalización");
+  });
 });
