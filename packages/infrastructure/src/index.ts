@@ -5,4 +5,5 @@ export * from "./fuel-types";
 export * from "./machines";
 export * from "./projects";
 export * from "./subprojects";
+export * from "./validation-config";
 export * from "./whatsapp";

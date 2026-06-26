@@ -8,7 +8,6 @@ const rawBody = JSON.stringify({ phone: "+54 9 11 1234 5678", text: "Hola" });
 const validSignature = createHmac("sha256", secret)
   .update(`${timestamp}.${rawBody}`)
   .digest("hex");
-
 function buildHeaders(signature: string) {
   return new Headers({
     "X-Faena-Timestamp": timestamp,
@@ -55,6 +54,17 @@ describe("verifyWhatsappWebhookSignature", () => {
         headers: buildHeaders(validSignature),
         rawBody,
         secret: configuredSecret,
+        now: Number(timestamp),
+      })
+    ).toBe(false);
+  });
+
+  it("rejects a signature when the signed body is tampered", () => {
+    expect(
+      verifyWhatsappWebhookSignature({
+        headers: buildHeaders(validSignature),
+        rawBody: JSON.stringify({ phone: "+54 9 11 1234 5678", text: "Chau" }),
+        secret,
         now: Number(timestamp),
       })
     ).toBe(false);
