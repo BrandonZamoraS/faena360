@@ -15,6 +15,7 @@ describe("machine assignment service", () => {
     const capabilityCalls: string[] = [];
     const repositoryCalls = {
       listActive: [] as string[],
+      listHistory: [] as Array<Record<string, unknown>>,
       create: [] as Array<Record<string, unknown>>,
       updateStatus: [] as Array<Record<string, unknown>>,
     };
@@ -46,6 +47,23 @@ describe("machine assignment service", () => {
       updateStatus: async (input: Record<string, unknown>) => {
         repositoryCalls.updateStatus.push(input);
         return true;
+      },
+      listHistory: async (input: Record<string, unknown>) => {
+        repositoryCalls.listHistory.push(input);
+        return [
+          {
+            occurred_at: "2026-06-23T10:00:00.000Z",
+            action: "asignacion.created",
+            actor_user_id: "actor-1",
+            old_value: null,
+            new_value: {
+              id: "assignment-1",
+              estado: "activa",
+              tarifa_aplicada: 150,
+            },
+            source: "web",
+          },
+        ];
       },
       ...overrides?.repository,
     };
@@ -452,6 +470,71 @@ describe("machine assignment service", () => {
     );
 
     expect(result).toEqual({ ok: false, code: "unknown_error" });
+  });
+
+  // --- listAssignmentHistory ---
+
+  it("returns history for user with assignments:read capability", async () => {
+    const { service, capabilityCalls, repositoryCalls } = createService();
+
+    const result = await service.listAssignmentHistory(
+      { tenant_id: " tenant-1 ", user_id: "actor-1" },
+      "  assignment-1  "
+    );
+
+    expect(capabilityCalls).toEqual(["actor-1|tenant-1|assignments:read"]);
+    expect(repositoryCalls.listHistory).toHaveLength(1);
+    expect(repositoryCalls.listHistory[0]).toMatchObject({
+      tenantId: "tenant-1",
+      actorId: "actor-1",
+      assignmentId: "assignment-1",
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.action).toBe("asignacion.created");
+  });
+
+  it("rejects listAssignmentHistory without assignments:read capability", async () => {
+    const denied = new CapabilityDeniedError(
+      "actor-1",
+      "tenant-1",
+      "assignments:read"
+    );
+    const { service, repositoryCalls } = createService({
+      requireCapability: async () => {
+        throw denied;
+      },
+    });
+
+    await expect(
+      service.listAssignmentHistory(
+        { tenant_id: "tenant-1", user_id: "actor-1" },
+        "assignment-1"
+      )
+    ).rejects.toThrow(CapabilityDeniedError);
+
+    expect(repositoryCalls.listHistory).toHaveLength(0);
+  });
+
+  it("rejects empty tenant for listAssignmentHistory", async () => {
+    const { service } = createService();
+
+    await expect(
+      service.listAssignmentHistory(
+        { tenant_id: "   ", user_id: "actor-1" },
+        "assignment-1"
+      )
+    ).rejects.toThrow("Cannot list assignment history without tenant context.");
+  });
+
+  it("rejects blank assignment id for listAssignmentHistory", async () => {
+    const { service } = createService();
+
+    await expect(
+      service.listAssignmentHistory(
+        { tenant_id: "tenant-1", user_id: "actor-1" },
+        "   "
+      )
+    ).rejects.toThrow("Assignment id is required for history lookup.");
   });
 
   it("rejects tenant override payloads", async () => {

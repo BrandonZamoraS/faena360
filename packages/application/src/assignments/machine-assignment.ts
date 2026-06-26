@@ -1,5 +1,6 @@
 import type {
   AssignmentEstado,
+  AssignmentHistoryEntry,
   AssignmentOutcome,
   CreateAssignmentInput,
   MachineAssignment,
@@ -41,6 +42,11 @@ export interface MachineAssignmentService {
     assignmentId: string,
     estado: AssignmentEstado
   ): Promise<AssignmentOutcome>;
+
+  listAssignmentHistory(
+    session: TenantSessionScope,
+    assignmentId: string
+  ): Promise<readonly AssignmentHistoryEntry[]>;
 }
 
 const ASSIGNMENTS_READ_CAPABILITY = "assignments:read" as const;
@@ -164,6 +170,31 @@ export function createMachineAssignmentService({
         }
         return { ok: false, code: "assignment_update_failed" };
       }
+    },
+
+    async listAssignmentHistory(session, assignmentId) {
+      const tenantId = resolveTenantId(session.tenant_id);
+      if (!tenantId) {
+        throw new Error(
+          "Cannot list assignment history without tenant context."
+        );
+      }
+
+      const normalizedId = assignmentId.trim();
+      if (!normalizedId) {
+        throw new Error("Assignment id is required for history lookup.");
+      }
+
+      await capabilityChecker.requireCapability(
+        { tenantId, userId: session.user_id },
+        ASSIGNMENTS_READ_CAPABILITY
+      );
+
+      return repository.listHistory({
+        tenantId,
+        actorId: session.user_id,
+        assignmentId: normalizedId,
+      });
     },
   };
 }

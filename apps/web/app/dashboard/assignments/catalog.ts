@@ -1,11 +1,6 @@
-import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import type {
-  AppSession,
-  AssignmentEstado,
-  CreateAssignmentInput,
-} from "@faena360/domain";
+import type { AppSession, CreateAssignmentInput } from "@faena360/domain";
 import {
   CapabilityDeniedError,
   createMachineAssignmentService,
@@ -48,36 +43,7 @@ export async function listActiveAssignmentsForSession(session: AppSession) {
   });
 }
 
-export async function createAssignmentAction(formData: FormData) {
-  "use server";
-  const session = await getAuthorizedAssignmentsSession();
-  guardAssignmentAction(session, ASSIGNMENTS_CREATE_CAPABILITY);
-  const result = await buildAssignmentService(session).createAssignment(
-    { tenant_id: session.tenant_id, user_id: session.user_id },
-    readCreateAssignmentInput(formData)
-  );
-  if (!result.ok) {
-    throw new Error(result.code ?? "assignment_create_failed");
-  }
-  revalidatePath(ASSIGNMENTS_PATH);
-}
-
-export async function updateAssignmentStatusAction(formData: FormData) {
-  "use server";
-  const session = await getAuthorizedAssignmentsSession();
-  guardAssignmentAction(session, ASSIGNMENTS_UPDATE_CAPABILITY);
-  const result = await buildAssignmentService(session).updateAssignmentStatus(
-    { tenant_id: session.tenant_id, user_id: session.user_id },
-    getString(formData, "assignmentId"),
-    getString(formData, "estado") as AssignmentEstado
-  );
-  if (!result.ok) {
-    throw new Error(result.code ?? "assignment_update_failed");
-  }
-  revalidatePath(ASSIGNMENTS_PATH);
-}
-
-function buildAssignmentService(session: AppSession) {
+export function buildAssignmentService(session: AppSession) {
   const serviceClient = createWebSupabaseServiceClient();
   return createMachineAssignmentService({
     repository: new SupabaseMachineAssignmentRepository(serviceClient),
@@ -95,7 +61,7 @@ function buildAssignmentService(session: AppSession) {
   });
 }
 
-async function getAuthorizedAssignmentsSession(): Promise<AppSession> {
+export async function getAuthorizedAssignmentsSession(): Promise<AppSession> {
   const cookieStore = await cookies();
   const serviceClient = createWebSupabaseServiceClient();
   const repository = new SupabaseAppSessionRepository(serviceClient);
@@ -111,13 +77,15 @@ async function getAuthorizedAssignmentsSession(): Promise<AppSession> {
   return authResult.session;
 }
 
-function guardAssignmentAction(session: AppSession, capability: string) {
+export function guardAssignmentAction(session: AppSession, capability: string) {
   if (!canRunAssignmentAction(session.effective_capabilities, capability)) {
     redirect("/dashboard");
   }
 }
 
-function readCreateAssignmentInput(formData: FormData): CreateAssignmentInput {
+export function readCreateAssignmentInput(
+  formData: FormData
+): CreateAssignmentInput {
   return {
     maquina_id: getString(formData, "maquina_id"),
     proyecto_id: getString(formData, "proyecto_id"),
@@ -127,7 +95,7 @@ function readCreateAssignmentInput(formData: FormData): CreateAssignmentInput {
   };
 }
 
-function getString(formData: FormData, key: string): string {
+export function getString(formData: FormData, key: string): string {
   const value = formData.get(key);
   return typeof value === "string" ? value : "";
 }
