@@ -23,6 +23,8 @@ import {
   ASSIGNMENTS_UPDATE_CAPABILITY,
   updateAssignmentStatusAction,
 } from "./catalog";
+import { AssignmentFilters, type FilterOption } from "./filters";
+import { HistoryDrawerButton } from "./history-drawer";
 import {
   createServerStateSessionRefresher,
   requireWebAccess,
@@ -59,6 +61,8 @@ type AssignmentsShellInput = {
   readonly projects: readonly ProjectCatalogSummary[];
   readonly subprojects: readonly SubprojectCatalogSummary[];
   readonly operators: readonly OperatorOption[];
+  readonly proyectoFilter?: string;
+  readonly maquinaFilter?: string;
   readonly createAction?: (formData: FormData) => Promise<void>;
   readonly updateAction?: (formData: FormData) => Promise<void>;
 };
@@ -80,6 +84,9 @@ export function renderAssignmentsShell(input: AssignmentsShellInput) {
     ASSIGNMENTS_UPDATE_CAPABILITY
   );
   const canMutate = canCreate || canUpdate;
+  const hasActiveFilters =
+    Boolean(input.proyectoFilter) || Boolean(input.maquinaFilter);
+
   const assignedMachineIds = new Set(
     input.assignments.map((a) => a.maquina_id)
   );
@@ -93,6 +100,15 @@ export function renderAssignmentsShell(input: AssignmentsShellInput) {
   const activeSubprojects = input.subprojects.filter(
     (s) => s.estado === "activo"
   );
+
+  const proyectoFilterOptions: FilterOption[] = input.projects.map((p) => ({
+    id: p.id,
+    label: p.nombre,
+  }));
+  const maquinaFilterOptions: FilterOption[] = input.machines.map((m) => ({
+    id: m.id,
+    label: m.codigo,
+  }));
 
   return (
     <main className="min-h-screen bg-[#f5fbf7] text-[#102118]">
@@ -115,6 +131,18 @@ export function renderAssignmentsShell(input: AssignmentsShellInput) {
               operador.
             </p>
           </header>
+
+          <section className="rounded-2xl border border-[#dcebe1] bg-white p-6">
+            <h2 className="mb-4 text-sm font-semibold text-[#385346]">
+              Filtros
+            </h2>
+            <AssignmentFilters
+              proyectos={proyectoFilterOptions}
+              maquinas={maquinaFilterOptions}
+              currentProyecto={input.proyectoFilter ?? ""}
+              currentMaquina={input.maquinaFilter ?? ""}
+            />
+          </section>
 
           {!canMutate ? (
             <p className="rounded-2xl border border-[#dcebe1] bg-white px-5 py-4 text-sm text-[#385346]">
@@ -264,7 +292,9 @@ export function renderAssignmentsShell(input: AssignmentsShellInput) {
             {input.assignments.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-[#b8d8c2] bg-white/80 p-8 text-center">
                 <p className="font-semibold text-[#102118]">
-                  No hay asignaciones activas.
+                  {hasActiveFilters
+                    ? "No hay asignaciones activas para los filtros seleccionados."
+                    : "No hay asignaciones activas."}
                 </p>
               </div>
             ) : null}
@@ -288,9 +318,12 @@ export function renderAssignmentsShell(input: AssignmentsShellInput) {
                       {assignment.operador_full_name ?? assignment.operador_id}
                     </p>
                   </div>
-                  <p className="rounded-full bg-[#e5f6ea] px-3 py-1 text-xs font-semibold text-[#0f5132]">
-                    {ESTADO_LABELS[assignment.estado] ?? assignment.estado}
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <HistoryDrawerButton assignmentId={assignment.id} />
+                    <p className="rounded-full bg-[#e5f6ea] px-3 py-1 text-xs font-semibold text-[#0f5132]">
+                      {ESTADO_LABELS[assignment.estado] ?? assignment.estado}
+                    </p>
+                  </div>
                 </div>
 
                 <dl className="mt-4 grid gap-2 text-sm text-[#385346] md:grid-cols-3">
@@ -409,11 +442,15 @@ async function lookupTenant(
 }
 
 async function listActiveAssignmentsWithJoins(
-  tenantId: string
+  tenantId: string,
+  proyectoId?: string,
+  maquinaId?: string
 ): Promise<readonly AssignmentDisplayRow[]> {
   const client = createWebSupabaseServiceClient();
   const response = await client.rpc("list_asignaciones_activas", {
     p_tenant_id: tenantId,
+    p_proyecto_id: proyectoId ?? null,
+    p_maquina_id: maquinaId ?? null,
   });
 
   if (response.error) {
@@ -479,12 +516,24 @@ async function listOperatorsForTenant(
   return profiles;
 }
 
-export default async function AssignmentsPage() {
+export default async function AssignmentsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ proyecto_id?: string; maquina_id?: string }>;
+}) {
+  const params = await searchParams;
+  const proyectoFilter = params.proyecto_id ?? undefined;
+  const maquinaFilter = params.maquina_id ?? undefined;
+
   const session = await getAuthorizedPageSession();
   const [tenant, assignments, machines, projects, subprojects, operators] =
     await Promise.all([
       lookupTenant(session.tenant_id),
-      listActiveAssignmentsWithJoins(session.tenant_id),
+      listActiveAssignmentsWithJoins(
+        session.tenant_id,
+        proyectoFilter,
+        maquinaFilter
+      ),
       listActivePorTiempoMachines(session.tenant_id),
       listActiveProjects(session.tenant_id),
       listActiveSubprojects(session.tenant_id),
@@ -500,6 +549,8 @@ export default async function AssignmentsPage() {
     projects,
     subprojects,
     operators,
+    proyectoFilter,
+    maquinaFilter,
     createAction: createAssignmentAction,
     updateAction: updateAssignmentStatusAction,
   });

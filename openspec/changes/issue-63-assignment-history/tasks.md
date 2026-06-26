@@ -46,12 +46,12 @@ Chain strategy: stacked-to-main
 
 ## Phase 3: Web UI Wiring
 
-- [ ] 3.1 In `apps/web/app/dashboard/assignments/page.tsx`, read `proyecto_id` and `maquina_id` from `searchParams`, pass to `listActiveAssignmentsWithJoins`.
-- [ ] 3.2 Add two `<select>` dropdowns (proyecto, máquina) above the assignments table; onChange updates URL searchParams.
-- [ ] 3.3 Add "Historial" button per row that opens a `<dialog>` drawer showing timeline from `listAssignmentHistoryAction`.
-- [ ] 3.4 Render timeline entries: timestamp, action label, actor, diff (old→new fields). Show "Sin cambios registrados" when empty.
-- [ ] 3.5 Compute `canMutate = canCreate || canUpdate`; hide creation form and action buttons when `!canMutate`, show "modo lectura" banner.
-- [ ] 3.6 Add empty state message for filtered results: "No hay asignaciones activas para los filtros seleccionados."
+- [x] 3.1 In `apps/web/app/dashboard/assignments/page.tsx`, read `proyecto_id` and `maquina_id` from `searchParams`, pass to `listActiveAssignmentsWithJoins`.
+- [x] 3.2 Add two `<select>` dropdowns (proyecto, máquina) above the assignments table; onChange updates URL searchParams.
+- [x] 3.3 Add "Historial" button per row that opens a `<dialog>` drawer showing timeline from `listAssignmentHistoryAction`.
+- [x] 3.4 Render timeline entries: timestamp, action label, actor, diff (old→new fields). Show "Sin cambios registrados" when empty.
+- [x] 3.5 Compute `canMutate = canCreate || canUpdate`; hide creation form and action buttons when `!canMutate`, show "modo lectura" banner.
+- [x] 3.6 Add empty state message for filtered results: "No hay asignaciones activas para los filtros seleccionados."
 
 ## Phase 4: Testing
 
