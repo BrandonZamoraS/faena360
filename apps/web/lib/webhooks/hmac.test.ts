@@ -8,11 +8,6 @@ const rawBody = JSON.stringify({ phone: "+54 9 11 1234 5678", text: "Hola" });
 const validSignature = createHmac("sha256", secret)
   .update(`${timestamp}.${rawBody}`)
   .digest("hex");
-const signedPayload = JSON.stringify({ method: "GET", tipo: "gasto" });
-const validPayloadSignature = createHmac("sha256", secret)
-  .update(`${timestamp}.${signedPayload}`)
-  .digest("hex");
-
 function buildHeaders(signature: string) {
   return new Headers({
     "X-Faena-Timestamp": timestamp,
@@ -64,27 +59,11 @@ describe("verifyWhatsappWebhookSignature", () => {
     ).toBe(false);
   });
 
-  it("accepts an alternate canonical signed payload when provided", () => {
+  it("rejects a signature when the signed body is tampered", () => {
     expect(
       verifyWhatsappWebhookSignature({
-        headers: buildHeaders(validPayloadSignature),
-        rawBody,
-        signedPayload,
-        secret,
-        now: Number(timestamp),
-      })
-    ).toBe(true);
-  });
-
-  it("rejects a signature when the canonical signed payload is tampered", () => {
-    expect(
-      verifyWhatsappWebhookSignature({
-        headers: buildHeaders(validPayloadSignature),
-        rawBody,
-        signedPayload: JSON.stringify({
-          method: "GET",
-          tipo: "inicio_jornada",
-        }),
+        headers: buildHeaders(validSignature),
+        rawBody: JSON.stringify({ phone: "+54 9 11 1234 5678", text: "Chau" }),
         secret,
         now: Number(timestamp),
       })

@@ -16,11 +16,7 @@ const UUID_PATTERN =
 
 export type ValidationConfigRouteDependencies = {
   service?: ValidationConfigService;
-  verifySignature?: (input: {
-    headers: Headers;
-    rawBody: string;
-    signedPayload?: string;
-  }) => boolean;
+  verifySignature?: (input: { headers: Headers; rawBody: string }) => boolean;
 };
 
 function buildService(): ValidationConfigService {
@@ -42,8 +38,7 @@ export async function handleValidationConfigGet(
     if (
       !(dependencies.verifySignature ?? verifyWhatsappWebhookSignature)({
         headers: request.headers,
-        rawBody,
-        signedPayload: buildSignedPayload({
+        rawBody: buildValidationConfigSignatureBody({
           pathname: request.nextUrl.pathname,
           tipo: tipoRaw,
           tenantId: tenantHeaderRaw,
@@ -115,7 +110,7 @@ function normalizeIdentifierHeader(value: string | null): string | null {
   return UUID_PATTERN.test(normalized) ? normalized : null;
 }
 
-function buildSignedPayload(input: {
+function buildValidationConfigSignatureBody(input: {
   pathname: string;
   tipo: string;
   tenantId: string;

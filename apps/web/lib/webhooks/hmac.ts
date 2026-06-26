@@ -3,7 +3,6 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 export function verifyWhatsappWebhookSignature(input: {
   headers: Headers;
   rawBody: string;
-  signedPayload?: string;
   secret?: string;
   now?: number;
   maxAgeMs?: number;
@@ -21,10 +20,8 @@ export function verifyWhatsappWebhookSignature(input: {
     return false;
   if (!/^[0-9a-f]{64}$/.test(signature)) return false;
 
-  const payload = input.signedPayload ?? input.rawBody;
-
   const expected = createHmac("sha256", secret)
-    .update(`${timestamp}.${payload}`)
+    .update(`${timestamp}.${input.rawBody}`)
     .digest("hex");
   const received = Buffer.from(signature, "hex");
   const computed = Buffer.from(expected, "hex");
