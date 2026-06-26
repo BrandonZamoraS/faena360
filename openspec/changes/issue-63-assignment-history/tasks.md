@@ -39,10 +39,10 @@ Chain strategy: stacked-to-main
 
 ## Phase 2: Application + Infrastructure
 
-- [ ] 2.1 Add `listAssignmentHistory(assignmentId)` method to `MachineAssignmentService` in `packages/application/src/assignments/machine-assignment.ts` with `capabilityChecker.requireCapability('assignments:read')` guard.
-- [ ] 2.2 Implement `listHistory(input)` in `SupabaseMachineAssignmentRepository` at `packages/infrastructure/src/assignments/SupabaseMachineAssignmentRepository.ts` — call RPC `list_asignacion_historial`, map jsonb to `AssignmentHistoryEntry[]`.
-- [ ] 2.3 Extend `listActive(input)` in same repository to pass `proyectoId` and `maquinaId` as optional RPC params.
-- [ ] 2.4 Add server action `listAssignmentHistoryAction(assignmentId)` to `apps/web/app/dashboard/assignments/catalog.ts` — call service `listAssignmentHistory`, handle errors.
+- [x] 2.1 Add `listAssignmentHistory(assignmentId)` method to `MachineAssignmentService` in `packages/application/src/assignments/machine-assignment.ts` with `capabilityChecker.requireCapability('assignments:read')` guard.
+- [x] 2.2 Implement `listHistory(input)` in `SupabaseMachineAssignmentRepository` at `packages/infrastructure/src/assignments/SupabaseMachineAssignmentRepository.ts` — call RPC `list_asignacion_historial`, map jsonb to `AssignmentHistoryEntry[]`.
+- [x] 2.3 Extend `listActive(input)` in same repository to pass `proyectoId` and `maquinaId` as optional RPC params.
+- [x] 2.4 Add server action `listAssignmentHistoryAction(assignmentId)` to `apps/web/app/dashboard/assignments/catalog.ts` — call service `listAssignmentHistory`, handle errors.
 
 ## Phase 3: Web UI Wiring
 
