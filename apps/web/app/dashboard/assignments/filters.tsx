@@ -26,7 +26,7 @@ export function AssignmentFilters({
           <span>Proyecto</span>
           <select
             className="login-input min-w-[220px]"
-            name="proyecto_id"
+            name="filter_proyecto_id"
             defaultValue={currentProyecto}
           >
             <option value="">Todos los proyectos</option>
@@ -42,7 +42,7 @@ export function AssignmentFilters({
           <span>Máquina</span>
           <select
             className="login-input min-w-[220px]"
-            name="maquina_id"
+            name="filter_maquina_id"
             defaultValue={currentMaquina}
           >
             <option value="">Todas las máquinas</option>

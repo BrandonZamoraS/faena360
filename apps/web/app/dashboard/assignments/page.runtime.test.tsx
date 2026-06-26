@@ -232,8 +232,8 @@ describe("assignments page shell", () => {
     );
 
     expect(html).toContain("Filtros");
-    expect(html).toContain('name="proyecto_id"');
-    expect(html).toContain('name="maquina_id"');
+    expect(html).toContain('name="filter_proyecto_id"');
+    expect(html).toContain('name="filter_maquina_id"');
   });
 
   it("renders Historial button per assignment row", () => {

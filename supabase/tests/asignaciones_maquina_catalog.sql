@@ -593,8 +593,8 @@ begin
   end if;
 
   -- Second entry: the create
-  if v_history[2]->>'action' <> 'asignacion.created' then
-    raise exception 'FAIL: second entry should be asignacion.created, got %', v_history[2]->>'action';
+  if v_history[2]->>'action' <> 'asignacion.create' then
+    raise exception 'FAIL: second entry should be asignacion.create, got %', v_history[2]->>'action';
   end if;
 
   raise notice 'PASS: timeline has 2 entries, ordered occurred_at DESC';
@@ -761,8 +761,8 @@ declare
   v_count int;
 begin
   -- Create a second active project in tenant A
-  insert into public.proyectos (id, tenant_id, nombre, cliente_id, ubicacion, fecha_inicio, forma_cobro, estado)
-  values (v_project_extra, v_tenant_a, 'Project A Extra', 'abab4800-0000-0000-0000-000000000001', 'Location Extra', '2026-01-01', 'monto_fijo', 'activo');
+  insert into public.proyectos (id, tenant_id, nombre, cliente_id, ubicacion, fecha_inicio, forma_cobro, monto_fijo, estado)
+  values (v_project_extra, v_tenant_a, 'Project A Extra', 'abab4800-0000-0000-0000-000000000001', 'Location Extra', '2026-01-01', 'monto_fijo', 1000, 'activo');
 
   -- Create assignment on project A
   perform public.create_asignacion(
@@ -830,8 +830,8 @@ begin
   values (v_machine_2, v_tenant_a, 'MAQ-PT-FILTER', 'por_tiempo', 'eeee4800-0000-0000-0000-000000000001', 110, 'sin_medicion', 'activa');
 
   -- Need a second project for the second machine (can't have 2 active on same machine)
-  insert into public.proyectos (id, tenant_id, nombre, cliente_id, ubicacion, fecha_inicio, forma_cobro, estado)
-  values (v_extra_project, v_tenant_a, 'Project Filter', 'abab4800-0000-0000-0000-000000000001', 'Location Filter', '2026-01-01', 'monto_fijo', 'activo');
+  insert into public.proyectos (id, tenant_id, nombre, cliente_id, ubicacion, fecha_inicio, forma_cobro, monto_fijo, estado)
+  values (v_extra_project, v_tenant_a, 'Project Filter', 'abab4800-0000-0000-0000-000000000001', 'Location Filter', '2026-01-01', 'monto_fijo', 2000, 'activo');
 
   -- Create assignment on machine 1
   perform public.create_asignacion(

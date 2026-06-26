@@ -174,7 +174,7 @@ begin
         (new_value->>'id')::uuid = p_asignacion_id
         or (old_value->>'id')::uuid = p_asignacion_id
       )
-    order by occurred_at desc
+    order by occurred_at desc, id desc
   ) r;
 
   return v_result;
