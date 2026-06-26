@@ -52,10 +52,39 @@ export interface AssignmentOutcome {
   readonly code?: AssignmentErrorCode;
 }
 
+/**
+ * Represents a single audit log entry for an assignment change.
+ * Returned by list_asignacion_historial RPC.
+ */
+export interface AssignmentHistoryEntry {
+  readonly occurred_at: string;
+  readonly action: string;
+  readonly actor_user_id: string | null;
+  readonly old_value: Record<string, unknown> | null;
+  readonly new_value: Record<string, unknown> | null;
+  readonly source: string;
+}
+
+/**
+ * Filters for listing active assignments.
+ * All fields are optional — defaults to no filter.
+ */
+export interface MachineAssignmentHistoryFilters {
+  readonly proyectoId?: string | null;
+  readonly maquinaId?: string | null;
+}
+
 export interface MachineAssignmentRepository {
   listActive(input: {
     readonly tenantId: string;
+    readonly proyectoId?: string | null;
+    readonly maquinaId?: string | null;
   }): Promise<readonly MachineAssignment[]>;
+
+  listHistory(input: {
+    readonly tenantId: string;
+    readonly assignmentId: string;
+  }): Promise<readonly AssignmentHistoryEntry[]>;
 
   create(
     input: {
