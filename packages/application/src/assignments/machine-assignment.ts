@@ -347,11 +347,11 @@ function isPermissionDeniedError(error: unknown): boolean {
 }
 
 function isAssignmentNotActiveError(error: unknown): boolean {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    (error as { code?: string }).code === "ASG01"
-  );
+  if (typeof error !== "object" || error === null) {
+    return false;
+  }
+  const code = (error as { code?: string }).code;
+  return code === "ASG01" || code === "ASG02";
 }
 
 /**

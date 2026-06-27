@@ -580,6 +580,27 @@ describe("machine assignment service", () => {
     expect(result).toEqual({ ok: false, code: "missing_assignment" });
   });
 
+  it("withdrawAssignment maps ASG02 (not found) to missing_assignment", async () => {
+    const { service } = createService({
+      repository: {
+        updateStatus: async () => {
+          const error = new Error("Assignment not found") as Error & {
+            code: string;
+          };
+          error.code = "ASG02";
+          throw error;
+        },
+      },
+    });
+
+    const result = await service.withdrawAssignment(
+      { tenant_id: "tenant-1", user_id: "actor-1" },
+      "assignment-1"
+    );
+
+    expect(result).toEqual({ ok: false, code: "missing_assignment" });
+  });
+
   // --- listAssignmentHistory ---
 
   it("returns history for user with assignments:read capability", async () => {
