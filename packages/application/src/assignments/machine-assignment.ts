@@ -42,6 +42,10 @@ export interface MachineAssignmentService {
     assignmentId: string,
     estado: AssignmentEstado
   ): Promise<AssignmentOutcome>;
+  withdrawAssignment(
+    session: TenantSessionScope,
+    assignmentId: string
+  ): Promise<AssignmentOutcome>;
 
   listAssignmentHistory(
     session: TenantSessionScope,
@@ -52,6 +56,7 @@ export interface MachineAssignmentService {
 const ASSIGNMENTS_READ_CAPABILITY = "assignments:read" as const;
 const ASSIGNMENTS_CREATE_CAPABILITY = "assignments:create" as const;
 const ASSIGNMENTS_UPDATE_CAPABILITY = "assignments:update" as const;
+export const ASSIGNMENTS_WITHDRAW_CAPABILITY = "assignments:withdraw" as const;
 
 const VALID_ESTADOS: ReadonlySet<AssignmentEstado> = new Set([
   "retirada_del_proyecto",
@@ -140,6 +145,11 @@ export function createMachineAssignmentService({
         return { ok: false, code: "unknown_error" };
       }
 
+      // Guard: withdrawal must go through withdrawAssignment, not updateAssignmentStatus.
+      if (estado === "retirada_del_proyecto") {
+        return { ok: false, code: "capability_denied" };
+      }
+
       const capability = await requireCapability(
         capabilityChecker,
         session,
@@ -157,6 +167,49 @@ export function createMachineAssignmentService({
           actorId: session.user_id,
           auditSource: "web",
           estado,
+        });
+        return updated
+          ? { ok: true }
+          : { ok: false, code: "missing_assignment" };
+      } catch (error) {
+        if (isPermissionDeniedError(error)) {
+          return { ok: false, code: "capability_denied" };
+        }
+        if (isAssignmentNotActiveError(error)) {
+          return { ok: false, code: "missing_assignment" };
+        }
+        return { ok: false, code: "assignment_update_failed" };
+      }
+    },
+
+    async withdrawAssignment(session, assignmentId) {
+      const tenantId = resolveTenantId(session.tenant_id);
+      if (!tenantId) {
+        return { ok: false, code: "missing_tenant" };
+      }
+
+      const normalizedId = assignmentId.trim();
+      if (!normalizedId) {
+        return { ok: false, code: "missing_assignment" };
+      }
+
+      const capability = await requireCapability(
+        capabilityChecker,
+        session,
+        tenantId,
+        ASSIGNMENTS_WITHDRAW_CAPABILITY
+      );
+      if (!capability.ok) {
+        return capability;
+      }
+
+      try {
+        const updated = await repository.updateStatus({
+          tenantId,
+          assignmentId: normalizedId,
+          actorId: session.user_id,
+          auditSource: "web",
+          estado: "retirada_del_proyecto",
         });
         return updated
           ? { ok: true }
@@ -294,11 +347,11 @@ function isPermissionDeniedError(error: unknown): boolean {
 }
 
 function isAssignmentNotActiveError(error: unknown): boolean {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    (error as { code?: string }).code === "ASG02"
-  );
+  if (typeof error !== "object" || error === null) {
+    return false;
+  }
+  const code = (error as { code?: string }).code;
+  return code === "ASG01" || code === "ASG02";
 }
 
 /**

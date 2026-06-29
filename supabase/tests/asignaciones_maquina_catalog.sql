@@ -38,7 +38,7 @@ insert into roles (id, tenant_id, name) values
 insert into role_capabilities (role_id, capability_id)
 select r.id, c.id from roles r cross join capabilities c
 where r.id in ('dddd4800-0000-0000-0000-000000000001', 'dddd4800-0000-0000-0000-000000000002')
-  and c.key in ('assignments:read', 'assignments:create', 'assignments:update')
+  and c.key in ('assignments:read', 'assignments:create', 'assignments:update', 'assignments:withdraw')
 on conflict do nothing;
 
 -- Grant operador role only base capabilities (read only for tests)

@@ -14,6 +14,7 @@ import {
   ASSIGNMENTS_PATH,
   ASSIGNMENTS_CREATE_CAPABILITY,
   ASSIGNMENTS_UPDATE_CAPABILITY,
+  ASSIGNMENTS_WITHDRAW_CAPABILITY,
 } from "./catalog";
 
 export async function listAssignmentHistoryAction(
@@ -46,6 +47,19 @@ export async function updateAssignmentStatusAction(formData: FormData) {
     { tenant_id: session.tenant_id, user_id: session.user_id },
     getString(formData, "assignmentId"),
     getString(formData, "estado") as AssignmentEstado
+  );
+  if (!result.ok) {
+    throw new Error(result.code ?? "assignment_update_failed");
+  }
+  revalidatePath(ASSIGNMENTS_PATH);
+}
+
+export async function withdrawAssignmentAction(formData: FormData) {
+  const session = await getAuthorizedAssignmentsSession();
+  guardAssignmentAction(session, ASSIGNMENTS_WITHDRAW_CAPABILITY);
+  const result = await buildAssignmentService(session).withdrawAssignment(
+    { tenant_id: session.tenant_id, user_id: session.user_id },
+    getString(formData, "assignmentId")
   );
   if (!result.ok) {
     throw new Error(result.code ?? "assignment_update_failed");

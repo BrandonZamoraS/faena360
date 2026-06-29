@@ -20,6 +20,7 @@ export const ASSIGNMENTS_PATH = "/dashboard/assignments";
 export const ASSIGNMENTS_READ_CAPABILITY = "assignments:read";
 export const ASSIGNMENTS_CREATE_CAPABILITY = "assignments:create";
 export const ASSIGNMENTS_UPDATE_CAPABILITY = "assignments:update";
+export const ASSIGNMENTS_WITHDRAW_CAPABILITY = "assignments:withdraw";
 
 export function canAccessAssignmentsPage(
   capabilities: readonly string[]
