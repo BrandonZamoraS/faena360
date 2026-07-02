@@ -151,7 +151,8 @@ export class SupabaseProjectCatalogRepository implements ProjectCatalogRepositor
     readonly auditSource: ProjectAuditContext["auditSource"];
     readonly force: boolean;
     readonly reason?: string;
-  }): Promise<boolean> {
+    readonly closeAssignments?: boolean;
+  }): Promise<number> {
     const response = await this.client.rpc("finish_proyecto", {
       p_actor_id: input.actorId,
       p_audit_source: input.auditSource,
@@ -159,13 +160,14 @@ export class SupabaseProjectCatalogRepository implements ProjectCatalogRepositor
       p_project_id: input.projectId,
       p_force: input.force,
       p_reason: input.reason ?? null,
+      p_close_assignments: input.closeAssignments ?? true,
     });
 
     if (response.error) {
       throw new Error(response.error.message);
     }
 
-    return Boolean(response.data);
+    return (response.data as number) ?? -1;
   }
 
   public async reopen(input: {

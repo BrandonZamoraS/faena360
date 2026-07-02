@@ -349,15 +349,18 @@ $$;
 
 -- RPC: finish_subproyecto
 -- Counts open jornadas; blocks unless force=true with reason; invalidates them.
+-- Closes active machine assignments automatically (opt-out via p_close_assignments).
+-- Returns int: -1 = not found, >=0 = closed assignment count.
 create or replace function public.finish_subproyecto(
   p_actor_id uuid,
   p_audit_source text,
   p_tenant_id uuid,
   p_subproject_id uuid,
   p_force boolean default false,
-  p_reason text default null
+  p_reason text default null,
+  p_close_assignments boolean default true
 )
-returns boolean
+returns int
 language plpgsql
 security definer
 set search_path = public
@@ -366,6 +369,7 @@ declare
   v_updated_count integer;
   v_current_estado text;
   v_open_jornadas bigint;
+  v_closed_count int := 0;
 begin
   if not public.app_user_has_capability(p_actor_id, p_tenant_id, 'subprojects:finish') then
     raise exception 'Actor lacks subprojects:finish capability' using errcode = '42501';
@@ -377,7 +381,7 @@ begin
     and id = p_subproject_id;
 
   if v_current_estado is null then
-    return false;
+    return -1;
   end if;
 
   if v_current_estado not in ('activo', 'pausado') then
@@ -403,6 +407,14 @@ begin
     );
   end if;
 
+  -- Close active machine assignments when flag is enabled.
+  if p_close_assignments then
+    v_closed_count := public.close_assignments_for_subproject(
+      p_tenant_id,
+      p_subproject_id
+    );
+  end if;
+
   perform set_config('app.current_actor_id', p_actor_id::text, true);
   perform set_config('app.audit_source', p_audit_source, true);
   perform set_config('app.audit_target_id', p_subproject_id::text, true);
@@ -414,7 +426,11 @@ begin
     and estado in ('activo', 'pausado');
 
   get diagnostics v_updated_count = row_count;
-  return v_updated_count > 0;
+  if v_updated_count = 0 then
+    return -1;
+  end if;
+
+  return v_closed_count;
 end;
 $$;
 
@@ -516,21 +532,21 @@ $$;
 -- Grants: execute restricted to service_role only.
 revoke execute on function public.create_subproyecto(uuid, text, uuid, uuid, text, text, text, numeric) from public;
 revoke execute on function public.update_subproyecto(uuid, text, uuid, uuid, text, text, text, numeric) from public;
-revoke execute on function public.finish_subproyecto(uuid, text, uuid, uuid, boolean, text) from public;
+revoke execute on function public.finish_subproyecto(uuid, text, uuid, uuid, boolean, text, boolean) from public;
 revoke execute on function public.reopen_subproyecto(uuid, text, uuid, uuid, text) from public;
 revoke execute on function public.hide_subproyecto(uuid, text, uuid, uuid) from public;
 revoke execute on function public.count_open_jornadas_for_subproyecto(uuid, uuid) from public;
 revoke execute on function public.invalidate_open_jornadas_for_subproyecto(uuid, uuid, text) from public;
 revoke execute on function public.create_subproyecto(uuid, text, uuid, uuid, text, text, text, numeric) from anon, authenticated;
 revoke execute on function public.update_subproyecto(uuid, text, uuid, uuid, text, text, text, numeric) from anon, authenticated;
-revoke execute on function public.finish_subproyecto(uuid, text, uuid, uuid, boolean, text) from anon, authenticated;
+revoke execute on function public.finish_subproyecto(uuid, text, uuid, uuid, boolean, text, boolean) from anon, authenticated;
 revoke execute on function public.reopen_subproyecto(uuid, text, uuid, uuid, text) from anon, authenticated;
 revoke execute on function public.hide_subproyecto(uuid, text, uuid, uuid) from anon, authenticated;
 revoke execute on function public.count_open_jornadas_for_subproyecto(uuid, uuid) from anon, authenticated;
 revoke execute on function public.invalidate_open_jornadas_for_subproyecto(uuid, uuid, text) from anon, authenticated;
 grant execute on function public.create_subproyecto(uuid, text, uuid, uuid, text, text, text, numeric) to service_role;
 grant execute on function public.update_subproyecto(uuid, text, uuid, uuid, text, text, text, numeric) to service_role;
-grant execute on function public.finish_subproyecto(uuid, text, uuid, uuid, boolean, text) to service_role;
+grant execute on function public.finish_subproyecto(uuid, text, uuid, uuid, boolean, text, boolean) to service_role;
 grant execute on function public.reopen_subproyecto(uuid, text, uuid, uuid, text) to service_role;
 grant execute on function public.hide_subproyecto(uuid, text, uuid, uuid) to service_role;
 grant execute on function public.count_open_jornadas_for_subproyecto(uuid, uuid) to service_role;
