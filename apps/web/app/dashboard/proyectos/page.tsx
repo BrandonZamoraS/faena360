@@ -47,7 +47,6 @@ type ProjectCatalogShellInput = {
   readonly capabilities: readonly string[];
   readonly projects: readonly ProjectCatalogSummary[];
   readonly clients: readonly ClientCatalogSummary[];
-  readonly closedCount?: number;
   readonly createAction?: (formData: FormData) => Promise<void>;
   readonly updateAction?: (formData: FormData) => Promise<void>;
   readonly pauseAction?: (formData: FormData) => Promise<void>;
@@ -117,12 +116,6 @@ export function renderProjectCatalogShell(input: ProjectCatalogShellInput) {
               Catálogo de proyectos activos y pausados del tenant autenticado.
             </p>
           </header>
-
-          {input.closedCount != null && input.closedCount > 0 ? (
-            <div className="rounded-2xl border border-[#d3eede] bg-[#e9f7ef] px-6 py-4 text-sm font-medium text-[#0f5132]">
-              Se cerraron {input.closedCount} asignaciones.
-            </div>
-          ) : null}
 
           {canCreate ? (
             <section className="rounded-2xl border border-[#dcebe1] bg-white p-6">
@@ -732,9 +725,7 @@ export async function finishProjectAction(formData: FormData) {
     throw new Error(result.code ?? "project_finish_failed");
   }
 
-  redirect(
-    `/dashboard/proyectos?closed=${result.closedAssignmentsCount ?? 0}`
-  );
+  revalidatePath("/dashboard/proyectos");
 }
 
 export async function reopenProjectAction(formData: FormData) {
@@ -799,14 +790,7 @@ function getReopenTargetEstado(formData: FormData): "activo" | "pausado" {
   return rawValue === "pausado" ? "pausado" : "activo";
 }
 
-export default async function ProyectosPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ closed?: string }>;
-}) {
-  const params = await searchParams;
-  const closedCount = params.closed != null ? Number(params.closed) : undefined;
-
+export default async function ProyectosPage() {
   const session = await getAuthorizedPageSession();
   const projectService = buildProjectCatalogService(session);
 
@@ -830,7 +814,6 @@ export default async function ProyectosPage({
     capabilities: session.effective_capabilities,
     projects,
     clients,
-    closedCount,
     createAction: createProjectAction,
     updateAction: updateProjectAction,
     pauseAction: pauseProjectAction,

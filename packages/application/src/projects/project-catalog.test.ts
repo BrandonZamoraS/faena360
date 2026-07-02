@@ -34,7 +34,7 @@ describe("project catalog service", () => {
       create: async () => ({ id: "project-id-1" }),
       update: async () => true,
       pause: async () => true,
-      finish: async () => 3,
+      finish: async () => true,
       reopen: async () => true,
       hide: async () => true,
       ...overrides?.repository,

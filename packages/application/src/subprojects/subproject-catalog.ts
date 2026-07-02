@@ -322,19 +322,18 @@ export function createSubprojectCatalogService({
       }
 
       try {
-        const closedCount = await repository.finish({
+        const finished = await repository.finish({
           tenantId,
           subprojectId,
           actorId: session.user_id,
           auditSource: "web",
           force: Boolean(input.force),
           reason: input.reason?.trim(),
-          closeAssignments: input.closeAssignments ?? true,
         });
-        if (closedCount === -1) {
+        if (!finished) {
           return { ok: false, code: "missing_project" };
         }
-        return { ok: true, closedAssignmentsCount: closedCount };
+        return { ok: true };
       } catch (error) {
         return {
           ok: false,

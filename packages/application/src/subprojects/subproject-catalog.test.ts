@@ -31,7 +31,7 @@ describe("subproject catalog service", () => {
       ],
       create: async () => ({ id: "sub-id-1" }),
       update: async () => true,
-      finish: async () => 3,
+      finish: async () => true,
       reopen: async () => true,
       hide: async () => true,
       getParentFixedAmount: async () => 1000,
@@ -334,7 +334,7 @@ describe("subproject catalog service", () => {
     const { service } = createService({
       repository: {
         update: async () => false,
-        finish: async () => -1,
+        finish: async () => false,
         hide: async () => false,
         reopen: async () => false,
       },

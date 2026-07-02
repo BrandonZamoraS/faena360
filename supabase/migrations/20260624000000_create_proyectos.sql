@@ -527,10 +527,9 @@ create or replace function public.finish_proyecto(
   p_tenant_id uuid,
   p_project_id uuid,
   p_force bool default false,
-  p_reason text default null,
-  p_close_assignments bool default true
+  p_reason text default null
 )
-returns int
+returns boolean
 language plpgsql
 security definer
 set search_path = public
@@ -539,7 +538,6 @@ declare
   v_updated_count integer;
   v_current_estado text;
   v_open_jornadas bigint;
-  v_closed_count int := 0;
   v_has_subprojects boolean := false;
   v_has_subproject_tenant boolean := false;
   v_has_subproject_project boolean := false;
@@ -557,7 +555,7 @@ begin
     and id = p_project_id;
 
   if v_current_estado is null then
-    return -1;
+    return false;
   end if;
 
   if v_current_estado not in ('activo', 'pausado') then
@@ -579,14 +577,6 @@ begin
       p_tenant_id,
       p_project_id,
       p_reason
-    );
-  end if;
-
-  -- Close active machine assignments when flag is enabled.
-  if p_close_assignments then
-    v_closed_count := public.close_assignments_for_project(
-      p_tenant_id,
-      p_project_id
     );
   end if;
 
@@ -655,11 +645,7 @@ begin
     and estado in ('activo', 'pausado');
 
   get diagnostics v_updated_count = row_count;
-  if v_updated_count = 0 then
-    return -1;
-  end if;
-
-  return v_closed_count;
+  return v_updated_count > 0;
 end;
 $$;
 
@@ -754,7 +740,7 @@ revoke execute on function public.invalidate_open_jornadas_for_proyecto(uuid, uu
 revoke execute on function public.create_proyecto(uuid, text, uuid, text, uuid, text, date, text, numeric) from public;
 revoke execute on function public.update_proyecto(uuid, text, uuid, uuid, text, uuid, text, date, text, numeric, date) from public;
 revoke execute on function public.pause_proyecto(uuid, text, uuid, uuid, boolean, text) from public;
-revoke execute on function public.finish_proyecto(uuid, text, uuid, uuid, boolean, text, boolean) from public;
+revoke execute on function public.finish_proyecto(uuid, text, uuid, uuid, boolean, text) from public;
 revoke execute on function public.reopen_proyecto(uuid, text, uuid, uuid, text) from public;
 revoke execute on function public.hide_proyecto(uuid, text, uuid, uuid) from public;
 revoke execute on function public.count_open_jornadas_for_proyecto(uuid, uuid) from anon, authenticated;
@@ -762,7 +748,7 @@ revoke execute on function public.invalidate_open_jornadas_for_proyecto(uuid, uu
 revoke execute on function public.create_proyecto(uuid, text, uuid, text, uuid, text, date, text, numeric) from anon, authenticated;
 revoke execute on function public.update_proyecto(uuid, text, uuid, uuid, text, uuid, text, date, text, numeric, date) from anon, authenticated;
 revoke execute on function public.pause_proyecto(uuid, text, uuid, uuid, boolean, text) from anon, authenticated;
-revoke execute on function public.finish_proyecto(uuid, text, uuid, uuid, boolean, text, boolean) from anon, authenticated;
+revoke execute on function public.finish_proyecto(uuid, text, uuid, uuid, boolean, text) from anon, authenticated;
 revoke execute on function public.reopen_proyecto(uuid, text, uuid, uuid, text) from anon, authenticated;
 revoke execute on function public.hide_proyecto(uuid, text, uuid, uuid) from anon, authenticated;
 grant execute on function public.count_open_jornadas_for_proyecto(uuid, uuid) to service_role;
@@ -770,7 +756,7 @@ grant execute on function public.invalidate_open_jornadas_for_proyecto(uuid, uui
 grant execute on function public.create_proyecto(uuid, text, uuid, text, uuid, text, date, text, numeric) to service_role;
 grant execute on function public.update_proyecto(uuid, text, uuid, uuid, text, uuid, text, date, text, numeric, date) to service_role;
 grant execute on function public.pause_proyecto(uuid, text, uuid, uuid, boolean, text) to service_role;
-grant execute on function public.finish_proyecto(uuid, text, uuid, uuid, boolean, text, boolean) to service_role;
+grant execute on function public.finish_proyecto(uuid, text, uuid, uuid, boolean, text) to service_role;
 grant execute on function public.reopen_proyecto(uuid, text, uuid, uuid, text) to service_role;
 grant execute on function public.hide_proyecto(uuid, text, uuid, uuid) to service_role;
 
