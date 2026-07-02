@@ -257,6 +257,7 @@ describe("SupabaseSubprojectCatalogRepository", () => {
           p_subproject_id: "sub-id-1",
           p_force: false,
           p_reason: null,
+          p_close_assignments: true,
         },
       },
       {
