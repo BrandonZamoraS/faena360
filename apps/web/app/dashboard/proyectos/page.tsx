@@ -732,9 +732,7 @@ export async function finishProjectAction(formData: FormData) {
     throw new Error(result.code ?? "project_finish_failed");
   }
 
-  redirect(
-    `/dashboard/proyectos?closed=${result.closedAssignmentsCount ?? 0}`
-  );
+  redirect(`/dashboard/proyectos?closed=${result.closedAssignmentsCount ?? 0}`);
 }
 
 export async function reopenProjectAction(formData: FormData) {
