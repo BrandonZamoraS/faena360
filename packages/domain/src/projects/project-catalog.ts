@@ -52,6 +52,7 @@ export interface FinishProjectInput {
   readonly projectId: string;
   readonly force?: boolean;
   readonly reason?: string;
+  readonly closeAssignments?: boolean;
 }
 
 export interface ReopenProjectInput {
@@ -95,6 +96,7 @@ export interface CreateProjectOutcome {
 export interface MutateProjectOutcome {
   readonly ok: boolean;
   readonly code?: ProjectCatalogErrorCode;
+  readonly closedAssignmentsCount?: number;
 }
 
 export interface ProjectCatalogRepository {
@@ -144,7 +146,8 @@ export interface ProjectCatalogRepository {
     readonly auditSource: AuditSource;
     readonly force: boolean;
     readonly reason?: string;
-  }): Promise<boolean>;
+    readonly closeAssignments?: boolean;
+  }): Promise<number>;
 
   reopen(input: {
     readonly tenantId: string;

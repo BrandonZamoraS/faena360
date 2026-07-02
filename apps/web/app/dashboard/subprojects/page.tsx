@@ -46,6 +46,7 @@ type SubprojectCatalogShellInput = {
   readonly capabilities: readonly string[];
   readonly subprojects: readonly SubprojectCatalogSummary[];
   readonly projects: readonly ProjectCatalogSummary[];
+  readonly closedCount?: number;
   readonly createAction?: (formData: FormData) => Promise<void>;
   readonly updateAction?: (formData: FormData) => Promise<void>;
   readonly finishAction?: (formData: FormData) => Promise<void>;
@@ -109,6 +110,12 @@ export function renderSubprojectCatalogShell(
               autenticado.
             </p>
           </header>
+
+          {input.closedCount != null && input.closedCount > 0 ? (
+            <div className="rounded-2xl border border-[#d3eede] bg-[#e9f7ef] px-6 py-4 text-sm font-medium text-[#0f5132]">
+              Se cerraron {input.closedCount} asignaciones.
+            </div>
+          ) : null}
 
           {canCreate ? (
             <section className="rounded-2xl border border-[#dcebe1] bg-white p-6">
@@ -657,7 +664,9 @@ export async function finishSubprojectAction(formData: FormData) {
     throw new Error(result.code ?? "subproject_finish_failed");
   }
 
-  revalidatePath("/dashboard/subprojects");
+  redirect(
+    `/dashboard/subprojects?closed=${result.closedAssignmentsCount ?? 0}`
+  );
 }
 
 export async function reopenSubprojectAction(formData: FormData) {
@@ -728,7 +737,14 @@ function getReopenTargetEstado(
 
 // ── Page component ───────────────────────────────────────────────────
 
-export default async function SubproyectosPage() {
+export default async function SubproyectosPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ closed?: string }>;
+}) {
+  const params = await searchParams;
+  const closedCount = params.closed != null ? Number(params.closed) : undefined;
+
   const session = await getAuthorizedPageSession();
   const subprojectService = buildSubprojectCatalogService(session);
 
@@ -752,6 +768,7 @@ export default async function SubproyectosPage() {
     capabilities: session.effective_capabilities,
     subprojects,
     projects,
+    closedCount,
     createAction: createSubprojectAction,
     updateAction: updateSubprojectAction,
     finishAction: finishSubprojectAction,
